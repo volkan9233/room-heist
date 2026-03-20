@@ -1594,7 +1594,10 @@ function drawDesk() {
   // Monitor 2
   drawMonitor(dx + deskW * 0.7, topY - 4);
 
-  // Keycard on desk
+  // Desk clutter around keycard area
+  drawDeskClutter(dx, deskW, topY);
+
+  // Keycard on desk (drawn last so it's on top of clutter)
   if (!hasKeycard) {
     drawKeycard(dx + deskW * 0.5, topY - 8);
   }
@@ -1698,6 +1701,150 @@ function drawKeycard(cx, baseY) {
   // Chip
   ctx.fillStyle = '#f0d060';
   ctx.fillRect(s(cx - 4), s(baseY - kh + 10), s(8), s(5));
+}
+
+function drawDeskClutter(dx, deskW, topY) {
+  // Coffee mug (left of keycard area, between monitor1 and keycard)
+  const mugX = dx + deskW * 0.42;
+  const mugY = topY - 6;
+  // Mug body
+  ctx.fillStyle = '#4a4a52';
+  ctx.beginPath();
+  ctx.roundRect(s(mugX - 5), s(mugY - 10), s(10), s(10), s(1.5));
+  ctx.fill();
+  // Mug rim
+  ctx.strokeStyle = '#5a5a62';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.ellipse(s(mugX), s(mugY - 10), s(5), s(2), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Liquid inside
+  ctx.fillStyle = '#2a1a0a';
+  ctx.beginPath();
+  ctx.ellipse(s(mugX), s(mugY - 9.5), s(4), s(1.5), 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Handle
+  ctx.strokeStyle = '#4a4a52';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.arc(s(mugX + 6), s(mugY - 5), s(3), -Math.PI * 0.4, Math.PI * 0.4);
+  ctx.stroke();
+
+  // Stack of papers (right of keycard area)
+  const papX = dx + deskW * 0.60;
+  const papY = topY - 5;
+  // Stack with slight offset layers
+  ctx.fillStyle = '#c8c8c0';
+  ctx.fillRect(s(papX), s(papY - 6), s(18), s(3));
+  ctx.fillStyle = '#d0d0c8';
+  ctx.fillRect(s(papX - 1), s(papY - 9), s(18), s(3));
+  ctx.fillStyle = '#d8d8d0';
+  ctx.fillRect(s(papX + 1), s(papY - 12), s(18), s(3));
+  // Subtle text lines on top sheet
+  ctx.strokeStyle = 'rgba(80,80,80,0.12)';
+  ctx.lineWidth = s(0.5);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(s(papX + 3), s(papY - 11 + i * 2.5));
+    ctx.lineTo(s(papX + 14), s(papY - 11 + i * 2.5));
+    ctx.stroke();
+  }
+
+  // Pen (angled, near papers)
+  ctx.strokeStyle = '#1a2a5a';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(papX + 20), s(papY - 3));
+  ctx.lineTo(s(papX + 30), s(papY - 9));
+  ctx.stroke();
+  // Pen tip
+  ctx.strokeStyle = '#8a8a8a';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(papX + 30), s(papY - 9));
+  ctx.lineTo(s(papX + 32), s(papY - 10));
+  ctx.stroke();
+
+  // Small sticky note (between monitors, left side)
+  ctx.fillStyle = 'rgba(240,220,80,0.30)';
+  ctx.fillRect(s(dx + deskW * 0.15), s(topY - 14), s(12), s(10));
+  ctx.strokeStyle = 'rgba(200,180,40,0.15)';
+  ctx.lineWidth = s(0.5);
+  ctx.strokeRect(s(dx + deskW * 0.15), s(topY - 14), s(12), s(10));
+}
+
+function drawBenchClutter(dx, benchW, topY) {
+  // Wire spool (left of keycard, past the vise area)
+  const spoolX = dx + benchW * 0.35;
+  const spoolY = topY - 6;
+  // Spool body (small cylinder on side)
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(spoolX - 6), s(spoolY - 5), s(12), s(5));
+  // Wire wound around it
+  ctx.strokeStyle = '#6a4a2a';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(spoolX - 4), s(spoolY - 3));
+  ctx.lineTo(s(spoolX + 4), s(spoolY - 3));
+  ctx.stroke();
+  // End flanges
+  ctx.fillStyle = '#4a4d55';
+  ctx.fillRect(s(spoolX - 7), s(spoolY - 6), s(2), s(7));
+  ctx.fillRect(s(spoolX + 5), s(spoolY - 6), s(2), s(7));
+
+  // Clipboard (right of keycard area, angled)
+  const clipX = dx + benchW * 0.70;
+  const clipY = topY - 5;
+  // Board
+  ctx.fillStyle = '#6a5a40';
+  ctx.save();
+  ctx.translate(s(clipX), s(clipY));
+  ctx.rotate(-0.15);
+  ctx.fillRect(s(-8), s(-14), s(16), s(20));
+  // Paper on clipboard
+  ctx.fillStyle = '#d4d4cc';
+  ctx.fillRect(s(-7), s(-12), s(14), s(17));
+  // Text lines
+  ctx.strokeStyle = 'rgba(80,80,80,0.12)';
+  ctx.lineWidth = s(0.5);
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(s(-5), s(-10 + i * 3.5));
+    ctx.lineTo(s(5), s(-10 + i * 3.5));
+    ctx.stroke();
+  }
+  // Metal clip at top
+  ctx.fillStyle = '#8a8d95';
+  ctx.fillRect(s(-4), s(-14.5), s(8), s(3));
+  ctx.restore();
+
+  // Scattered washers/bolts (small metal circles near keycard)
+  ctx.fillStyle = '#6a6d75';
+  const bolts = [
+    [dx + benchW * 0.48, topY - 7, 1.5],
+    [dx + benchW * 0.51, topY - 5, 1.2],
+    [dx + benchW * 0.62, topY - 6, 1.8],
+    [dx + benchW * 0.46, topY - 9, 1.0],
+  ];
+  for (const [bx, by, br] of bolts) {
+    ctx.beginPath();
+    ctx.arc(s(bx), s(by), s(br), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // One washer (ring)
+  ctx.strokeStyle = '#7a7d85';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.arc(s(dx + benchW * 0.59), s(topY - 9), s(2.5), 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Rag/cloth (draped, near right side)
+  ctx.fillStyle = 'rgba(90,70,55,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(s(dx + benchW * 0.78), s(topY - 4));
+  ctx.quadraticCurveTo(s(dx + benchW * 0.82), s(topY - 10), s(dx + benchW * 0.88), s(topY - 5));
+  ctx.quadraticCurveTo(s(dx + benchW * 0.85), s(topY - 2), s(dx + benchW * 0.78), s(topY - 4));
+  ctx.fill();
 }
 
 function drawCrate(cx, cy, cw, ch, sideW, isTop) {
@@ -2183,7 +2330,10 @@ function drawWorkbench(box) {
   ctx.lineWidth = s(0.8);
   ctx.strokeRect(s(vx), s(vy), s(16), s(6));
 
-  // Keycard on workbench
+  // Workbench clutter around keycard area
+  drawBenchClutter(dx, benchW, topY);
+
+  // Keycard on workbench (drawn last so it's on top of clutter)
   if (!hasKeycard) {
     drawKeycard(dx + benchW * 0.55, topY - 8);
   }
