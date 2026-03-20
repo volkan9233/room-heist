@@ -625,7 +625,7 @@ function drawServerRack(box) {
   const by = base.y - rackH;
   const sideW = 10;
 
-  // Ground-plane footprint shadow
+  // Ground-plane footprint shadow — full collider area
   const footGrad = ctx.createRadialGradient(
     s(base.x), s((tl.y + base.y) / 2), 0,
     s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.8)
@@ -642,17 +642,30 @@ function drawServerRack(box) {
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow
+  // Contact shadow — wraps full base perimeter
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.moveTo(s(bx - 2), s(base.y - 1));
+  ctx.moveTo(s(bx - 5), s(base.y - 1));
   ctx.lineTo(s(bx + screenW + 2), s(base.y - 1));
   ctx.lineTo(s(bx + screenW + 10), s(base.y + 10));
-  ctx.lineTo(s(bx - 5), s(base.y + 10));
+  ctx.lineTo(s(bx - 8), s(base.y + 10));
   ctx.closePath();
   ctx.fill();
 
-  // Side face (right) for volume
+  // Left side face — shows depth on left edge
+  const lsGrad = ctx.createLinearGradient(s(bx - sideW), 0, s(bx), 0);
+  lsGrad.addColorStop(0, '#12141a');
+  lsGrad.addColorStop(1, '#1a1c22');
+  ctx.fillStyle = lsGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx), s(by));
+  ctx.lineTo(s(bx - sideW), s(by - 8));
+  ctx.lineTo(s(bx - sideW), s(base.y - 4));
+  ctx.lineTo(s(bx), s(base.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Right side face — shows depth on right edge
   const sideGrad = ctx.createLinearGradient(s(bx + screenW), 0, s(bx + screenW + sideW), 0);
   sideGrad.addColorStop(0, '#1e2028');
   sideGrad.addColorStop(1, '#15171e');
@@ -724,7 +737,7 @@ function drawServerRack(box) {
     ctx.fill();
   }
 
-  // Top face
+  // Top face — symmetric, connects both side faces
   const topGrad = ctx.createLinearGradient(0, s(by - 12), 0, s(by));
   topGrad.addColorStop(0, '#484c58');
   topGrad.addColorStop(1, '#3a3e48');
@@ -735,14 +748,17 @@ function drawServerRack(box) {
   ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
   ctx.lineTo(s(bx + screenW - 8), s(by - 12));
   ctx.lineTo(s(bx - 8), s(by - 12));
+  ctx.lineTo(s(bx - sideW), s(by - 8));
   ctx.closePath();
   ctx.fill();
-  // Top face edge line
+  // Top face edge lines
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = s(0.8);
   ctx.beginPath();
-  ctx.moveTo(s(bx - 8), s(by - 12));
+  ctx.moveTo(s(bx - sideW), s(by - 8));
+  ctx.lineTo(s(bx - 8), s(by - 12));
   ctx.lineTo(s(bx + screenW - 8), s(by - 12));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
   ctx.stroke();
 
   // Mounting rail hints (vertical lines on edges)
@@ -985,7 +1001,20 @@ function drawCrate(cx, cy, cw, ch, sideW, isTop) {
   const metalC  = '#5a5a5a';
   const metalDk = '#3a3a3a';
 
-  // Side face for volume
+  // Left side face — darker, defines left depth edge
+  const lsGrad = ctx.createLinearGradient(s(cx - sideW), 0, s(cx), 0);
+  lsGrad.addColorStop(0, isTop ? '#2e2010' : '#362814');
+  lsGrad.addColorStop(1, woodDk);
+  ctx.fillStyle = lsGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(cx), s(cy));
+  ctx.lineTo(s(cx - sideW), s(cy - 5));
+  ctx.lineTo(s(cx - sideW), s(cy + ch - 3));
+  ctx.lineTo(s(cx), s(cy + ch));
+  ctx.closePath();
+  ctx.fill();
+
+  // Right side face for volume
   const sdGrad = ctx.createLinearGradient(s(cx + cw), 0, s(cx + cw + sideW), 0);
   sdGrad.addColorStop(0, woodDk);
   sdGrad.addColorStop(1, isTop ? '#3a2c14' : '#42321a');
@@ -1031,8 +1060,9 @@ function drawCrate(cx, cy, cw, ch, sideW, isTop) {
     ctx.stroke();
   }
 
-  // Top face
-  const topGrad = ctx.createLinearGradient(0, s(cy - (isTop ? 8 : 10)), 0, s(cy));
+  // Top face — symmetric, connects both side faces
+  const topOff = isTop ? 8 : 10;
+  const topGrad = ctx.createLinearGradient(0, s(cy - topOff), 0, s(cy));
   topGrad.addColorStop(0, woodHi);
   topGrad.addColorStop(1, woodLt);
   ctx.fillStyle = topGrad;
@@ -1040,8 +1070,9 @@ function drawCrate(cx, cy, cw, ch, sideW, isTop) {
   ctx.moveTo(s(cx), s(cy));
   ctx.lineTo(s(cx + cw), s(cy));
   ctx.lineTo(s(cx + cw + sideW), s(cy - 5));
-  ctx.lineTo(s(cx + cw - (isTop ? 6 : 8)), s(cy - (isTop ? 8 : 10)));
-  ctx.lineTo(s(cx - (isTop ? 6 : 8)), s(cy - (isTop ? 8 : 10)));
+  ctx.lineTo(s(cx + cw - (isTop ? 6 : 8)), s(cy - topOff));
+  ctx.lineTo(s(cx - (isTop ? 6 : 8)), s(cy - topOff));
+  ctx.lineTo(s(cx - sideW), s(cy - 5));
   ctx.closePath();
   ctx.fill();
 
@@ -1129,13 +1160,13 @@ function drawCrates() {
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow
+  // Contact shadow — wraps full base
   ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.beginPath();
-  ctx.moveTo(s(cx1 - 1), s(base.y - 1));
-  ctx.lineTo(s(cx1 + cw1 + 1), s(base.y - 1));
+  ctx.moveTo(s(cx1 - 8), s(base.y - 1));
+  ctx.lineTo(s(cx1 + cw1 + 2), s(base.y - 1));
   ctx.lineTo(s(cx1 + cw1 + 10), s(base.y + 8));
-  ctx.lineTo(s(cx1 - 5), s(base.y + 8));
+  ctx.lineTo(s(cx1 - 10), s(base.y + 8));
   ctx.closePath();
   ctx.fill();
 
