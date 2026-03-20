@@ -82,6 +82,7 @@ const COLLIDERS = [
 let detected = false;
 let hasKeycard = false;
 let won = false;
+let gameTime = 0;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -562,26 +563,37 @@ function drawMonitor(cx, baseY) {
 }
 
 function drawKeycard(cx, baseY) {
-  const kw = 20, kh = 12;
-  // Glow
-  const glow = ctx.createRadialGradient(s(cx), s(baseY - kh / 2), 0, s(cx), s(baseY - kh / 2), s(25));
-  glow.addColorStop(0, 'rgba(80,200,255,0.2)');
+  const kw = 30, kh = 18;
+  const pulse = 0.55 + 0.45 * Math.sin(gameTime * 3.5);
+  const glowR = 35 + 10 * pulse;
+
+  // Outer pulsing glow
+  const glow = ctx.createRadialGradient(s(cx), s(baseY - kh / 2), 0, s(cx), s(baseY - kh / 2), s(glowR));
+  glow.addColorStop(0, `rgba(80,200,255,${0.35 * pulse})`);
+  glow.addColorStop(0.6, `rgba(80,200,255,${0.15 * pulse})`);
   glow.addColorStop(1, 'rgba(80,200,255,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(s(cx), s(baseY - kh / 2), s(25), 0, Math.PI * 2);
+  ctx.arc(s(cx), s(baseY - kh / 2), s(glowR), 0, Math.PI * 2);
   ctx.fill();
-  // Card body
-  ctx.fillStyle = '#40a0e0';
+
+  // Card body — bright against dark desk
+  ctx.fillStyle = '#30b0f0';
   ctx.beginPath();
-  ctx.roundRect(s(cx - kw / 2), s(baseY - kh), s(kw), s(kh), s(2));
+  ctx.roundRect(s(cx - kw / 2), s(baseY - kh), s(kw), s(kh), s(3));
   ctx.fill();
+  // Highlight edge
+  ctx.strokeStyle = 'rgba(150,230,255,0.6)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.roundRect(s(cx - kw / 2), s(baseY - kh), s(kw), s(kh), s(3));
+  ctx.stroke();
   // Stripe
-  ctx.fillStyle = '#60c0ff';
-  ctx.fillRect(s(cx - kw / 2 + 3), s(baseY - kh + 3), s(kw - 6), s(3));
+  ctx.fillStyle = '#70d0ff';
+  ctx.fillRect(s(cx - kw / 2 + 4), s(baseY - kh + 4), s(kw - 8), s(4));
   // Chip
-  ctx.fillStyle = '#e0c060';
-  ctx.fillRect(s(cx - 3), s(baseY - kh + 7), s(6), s(3));
+  ctx.fillStyle = '#f0d060';
+  ctx.fillRect(s(cx - 4), s(baseY - kh + 10), s(8), s(5));
 }
 
 function drawCrates() {
@@ -908,6 +920,8 @@ const U_MIN = 0.06, U_MAX = 0.94;
 const V_MIN = 0.06, V_MAX = 0.96;
 
 function update(dt) {
+  gameTime += dt;
+
   // Reset on R
   if (keys['r'] || keys['R']) {
     if (detected || won) {
@@ -973,7 +987,7 @@ function update(dt) {
 
   // Exit interaction — near right wall, press E or Space
   if (hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
-    if (player.u > 0.88 && player.v > 0.35 && player.v < 0.75) {
+    if (player.u > 0.82 && player.v > 0.28 && player.v < 0.82) {
       won = true;
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
@@ -1031,16 +1045,51 @@ function render() {
   sortable.sort((a, b) => a.v - b.v);
   sortable.forEach(spr => spr.draw());
 
+  // Proximity prompts (world-space)
+  if (!detected && !won) {
+    const desk = COLLIDERS[2];
+    const deskCU = (desk.uMin + desk.uMax) / 2;
+    const deskFrontV = desk.vMax + 0.06;
+    const nearKeycard = !hasKeycard &&
+      Math.abs(player.u - deskCU) < 0.18 &&
+      Math.abs(player.v - deskFrontV) < 0.10;
+    const nearExit = hasKeycard &&
+      player.u > 0.82 && player.v > 0.28 && player.v < 0.82;
+
+    if (nearKeycard) {
+      const promptPos = floorToScreen(deskCU, desk.vMax + 0.02);
+      const bob = Math.sin(gameTime * 4) * 3;
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${s(14)}px monospace`;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillText('[E] Pick up keycard', s(promptPos.x + 1), s(promptPos.y - 18 + bob + 1));
+      ctx.fillStyle = '#80e0ff';
+      ctx.fillText('[E] Pick up keycard', s(promptPos.x), s(promptPos.y - 18 + bob));
+    }
+
+    if (nearExit) {
+      const exitPromptU = 0.95, exitPromptV = 0.55;
+      const promptPos = floorToScreen(exitPromptU, exitPromptV);
+      const bob = Math.sin(gameTime * 4) * 3;
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${s(14)}px monospace`;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillText('[E] Use exit', s(promptPos.x + 1), s(promptPos.y - 20 + bob + 1));
+      ctx.fillStyle = '#60ff60';
+      ctx.fillText('[E] Use exit', s(promptPos.x), s(promptPos.y - 20 + bob));
+    }
+  }
+
   // Objective status (bottom-left)
   if (!detected && !won) {
     ctx.textAlign = 'left';
     ctx.font = `${s(13)}px monospace`;
     if (!hasKeycard) {
-      ctx.fillStyle = 'rgba(80,200,255,0.7)';
-      ctx.fillText('[E] Pick up keycard from desk', s(30), s(690));
+      ctx.fillStyle = 'rgba(80,200,255,0.5)';
+      ctx.fillText('Find the keycard', s(30), s(690));
     } else {
-      ctx.fillStyle = 'rgba(64,224,64,0.7)';
-      ctx.fillText('KEYCARD acquired — [E] Use exit door', s(30), s(690));
+      ctx.fillStyle = 'rgba(64,224,64,0.6)';
+      ctx.fillText('Reach the exit', s(30), s(690));
     }
   }
 
