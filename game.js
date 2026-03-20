@@ -79,6 +79,9 @@ const guard = {
   waypointIdx: 0,
   waitTimer: 1.0,
   walkPhase: 0,
+  investigating: false,
+  investigateTarget: null,
+  investigateWaitTimer: 0,
 };
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
@@ -106,6 +109,8 @@ let won = false;
 let gameTime = 0;
 let currentRoom = 1;
 let roomTransitionTimer = 0;
+let spoolKnocked = false;
+let spoolNoiseTimer = 0;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -1774,23 +1779,25 @@ function drawDeskClutter(dx, deskW, topY) {
 }
 
 function drawBenchClutter(dx, benchW, topY) {
-  // Wire spool (left of keycard, past the vise area)
-  const spoolX = dx + benchW * 0.35;
-  const spoolY = topY - 6;
-  // Spool body (small cylinder on side)
-  ctx.fillStyle = '#3a3d44';
-  ctx.fillRect(s(spoolX - 6), s(spoolY - 5), s(12), s(5));
-  // Wire wound around it
-  ctx.strokeStyle = '#6a4a2a';
-  ctx.lineWidth = s(2);
-  ctx.beginPath();
-  ctx.moveTo(s(spoolX - 4), s(spoolY - 3));
-  ctx.lineTo(s(spoolX + 4), s(spoolY - 3));
-  ctx.stroke();
-  // End flanges
-  ctx.fillStyle = '#4a4d55';
-  ctx.fillRect(s(spoolX - 7), s(spoolY - 6), s(2), s(7));
-  ctx.fillRect(s(spoolX + 5), s(spoolY - 6), s(2), s(7));
+  // Wire spool (left of keycard, past the vise area) — hidden when knocked off
+  if (!spoolKnocked || currentRoom !== 2) {
+    const spoolX = dx + benchW * 0.35;
+    const spoolY = topY - 6;
+    // Spool body (small cylinder on side)
+    ctx.fillStyle = '#3a3d44';
+    ctx.fillRect(s(spoolX - 6), s(spoolY - 5), s(12), s(5));
+    // Wire wound around it
+    ctx.strokeStyle = '#6a4a2a';
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    ctx.moveTo(s(spoolX - 4), s(spoolY - 3));
+    ctx.lineTo(s(spoolX + 4), s(spoolY - 3));
+    ctx.stroke();
+    // End flanges
+    ctx.fillStyle = '#4a4d55';
+    ctx.fillRect(s(spoolX - 7), s(spoolY - 6), s(2), s(7));
+    ctx.fillRect(s(spoolX + 5), s(spoolY - 6), s(2), s(7));
+  }
 
   // Clipboard (right of keycard area, angled)
   const clipX = dx + benchW * 0.70;
@@ -2568,10 +2575,118 @@ function drawBarrels(box) {
   }
 }
 
+// ─── Fallen spool + noise ring (Room 2 distraction) ─────────────────────────
+
+const SPOOL_LAND = { u: 0.70, v: 0.40 };
+
+function drawFallenSpool() {
+  if (!spoolKnocked || currentRoom !== 2) return;
+  const pos = floorToScreen(SPOOL_LAND.u, SPOOL_LAND.v);
+  const px = pos.x, py = pos.y;
+  // Spool on its side on the floor — slightly tilted
+  ctx.save();
+  ctx.translate(s(px), s(py));
+  ctx.rotate(0.3);
+  // Body
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(-5), s(-3), s(10), s(4));
+  // Wire
+  ctx.strokeStyle = '#6a4a2a';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(-3), s(-1.5));
+  ctx.lineTo(s(3), s(-1.5));
+  ctx.stroke();
+  // Flanges
+  ctx.fillStyle = '#4a4d55';
+  ctx.fillRect(s(-6), s(-4), s(2), s(6));
+  ctx.fillRect(s(4), s(-4), s(2), s(6));
+  // Trailing wire on floor
+  ctx.strokeStyle = '#6a4a2a';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(5), s(0));
+  ctx.quadraticCurveTo(s(12), s(4), s(16), s(2));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawNoiseRing() {
+  if (spoolNoiseTimer <= 0 || currentRoom !== 2) return;
+  const pos = floorToScreen(SPOOL_LAND.u, SPOOL_LAND.v);
+  const alpha = spoolNoiseTimer / 1.5; // fades over 1.5s
+  const expand = (1 - alpha) * 40 + 10; // ring grows outward
+  ctx.save();
+  ctx.strokeStyle = `rgba(255,200,80,${alpha * 0.5})`;
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x), s(pos.y), s(expand), s(expand * 0.4), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Inner ring
+  ctx.strokeStyle = `rgba(255,200,80,${alpha * 0.3})`;
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x), s(pos.y), s(expand * 0.6), s(expand * 0.25), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ─── Guard AI ────────────────────────────────────────────────────────────────
 
 function updateGuard(dt) {
   if (detected) return;
+
+  // Spool noise timer (visual ring)
+  if (spoolNoiseTimer > 0) spoolNoiseTimer -= dt;
+
+  // Investigation behavior — walk to noise, look around, then resume patrol
+  if (guard.investigating) {
+    if (guard.investigateWaitTimer > 0) {
+      // Standing at noise location, looking around
+      guard.investigateWaitTimer -= dt;
+      guard.walkPhase = 0;
+      if (guard.investigateWaitTimer <= 0) {
+        // Done investigating — find nearest patrol waypoint and resume
+        guard.investigating = false;
+        guard.investigateTarget = null;
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < PATROL.length; i++) {
+          const d = Math.hypot(PATROL[i].u - guard.u, PATROL[i].v - guard.v);
+          if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+        guard.waypointIdx = bestIdx;
+        guard.waitTimer = 0.3;
+      }
+      return;
+    }
+
+    // Walk toward investigation target
+    const tgt = guard.investigateTarget;
+    const idu = tgt.u - guard.u;
+    const idv = tgt.v - guard.v;
+    const idist = Math.hypot(idu, idv);
+
+    if (idist < 0.03) {
+      // Arrived at noise location — wait and look around
+      guard.investigateWaitTimer = 2.0;
+      guard.facing = 'down';
+      return;
+    }
+
+    const istep = guard.speed * dt;
+    const iratio = Math.min(istep / idist, 1);
+    guard.u += idu * iratio;
+    guard.v += idv * iratio;
+    guard.walkPhase += dt * 8;
+
+    if (Math.abs(idu) > Math.abs(idv)) {
+      guard.facing = idu > 0 ? 'right' : 'left';
+    } else {
+      guard.facing = idv > 0 ? 'down' : 'up';
+    }
+    return;
+  }
 
   if (guard.waitTimer > 0) {
     guard.waitTimer -= dt;
@@ -2660,6 +2775,11 @@ function resetCurrentRoom() {
   guard.waitTimer = 1.0;
   guard.facing = 'down';
   guard.walkPhase = 0;
+  guard.investigating = false;
+  guard.investigateTarget = null;
+  guard.investigateWaitTimer = 0;
+  spoolKnocked = false;
+  spoolNoiseTimer = 0;
 }
 
 function switchToRoom(n) {
@@ -2678,6 +2798,11 @@ function switchToRoom(n) {
   guard.waitTimer = 1.0;
   guard.facing = 'down';
   guard.walkPhase = 0;
+  guard.investigating = false;
+  guard.investigateTarget = null;
+  guard.investigateWaitTimer = 0;
+  spoolKnocked = false;
+  spoolNoiseTimer = 0;
   roomTransitionTimer = 2.0;
 }
 
@@ -2699,6 +2824,11 @@ function resetGame() {
   guard.waitTimer = 1.0;
   guard.facing = 'down';
   guard.walkPhase = 0;
+  guard.investigating = false;
+  guard.investigateTarget = null;
+  guard.investigateWaitTimer = 0;
+  spoolKnocked = false;
+  spoolNoiseTimer = 0;
 }
 
 // ─── Character draw ──────────────────────────────────────────────────────────
@@ -3040,6 +3170,25 @@ function update(dt) {
     }
   }
 
+  // Spool knock interaction — Room 2 only, one-shot, not during detection
+  if (currentRoom === 2 && !spoolKnocked && !detected &&
+      (keys['e'] || keys['E'] || keys[' '])) {
+    // Near left side of workbench (where spool sits)
+    const bench = COLLIDERS[1];
+    const spoolU = bench.uMin + (bench.uMax - bench.uMin) * 0.35;
+    const spoolFrontV = bench.vMax + 0.06;
+    if (Math.abs(player.u - spoolU) < 0.12 && Math.abs(player.v - spoolFrontV) < 0.10) {
+      spoolKnocked = true;
+      spoolNoiseTimer = 1.5;
+      // Send guard to investigate if not already detected
+      guard.investigating = true;
+      guard.investigateTarget = { u: SPOOL_LAND.u, v: SPOOL_LAND.v };
+      guard.investigateWaitTimer = 0;
+      guard.waitTimer = 0;
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+    }
+  }
+
   // Exit interaction — press E or Space near exit door
   if (hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
     if (currentRoom === 1) {
@@ -3100,6 +3249,10 @@ function render() {
     sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawCrates(COLLIDERS[4]) });
     // Decorative floor props (no colliders)
     sortable.push({ v: 0.82, draw: drawMopBucket });
+    // Fallen spool on floor (only when knocked)
+    if (spoolKnocked) {
+      sortable.push({ v: SPOOL_LAND.v, draw: drawFallenSpool });
+    }
   }
 
   // Player
@@ -3122,6 +3275,9 @@ function render() {
 
   sortable.sort((a, b) => a.v - b.v);
   sortable.forEach(spr => spr.draw());
+
+  // Noise ring effect (over everything, floor-level)
+  drawNoiseRing();
 
   // Proximity prompts (world-space)
   if (!detected && !won) {
@@ -3171,6 +3327,30 @@ function render() {
       ctx.fill();
       ctx.fillStyle = '#60ff60';
       ctx.fillText(etxt, s(promptPos.x), ey);
+    }
+
+    // Spool knock prompt (Room 2, not yet knocked)
+    if (currentRoom === 2 && !spoolKnocked) {
+      const bench = COLLIDERS[1];
+      const spoolU = bench.uMin + (bench.uMax - bench.uMin) * 0.35;
+      const spoolFrontV = bench.vMax + 0.06;
+      const nearSpool = Math.abs(player.u - spoolU) < 0.12 &&
+        Math.abs(player.v - spoolFrontV) < 0.10;
+      if (nearSpool) {
+        const promptPos = floorToScreen(spoolU, bench.vMax + 0.02);
+        const bob = Math.sin(gameTime * 4) * 3;
+        const sy = s(promptPos.y - 18 + bob);
+        ctx.textAlign = 'center';
+        ctx.font = `bold ${s(15)}px monospace`;
+        const stxt = '[E] Knock spool';
+        const sw = ctx.measureText(stxt).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath();
+        ctx.roundRect(s(promptPos.x) - sw / 2 - s(8), sy - s(12), sw + s(16), s(20), s(6));
+        ctx.fill();
+        ctx.fillStyle = '#ffc040';
+        ctx.fillText(stxt, s(promptPos.x), sy);
+      }
     }
   }
 
