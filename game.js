@@ -112,8 +112,9 @@ const guard = {
   investigating: false,
   investigateTarget: null,
   investigateWaitTimer: 0,
-  // State machine: 'patrol' | 'alert' | 'suspicious'
+  // State machine: 'patrol' | 'notice' | 'alert' | 'suspicious'
   state: 'patrol',
+  noticeTimer: 0,
   alertTimer: 0,
   suspiciousTimer: 0,
   lastSeenU: 0,
@@ -3360,32 +3361,59 @@ function updateGuard(dt) {
 
   const canSee = guardCanSeePlayer();
 
-  // ── Alert state: guard has spotted player, closing in ──
+  // ── Alert state: guard is actively pursuing, closing in ──
   if (guard.state === 'alert') {
     if (canSee) {
       // Still has LOS — track player, advance timer, move toward
       guard.lastSeenU = player.u;
       guard.lastSeenV = player.v;
       guard.alertTimer += dt;
-      // Caught after 1.5s sustained LOS
-      if (guard.alertTimer >= 1.5) {
+      // Caught after 1.2s accumulated alert LOS
+      if (guard.alertTimer >= 1.2) {
         detected = true;
         return;
       }
-      // Slowly close distance toward player
+      // Close distance toward player
       guardMoveToward(player.u, player.v, guard.alertSpeed, dt);
     } else {
-      // Lost LOS — transition to suspicious
+      // Lost LOS — transition to suspicious (preserve alert pressure)
       guard.state = 'suspicious';
-      guard.suspiciousTimer = 2.5;
+      guard.suspiciousTimer = 3.0;
+    }
+    return;
+  }
+
+  // ── Notice state: guard has glimpsed player, building awareness ──
+  if (guard.state === 'notice') {
+    if (canSee) {
+      guard.lastSeenU = player.u;
+      guard.lastSeenV = player.v;
+      guard.noticeTimer += dt;
+      // Guard slows and turns to face player
+      guardFaceToward(player.u, player.v);
+      guardMoveToward(player.u, player.v, guard.speed * 0.4, dt);
+      // Notice complete → escalate to full alert
+      if (guard.noticeTimer >= 0.8) {
+        guard.state = 'alert';
+        // Alert timer starts fresh (notice was the wind-up)
+        return;
+      }
+    } else {
+      // Lost LOS during notice — brief suspicious look-around
+      guard.state = 'suspicious';
+      guard.suspiciousTimer = 2.0;
     }
     return;
   }
 
   // ── Suspicious state: guard walks to last-seen, looks around ──
   if (guard.state === 'suspicious') {
+    // Alert pressure decays slowly (not instant reset)
+    if (guard.alertTimer > 0) {
+      guard.alertTimer = Math.max(0, guard.alertTimer - 0.3 * dt);
+    }
     if (canSee) {
-      // Re-spotted — back to alert (keep accumulated timer for pressure)
+      // Re-spotted — skip notice, go straight to alert (already on edge)
       guard.state = 'alert';
       guard.lastSeenU = player.u;
       guard.lastSeenV = player.v;
@@ -3396,10 +3424,11 @@ function updateGuard(dt) {
       guard.suspiciousTimer -= dt;
       guard.walkPhase = 0;
       // Look around — cycle facing
-      const lookPhase = Math.floor((2.5 - guard.suspiciousTimer) * 2) % 4;
+      const lookPhase = Math.floor((3.0 - guard.suspiciousTimer) * 1.8) % 4;
       const lookDirs = ['down', 'left', 'up', 'right'];
       guard.facing = lookDirs[lookPhase];
       if (guard.suspiciousTimer <= 0) {
+        guard.noticeTimer = 0;
         guard.alertTimer = 0;
         guardResumePatrol();
       }
@@ -3409,10 +3438,10 @@ function updateGuard(dt) {
 
   // ── Patrol state: normal waypoint following ──
 
-  // Check for new LOS — enter alert
+  // Check for new LOS — enter notice (not instant alert)
   if (canSee) {
-    guard.state = 'alert';
-    guard.alertTimer = 0;
+    guard.state = 'notice';
+    guard.noticeTimer = 0;
     guard.lastSeenU = player.u;
     guard.lastSeenV = player.v;
     // Cancel investigation if active
@@ -3480,15 +3509,21 @@ function drawGuardVision() {
     coneColor = '#e04040';
     coneAlpha = 0.20;
   } else if (guard.state === 'alert') {
-    // Pulsing orange during alert — urgency feedback
-    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 8);
-    coneColor = '#e08020';
-    coneAlpha = 0.14 + 0.08 * pulse;
+    // Fast pulsing red-orange during alert — real danger
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 10);
+    coneColor = '#e04020';
+    coneAlpha = 0.16 + 0.10 * pulse;
+  } else if (guard.state === 'notice') {
+    // Brightening yellow → orange during notice wind-up
+    const t = Math.min(guard.noticeTimer / 0.8, 1);
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 6);
+    coneColor = t < 0.5 ? '#e0c020' : '#e09020';
+    coneAlpha = 0.12 + 0.08 * t + 0.04 * pulse;
   } else if (guard.state === 'suspicious') {
-    // Fading orange during suspicious
-    const fade = guard.suspiciousTimer / 2.5;
+    // Fading orange during suspicious search
+    const fade = guard.suspiciousTimer / 3.0;
     coneColor = '#e0a040';
-    coneAlpha = 0.08 * fade;
+    coneAlpha = 0.10 * fade;
   } else {
     coneColor = '#e0e040';
     coneAlpha = 0.10;
@@ -3515,6 +3550,86 @@ function drawGuardVision() {
   ctx.restore();
 }
 
+// ─── Guard awareness indicator (! icon + pressure bar) ──────────────────────
+
+function drawGuardIndicator() {
+  if (detected || guard.state === 'patrol') return;
+
+  const gs = floorToScreen(guard.u, guard.v);
+  // Character is about 80-90 design-pixels tall; indicator floats above head
+  const depthScale = 0.5 + 0.5 * guard.v;  // smaller when far away
+  const iconY = gs.y - 95 * depthScale;
+
+  if (guard.state === 'notice') {
+    // "?" building to "!" — yellow pulsing icon
+    const t = Math.min(guard.noticeTimer / 0.8, 1);
+    const bob = Math.sin(gameTime * 8) * 2;
+    const icon = t < 0.5 ? '?' : '!';
+    const iconSize = 16 + 4 * t;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${s(iconSize)}px monospace`;
+    // Background pill
+    const px = s(gs.x);
+    const py = s(iconY + bob);
+    ctx.fillStyle = `rgba(180,140,20,${0.5 + 0.3 * t})`;
+    ctx.beginPath();
+    ctx.arc(px, py, s(10 + 2 * t), 0, Math.PI * 2);
+    ctx.fill();
+    // Icon text
+    ctx.fillStyle = '#fff';
+    ctx.fillText(icon, px, py);
+    ctx.restore();
+  } else if (guard.state === 'alert') {
+    // "!" with filling red bar — catch pressure indicator
+    const t = Math.min(guard.alertTimer / 1.2, 1);
+    const bob = Math.sin(gameTime * 12) * 1.5;
+    ctx.save();
+    const px = s(gs.x);
+    const py = s(iconY + bob);
+    // Red background circle — grows with pressure
+    ctx.fillStyle = `rgba(200,30,20,${0.6 + 0.3 * t})`;
+    ctx.beginPath();
+    ctx.arc(px, py, s(11 + 3 * t), 0, Math.PI * 2);
+    ctx.fill();
+    // "!" icon
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${s(18 + 2 * t)}px monospace`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('!', px, py);
+    // Pressure bar below icon
+    const barW = 24;
+    const barH = 3;
+    const barX = px - s(barW / 2);
+    const barY = py + s(14);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(barX, barY, s(barW), s(barH));
+    ctx.fillStyle = `rgb(${Math.floor(200 + 55 * t)},${Math.floor(60 * (1 - t))},20)`;
+    ctx.fillRect(barX, barY, s(barW * t), s(barH));
+    ctx.restore();
+  } else if (guard.state === 'suspicious') {
+    // Fading "?" — guard searching
+    const fade = Math.min(guard.suspiciousTimer / 3.0, 1);
+    const bob = Math.sin(gameTime * 4) * 2;
+    ctx.save();
+    const px = s(gs.x);
+    const py = s(iconY + bob);
+    ctx.globalAlpha = 0.4 + 0.4 * fade;
+    ctx.fillStyle = 'rgba(180,120,20,0.6)';
+    ctx.beginPath();
+    ctx.arc(px, py, s(9), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${s(14)}px monospace`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('?', px, py);
+    ctx.restore();
+  }
+}
+
 // ─── Reset helper ────────────────────────────────────────────────────────────
 
 function resetCurrentRoom() {
@@ -3536,6 +3651,7 @@ function resetCurrentRoom() {
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
   guard.state = 'patrol';
+  guard.noticeTimer = 0;
   guard.alertTimer = 0;
   guard.suspiciousTimer = 0;
   guard.lastSeenU = 0;
@@ -3573,6 +3689,7 @@ function switchToRoom(n) {
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
   guard.state = 'patrol';
+  guard.noticeTimer = 0;
   guard.alertTimer = 0;
   guard.suspiciousTimer = 0;
   guard.lastSeenU = 0;
@@ -3606,6 +3723,7 @@ function resetGame() {
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
   guard.state = 'patrol';
+  guard.noticeTimer = 0;
   guard.alertTimer = 0;
   guard.suspiciousTimer = 0;
   guard.lastSeenU = 0;
@@ -3999,8 +4117,9 @@ function update(dt) {
     if (Math.abs(player.u - spoolU) < 0.12 && Math.abs(player.v - spoolFrontV) < 0.10) {
       spoolKnocked = true;
       spoolNoiseTimer = 1.5;
-      // Send guard to investigate — noise overrides alert/suspicious
+      // Send guard to investigate — noise overrides alert/notice/suspicious
       guard.state = 'patrol';
+      guard.noticeTimer = 0;
       guard.alertTimer = 0;
       guard.suspiciousTimer = 0;
       guard.investigating = true;
@@ -4108,6 +4227,9 @@ function render() {
 
   sortable.sort((a, b) => a.v - b.v);
   sortable.forEach(spr => spr.draw());
+
+  // Guard awareness indicator (over sprites)
+  drawGuardIndicator();
 
   // Noise ring effect (over everything, floor-level)
   drawNoiseRing();
