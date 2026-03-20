@@ -431,8 +431,9 @@ function drawServerRack(box) {
   const rackH = 130;
   const bx = base.x - screenW / 2;
   const by = base.y - rackH;
+  const sideW = 10;
 
-  // Ground-plane footprint shadow (shows full collision area on floor)
+  // Ground-plane footprint shadow
   const footGrad = ctx.createRadialGradient(
     s(base.x), s((tl.y + base.y) / 2), 0,
     s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.8)
@@ -449,8 +450,8 @@ function drawServerRack(box) {
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow (hard edge at base)
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  // Contact shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
   ctx.moveTo(s(bx - 2), s(base.y - 1));
   ctx.lineTo(s(bx + screenW + 2), s(base.y - 1));
@@ -459,46 +460,119 @@ function drawServerRack(box) {
   ctx.closePath();
   ctx.fill();
 
-  // Front face
-  const bodyGrad = ctx.createLinearGradient(s(bx), s(by), s(bx + screenW), s(by));
-  bodyGrad.addColorStop(0, '#2a2d35');
-  bodyGrad.addColorStop(0.5, '#353840');
-  bodyGrad.addColorStop(1, '#2a2d35');
+  // Side face (right) for volume
+  const sideGrad = ctx.createLinearGradient(s(bx + screenW), 0, s(bx + screenW + sideW), 0);
+  sideGrad.addColorStop(0, '#1e2028');
+  sideGrad.addColorStop(1, '#15171e');
+  ctx.fillStyle = sideGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx + screenW), s(by));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y - 4));
+  ctx.lineTo(s(bx + screenW), s(base.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Front face — metallic body gradient
+  const bodyGrad = ctx.createLinearGradient(s(bx), 0, s(bx + screenW), 0);
+  bodyGrad.addColorStop(0, '#22252c');
+  bodyGrad.addColorStop(0.15, '#32363e');
+  bodyGrad.addColorStop(0.4, '#3a3e48');
+  bodyGrad.addColorStop(0.6, '#3a3e48');
+  bodyGrad.addColorStop(0.85, '#32363e');
+  bodyGrad.addColorStop(1, '#22252c');
   ctx.fillStyle = bodyGrad;
   ctx.fillRect(s(bx), s(by), s(screenW), s(rackH));
 
+  // Rack unit panels (3 sections with divider lines)
+  const panelPad = 4;
+  const panelCount = 3;
+  const panelH = (rackH - 8) / panelCount;
+  for (let p = 0; p < panelCount; p++) {
+    const py = by + 4 + p * panelH;
+
+    // Panel inset
+    const panGrad = ctx.createLinearGradient(0, s(py), 0, s(py + panelH - 2));
+    panGrad.addColorStop(0, 'rgba(255,255,255,0.04)');
+    panGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    panGrad.addColorStop(1, 'rgba(0,0,0,0.08)');
+    ctx.fillStyle = panGrad;
+    ctx.fillRect(s(bx + panelPad), s(py), s(screenW - panelPad * 2), s(panelH - 2));
+
+    // Divider line
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = s(0.8);
+    ctx.beginPath();
+    ctx.moveTo(s(bx + 2), s(py + panelH - 1));
+    ctx.lineTo(s(bx + screenW - 2), s(py + panelH - 1));
+    ctx.stroke();
+
+    // Vent slits per panel
+    const ventCount = 3;
+    for (let v = 0; v < ventCount; v++) {
+      const vy = py + 6 + v * ((panelH - 14) / ventCount);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = s(0.7);
+      ctx.beginPath();
+      ctx.moveTo(s(bx + 16), s(vy));
+      ctx.lineTo(s(bx + screenW - 6), s(vy));
+      ctx.stroke();
+    }
+
+    // LED per panel
+    const ledC = p === 2 ? '#e04040' : (p === 1 ? '#e0a020' : '#40e040');
+    ctx.fillStyle = ledC;
+    ctx.beginPath();
+    ctx.arc(s(bx + 9), s(py + panelH / 2), s(1.8), 0, Math.PI * 2);
+    ctx.fill();
+    // LED glow
+    const glowGrad = ctx.createRadialGradient(
+      s(bx + 9), s(py + panelH / 2), 0,
+      s(bx + 9), s(py + panelH / 2), s(6)
+    );
+    glowGrad.addColorStop(0, ledC.replace(')', ',0.25)').replace('rgb', 'rgba').replace('#', ''));
+    // Use hex alpha approach instead
+    ctx.fillStyle = ledC + '20';
+    ctx.beginPath();
+    ctx.arc(s(bx + 9), s(py + panelH / 2), s(5), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Top face
-  ctx.fillStyle = '#404550';
+  const topGrad = ctx.createLinearGradient(0, s(by - 12), 0, s(by));
+  topGrad.addColorStop(0, '#484c58');
+  topGrad.addColorStop(1, '#3a3e48');
+  ctx.fillStyle = topGrad;
   ctx.beginPath();
   ctx.moveTo(s(bx), s(by));
   ctx.lineTo(s(bx + screenW), s(by));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
   ctx.lineTo(s(bx + screenW - 8), s(by - 12));
   ctx.lineTo(s(bx - 8), s(by - 12));
   ctx.closePath();
   ctx.fill();
+  // Top face edge line
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 8), s(by - 12));
+  ctx.lineTo(s(bx + screenW - 8), s(by - 12));
+  ctx.stroke();
 
-  // Vent slits
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = s(1);
-  for (let i = 0; i < 8; i++) {
-    const vy = by + 15 + i * 13;
-    ctx.beginPath();
-    ctx.moveTo(s(bx + 6), s(vy));
-    ctx.lineTo(s(bx + screenW - 6), s(vy));
-    ctx.stroke();
-  }
-
-  // LED indicators
-  const ledColors = ['#40e040', '#40e040', '#e0a020', '#40e040', '#e04040', '#40e040'];
-  for (let i = 0; i < ledColors.length; i++) {
-    ctx.fillStyle = ledColors[i];
-    ctx.beginPath();
-    ctx.arc(s(bx + 10), s(by + 20 + i * 13), s(2), 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Mounting rail hints (vertical lines on edges)
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 3), s(by + 2));
+  ctx.lineTo(s(bx + 3), s(base.y - 2));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(bx + screenW - 3), s(by + 2));
+  ctx.lineTo(s(bx + screenW - 3), s(base.y - 2));
+  ctx.stroke();
 
   // Frame outline
-  ctx.strokeStyle = '#1a1d25';
+  ctx.strokeStyle = '#12141a';
   ctx.lineWidth = s(1.5);
   ctx.strokeRect(s(bx), s(by), s(screenW), s(rackH));
 }
@@ -615,6 +689,128 @@ function drawKeycard(cx, baseY) {
   ctx.fillRect(s(cx - 4), s(baseY - kh + 10), s(8), s(5));
 }
 
+function drawCrate(cx, cy, cw, ch, sideW, isTop) {
+  const woodDk = isTop ? '#4e3c1e' : '#5a4525';
+  const woodMd = isTop ? '#65502e' : '#6e5832';
+  const woodLt = isTop ? '#78623a' : '#7c683e';
+  const woodHi = isTop ? '#8a7448' : '#8e7848';
+  const metalC  = '#5a5a5a';
+  const metalDk = '#3a3a3a';
+
+  // Side face for volume
+  const sdGrad = ctx.createLinearGradient(s(cx + cw), 0, s(cx + cw + sideW), 0);
+  sdGrad.addColorStop(0, woodDk);
+  sdGrad.addColorStop(1, isTop ? '#3a2c14' : '#42321a');
+  ctx.fillStyle = sdGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(cx + cw), s(cy));
+  ctx.lineTo(s(cx + cw + sideW), s(cy - 5));
+  ctx.lineTo(s(cx + cw + sideW), s(cy + ch - 3));
+  ctx.lineTo(s(cx + cw), s(cy + ch));
+  ctx.closePath();
+  ctx.fill();
+
+  // Front face — wood grain gradient (vertical)
+  const fGrad = ctx.createLinearGradient(s(cx), 0, s(cx + cw), 0);
+  fGrad.addColorStop(0, woodDk);
+  fGrad.addColorStop(0.15, woodMd);
+  fGrad.addColorStop(0.5, woodLt);
+  fGrad.addColorStop(0.85, woodMd);
+  fGrad.addColorStop(1, woodDk);
+  ctx.fillStyle = fGrad;
+  ctx.fillRect(s(cx), s(cy), s(cw), s(ch));
+
+  // Plank lines (horizontal boards)
+  const plankCount = isTop ? 3 : 4;
+  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+  ctx.lineWidth = s(0.7);
+  for (let i = 1; i < plankCount; i++) {
+    const py = cy + (ch / plankCount) * i;
+    ctx.beginPath();
+    ctx.moveTo(s(cx + 1), s(py));
+    ctx.lineTo(s(cx + cw - 1), s(py));
+    ctx.stroke();
+  }
+
+  // Wood grain hints (subtle vertical streaks)
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.lineWidth = s(0.5);
+  for (let g = 0; g < 3; g++) {
+    const gx = cx + cw * (0.25 + g * 0.25);
+    ctx.beginPath();
+    ctx.moveTo(s(gx), s(cy + 2));
+    ctx.lineTo(s(gx + 1), s(cy + ch - 2));
+    ctx.stroke();
+  }
+
+  // Top face
+  const topGrad = ctx.createLinearGradient(0, s(cy - (isTop ? 8 : 10)), 0, s(cy));
+  topGrad.addColorStop(0, woodHi);
+  topGrad.addColorStop(1, woodLt);
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(cx), s(cy));
+  ctx.lineTo(s(cx + cw), s(cy));
+  ctx.lineTo(s(cx + cw + sideW), s(cy - 5));
+  ctx.lineTo(s(cx + cw - (isTop ? 6 : 8)), s(cy - (isTop ? 8 : 10)));
+  ctx.lineTo(s(cx - (isTop ? 6 : 8)), s(cy - (isTop ? 8 : 10)));
+  ctx.closePath();
+  ctx.fill();
+
+  // Metal strap (horizontal band across middle)
+  const strapY = cy + ch * 0.48;
+  const strapH = isTop ? 4 : 5;
+  const stGrad = ctx.createLinearGradient(s(cx), 0, s(cx + cw), 0);
+  stGrad.addColorStop(0, metalDk);
+  stGrad.addColorStop(0.3, metalC);
+  stGrad.addColorStop(0.7, metalC);
+  stGrad.addColorStop(1, metalDk);
+  ctx.fillStyle = stGrad;
+  ctx.fillRect(s(cx), s(strapY), s(cw), s(strapH));
+  // Strap highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = s(0.5);
+  ctx.beginPath();
+  ctx.moveTo(s(cx + 2), s(strapY + 1));
+  ctx.lineTo(s(cx + cw - 2), s(strapY + 1));
+  ctx.stroke();
+
+  // Corner brackets (small L-shapes at corners)
+  ctx.strokeStyle = metalDk;
+  ctx.lineWidth = s(1.2);
+  const bk = isTop ? 5 : 7;
+  // top-left
+  ctx.beginPath();
+  ctx.moveTo(s(cx + 1), s(cy + bk)); ctx.lineTo(s(cx + 1), s(cy + 1)); ctx.lineTo(s(cx + bk), s(cy + 1));
+  ctx.stroke();
+  // top-right
+  ctx.beginPath();
+  ctx.moveTo(s(cx + cw - bk), s(cy + 1)); ctx.lineTo(s(cx + cw - 1), s(cy + 1)); ctx.lineTo(s(cx + cw - 1), s(cy + bk));
+  ctx.stroke();
+  // bottom-left
+  ctx.beginPath();
+  ctx.moveTo(s(cx + 1), s(cy + ch - bk)); ctx.lineTo(s(cx + 1), s(cy + ch - 1)); ctx.lineTo(s(cx + bk), s(cy + ch - 1));
+  ctx.stroke();
+  // bottom-right
+  ctx.beginPath();
+  ctx.moveTo(s(cx + cw - bk), s(cy + ch - 1)); ctx.lineTo(s(cx + cw - 1), s(cy + ch - 1)); ctx.lineTo(s(cx + cw - 1), s(cy + ch - bk));
+  ctx.stroke();
+
+  // Rivet dots at bracket corners
+  ctx.fillStyle = '#6e6e6e';
+  const rv = 1;
+  [[cx + 2, cy + 2], [cx + cw - 3, cy + 2], [cx + 2, cy + ch - 3], [cx + cw - 3, cy + ch - 3]].forEach(([rx, ry]) => {
+    ctx.beginPath();
+    ctx.arc(s(rx), s(ry), s(rv), 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Edge outline
+  ctx.strokeStyle = isTop ? '#2e2010' : '#362814';
+  ctx.lineWidth = s(1.2);
+  ctx.strokeRect(s(cx), s(cy), s(cw), s(ch));
+}
+
 function drawCrates() {
   const box = COLLIDERS[3];
   const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
@@ -626,8 +822,9 @@ function drawCrates() {
   const ch1 = 55;
   const cx1 = base.x - cw1 / 2;
   const cy1 = base.y - ch1;
+  const sideW = 8;
 
-  // Ground-plane footprint shadow (shows full collision area on floor)
+  // Ground-plane footprint shadow
   const footGrad = ctx.createRadialGradient(
     s(base.x), s((tl.y + base.y) / 2), 0,
     s(base.x), s((tl.y + base.y) / 2), s(Math.max(cw1, base.y - tl.y) * 0.8)
@@ -644,8 +841,8 @@ function drawCrates() {
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow (hard edge at base)
-  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  // Contact shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.beginPath();
   ctx.moveTo(s(cx1 - 1), s(base.y - 1));
   ctx.lineTo(s(cx1 + cw1 + 1), s(base.y - 1));
@@ -654,71 +851,21 @@ function drawCrates() {
   ctx.closePath();
   ctx.fill();
 
-  // Bottom crate front face
-  const crateGrad = ctx.createLinearGradient(s(cx1), s(cy1), s(cx1 + cw1), s(cy1));
-  crateGrad.addColorStop(0, '#6a5530');
-  crateGrad.addColorStop(0.5, '#7a6540');
-  crateGrad.addColorStop(1, '#6a5530');
-  ctx.fillStyle = crateGrad;
-  ctx.fillRect(s(cx1), s(cy1), s(cw1), s(ch1));
-
-  // Bottom crate top face
-  ctx.fillStyle = '#8a7550';
-  ctx.beginPath();
-  ctx.moveTo(s(cx1), s(cy1));
-  ctx.lineTo(s(cx1 + cw1), s(cy1));
-  ctx.lineTo(s(cx1 + cw1 - 8), s(cy1 - 10));
-  ctx.lineTo(s(cx1 - 8), s(cy1 - 10));
-  ctx.closePath();
-  ctx.fill();
-
-  // Cross bracing
-  ctx.strokeStyle = '#5a4520';
-  ctx.lineWidth = s(2);
-  ctx.beginPath();
-  ctx.moveTo(s(cx1 + 4), s(cy1 + 4));
-  ctx.lineTo(s(cx1 + cw1 - 4), s(cy1 + ch1 - 4));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(s(cx1 + cw1 - 4), s(cy1 + 4));
-  ctx.lineTo(s(cx1 + 4), s(cy1 + ch1 - 4));
-  ctx.stroke();
-
-  // Edge
-  ctx.strokeStyle = '#4a3518';
-  ctx.lineWidth = s(1.5);
-  ctx.strokeRect(s(cx1), s(cy1), s(cw1), s(ch1));
+  // Bottom crate
+  drawCrate(cx1, cy1, cw1, ch1, sideW, false);
 
   // Top crate (smaller, offset)
   const cw2 = cw1 * 0.75;
   const ch2 = 40;
   const cx2 = base.x - cw2 / 2 + 5;
   const cy2 = cy1 - ch2 + 5;
+  drawCrate(cx2, cy2, cw2, ch2, sideW * 0.7, true);
 
-  ctx.fillStyle = '#5a4828';
-  ctx.fillRect(s(cx2), s(cy2), s(cw2), s(ch2));
-  // Top face
-  ctx.fillStyle = '#7a6840';
-  ctx.beginPath();
-  ctx.moveTo(s(cx2), s(cy2));
-  ctx.lineTo(s(cx2 + cw2), s(cy2));
-  ctx.lineTo(s(cx2 + cw2 - 6), s(cy2 - 8));
-  ctx.lineTo(s(cx2 - 6), s(cy2 - 8));
-  ctx.closePath();
-  ctx.fill();
-  // Cross bracing
-  ctx.strokeStyle = '#4a3818';
-  ctx.lineWidth = s(1.5);
-  ctx.beginPath();
-  ctx.moveTo(s(cx2 + 3), s(cy2 + 3));
-  ctx.lineTo(s(cx2 + cw2 - 3), s(cy2 + ch2 - 3));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(s(cx2 + cw2 - 3), s(cy2 + 3));
-  ctx.lineTo(s(cx2 + 3), s(cy2 + ch2 - 3));
-  ctx.stroke();
-  ctx.strokeStyle = '#3a2510';
-  ctx.strokeRect(s(cx2), s(cy2), s(cw2), s(ch2));
+  // Stencil marking on bottom crate (subtle industrial stamp)
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.font = `bold ${s(10)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('S-04', s(cx1 + cw1 / 2), s(cy1 + ch1 - 8));
 }
 
 // ─── Guard AI ────────────────────────────────────────────────────────────────
