@@ -81,6 +81,7 @@ const COLLIDERS = [
 // ─── Game state ──────────────────────────────────────────────────────────────
 let detected = false;
 let hasKeycard = false;
+let won = false;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -745,6 +746,7 @@ function drawGuardVision() {
 function resetGame() {
   detected = false;
   hasKeycard = false;
+  won = false;
   player.u = 0.15;
   player.v = 0.85;
   player.facing = 'up';
@@ -908,7 +910,7 @@ const V_MIN = 0.06, V_MAX = 0.96;
 function update(dt) {
   // Reset on R
   if (keys['r'] || keys['R']) {
-    if (detected) {
+    if (detected || won) {
       resetGame();
       keys['r'] = false;
       keys['R'] = false;
@@ -916,15 +918,27 @@ function update(dt) {
     }
   }
 
-  if (detected) return;
+  if (detected || won) return;
+
+  // Perspective-normalized movement: compute local screen-space scale
+  // so forward/back feels as fast as left/right
+  const eps = 0.001;
+  const here = floorToScreen(player.u, player.v);
+  const rightPt = floorToScreen(player.u + eps, player.v);
+  const downPt = floorToScreen(player.u, player.v + eps);
+  const scaleU = Math.hypot(rightPt.x - here.x, rightPt.y - here.y) / eps;
+  const scaleV = Math.hypot(downPt.x - here.x, downPt.y - here.y) / eps;
+  const avgScale = (scaleU + scaleV) / 2;
+  const uFactor = avgScale / scaleU;
+  const vFactor = avgScale / scaleV;
 
   const spd = player.speed * dt;
   let du = 0, dv = 0;
 
-  if (keys['ArrowLeft']  || keys['a'] || keys['A']) { du -= spd; player.facing = 'left'; }
-  if (keys['ArrowRight'] || keys['d'] || keys['D']) { du += spd; player.facing = 'right'; }
-  if (keys['ArrowUp']    || keys['w'] || keys['W']) { dv -= spd * 0.7; if (du === 0) player.facing = 'up'; }
-  if (keys['ArrowDown']  || keys['s'] || keys['S']) { dv += spd * 0.7; if (du === 0) player.facing = 'down'; }
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) { du -= spd * uFactor; player.facing = 'left'; }
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) { du += spd * uFactor; player.facing = 'right'; }
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) { dv -= spd * vFactor; if (du === 0) player.facing = 'up'; }
+  if (keys['ArrowDown']  || keys['s'] || keys['S']) { dv += spd * vFactor; if (du === 0) player.facing = 'down'; }
 
   const oldU = player.u, oldV = player.v;
 
@@ -943,6 +957,25 @@ function update(dt) {
         player.u = oldU;
         player.v = oldV;
       }
+    }
+  }
+
+  // Keycard pickup — near desk front edge, press E or Space
+  if (!hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
+    const desk = COLLIDERS[2];
+    const deskCU = (desk.uMin + desk.uMax) / 2;
+    const deskFrontV = desk.vMax + 0.06;
+    if (Math.abs(player.u - deskCU) < 0.18 && Math.abs(player.v - deskFrontV) < 0.10) {
+      hasKeycard = true;
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+    }
+  }
+
+  // Exit interaction — near right wall, press E or Space
+  if (hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
+    if (player.u > 0.88 && player.v > 0.35 && player.v < 0.75) {
+      won = true;
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
   }
 
@@ -998,6 +1031,19 @@ function render() {
   sortable.sort((a, b) => a.v - b.v);
   sortable.forEach(spr => spr.draw());
 
+  // Objective status (bottom-left)
+  if (!detected && !won) {
+    ctx.textAlign = 'left';
+    ctx.font = `${s(13)}px monospace`;
+    if (!hasKeycard) {
+      ctx.fillStyle = 'rgba(80,200,255,0.7)';
+      ctx.fillText('[E] Pick up keycard from desk', s(30), s(690));
+    } else {
+      ctx.fillStyle = 'rgba(64,224,64,0.7)';
+      ctx.fillText('KEYCARD acquired — [E] Use exit door', s(30), s(690));
+    }
+  }
+
   // Detection overlay
   if (detected) {
     ctx.fillStyle = 'rgba(180,0,0,0.3)';
@@ -1009,6 +1055,19 @@ function render() {
     ctx.fillStyle = '#ffffff';
     ctx.font = `${s(18)}px monospace`;
     ctx.fillText('Press R to retry', s(640), s(390));
+  }
+
+  // Win overlay
+  if (won) {
+    ctx.fillStyle = 'rgba(0,40,0,0.4)';
+    ctx.fillRect(0, 0, s(1280), s(720));
+    ctx.fillStyle = '#40e040';
+    ctx.font = `bold ${s(48)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('MISSION COMPLETE', s(640), s(340));
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${s(18)}px monospace`;
+    ctx.fillText('Press R to play again', s(640), s(390));
   }
 
   ctx.restore();
