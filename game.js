@@ -164,8 +164,9 @@ function drawRoom() {
 
   // ── Back wall ──
   const backGrad = ctx.createLinearGradient(s(260), s(60), s(260), s(270));
-  backGrad.addColorStop(0, '#4a4d55');
-  backGrad.addColorStop(1, '#3a3d45');
+  backGrad.addColorStop(0, '#464950');
+  backGrad.addColorStop(0.6, '#3c3f46');
+  backGrad.addColorStop(1, '#35383e');
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.fillStyle = backGrad;
   ctx.fill();
@@ -174,7 +175,8 @@ function drawRoom() {
   ctx.save();
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  // Horizontal seams
+  ctx.strokeStyle = 'rgba(0,0,0,0.10)';
   ctx.lineWidth = s(1);
   for (let i = 0; i <= 8; i++) {
     const t = i / 8;
@@ -186,7 +188,15 @@ function drawRoom() {
     ctx.moveTo(s(lx1), s(ly1));
     ctx.lineTo(s(lx2), s(ly2));
     ctx.stroke();
+    // Highlight line just below each seam
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.beginPath();
+    ctx.moveTo(s(lx1), s(ly1 + 1.5));
+    ctx.lineTo(s(lx2), s(ly2 + 1.5));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.10)';
   }
+  // Vertical seams
   for (let i = 1; i <= 5; i++) {
     const t = i / 6;
     const tx1 = ceilTL.x + (ceilTR.x - ceilTL.x) * t;
@@ -196,31 +206,78 @@ function drawRoom() {
     ctx.lineTo(s(tx2), s(floorTL.y));
     ctx.stroke();
   }
+  // Subtle stain/variation overlay on back wall
+  const stainGrad = ctx.createRadialGradient(
+    s(500), s(180), 0, s(500), s(180), s(120)
+  );
+  stainGrad.addColorStop(0, 'rgba(0,0,0,0.04)');
+  stainGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = stainGrad;
+  ctx.fillRect(s(ceilTL.x), s(ceilTL.y), s(ceilTR.x - ceilTL.x), s(floorTL.y - ceilTL.y));
   ctx.restore();
 
   // ── Left side wall ──
   const leftGrad = ctx.createLinearGradient(s(80), s(130), s(260), s(270));
-  leftGrad.addColorStop(0, '#32353d');
-  leftGrad.addColorStop(1, '#3a3d45');
+  leftGrad.addColorStop(0, '#2e3138');
+  leftGrad.addColorStop(0.5, '#34373e');
+  leftGrad.addColorStop(1, '#383b42');
   roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
   ctx.fillStyle = leftGrad;
   ctx.fill();
+  // Left wall panel seams
+  ctx.save();
+  roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = s(0.8);
+  for (let i = 1; i <= 3; i++) {
+    const t = i / 4;
+    const x1 = leftWallTop.x + (ceilTL.x - leftWallTop.x) * t;
+    const y1 = leftWallTop.y + (ceilTL.y - leftWallTop.y) * t;
+    const x2 = floorBL.x + (floorTL.x - floorBL.x) * t;
+    const y2 = floorBL.y + (floorTL.y - floorBL.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(s(x1), s(y1));
+    ctx.lineTo(s(x2), s(y2));
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // ── Right side wall ──
   const rightGrad = ctx.createLinearGradient(s(1020), s(270), s(1200), s(130));
-  rightGrad.addColorStop(0, '#3a3d45');
-  rightGrad.addColorStop(1, '#35383f');
+  rightGrad.addColorStop(0, '#383b42');
+  rightGrad.addColorStop(0.5, '#34373e');
+  rightGrad.addColorStop(1, '#30333a');
   roomPath([ceilTR, rightWallTop, floorBR, floorTR]);
   ctx.fillStyle = rightGrad;
   ctx.fill();
+  // Right wall panel seams
+  ctx.save();
+  roomPath([ceilTR, rightWallTop, floorBR, floorTR]);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = s(0.8);
+  for (let i = 1; i <= 3; i++) {
+    const t = i / 4;
+    const x1 = ceilTR.x + (rightWallTop.x - ceilTR.x) * t;
+    const y1 = ceilTR.y + (rightWallTop.y - ceilTR.y) * t;
+    const x2 = floorTR.x + (floorBR.x - floorTR.x) * t;
+    const y2 = floorTR.y + (floorBR.y - floorTR.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(s(x1), s(y1));
+    ctx.lineTo(s(x2), s(y2));
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // ── Exit door on right wall ──
   drawExitDoor();
 
   // ── Floor ──
   const floorGrad = ctx.createLinearGradient(s(640), s(270), s(640), s(640));
-  floorGrad.addColorStop(0, '#484b52');
-  floorGrad.addColorStop(1, '#3e4148');
+  floorGrad.addColorStop(0, '#44474e');
+  floorGrad.addColorStop(0.5, '#3e4148');
+  floorGrad.addColorStop(1, '#383b42');
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.fillStyle = floorGrad;
   ctx.fill();
@@ -229,9 +286,11 @@ function drawRoom() {
   ctx.save();
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = s(1);
   const gridH = 12;
+  const gridV = 16;
+  // Tile groove (dark line)
+  ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+  ctx.lineWidth = s(1);
   for (let i = 0; i <= gridH; i++) {
     const t = i / gridH;
     const lx1 = floorTL.x + (floorBL.x - floorTL.x) * t;
@@ -243,7 +302,6 @@ function drawRoom() {
     ctx.lineTo(s(lx2), s(ly2));
     ctx.stroke();
   }
-  const gridV = 16;
   for (let i = 0; i <= gridV; i++) {
     const t = i / gridV;
     const lx1 = floorTL.x + (floorTR.x - floorTL.x) * t;
@@ -253,14 +311,29 @@ function drawRoom() {
     ctx.lineTo(s(lx2), s(floorBL.y));
     ctx.stroke();
   }
+  // Tile highlight (light line offset by 1px from each groove)
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = s(0.6);
+  for (let i = 0; i <= gridH; i++) {
+    const t = i / gridH;
+    const lx1 = floorTL.x + (floorBL.x - floorTL.x) * t;
+    const ly1 = floorTL.y + (floorBL.y - floorTL.y) * t + 1.2;
+    const lx2 = floorTR.x + (floorBR.x - floorTR.x) * t;
+    const ly2 = floorTR.y + (floorBR.y - floorTR.y) * t + 1.2;
+    ctx.beginPath();
+    ctx.moveTo(s(lx1), s(ly1));
+    ctx.lineTo(s(lx2), s(ly2));
+    ctx.stroke();
+  }
   ctx.restore();
 
   // ── Floor AO ──
   drawFloorAO();
 
   // ── Metal baseboard strips ──
-  ctx.strokeStyle = '#5a5d65';
-  ctx.lineWidth = s(2);
+  // Dark groove
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(3);
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y));
   ctx.lineTo(s(floorTR.x), s(floorTR.y));
@@ -273,6 +346,21 @@ function drawRoom() {
   ctx.moveTo(s(floorTR.x), s(floorTR.y));
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
   ctx.stroke();
+  // Metal highlight
+  ctx.strokeStyle = '#5e6168';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(floorTL.x), s(floorTL.y + 1));
+  ctx.lineTo(s(floorTR.x), s(floorTR.y + 1));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(floorTL.x + 0.5), s(floorTL.y + 1));
+  ctx.lineTo(s(floorBL.x + 0.5), s(floorBL.y + 1));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(floorTR.x - 0.5), s(floorTR.y + 1));
+  ctx.lineTo(s(floorBR.x - 0.5), s(floorBR.y + 1));
+  ctx.stroke();
 
   // ── Ceiling fluorescent lights ──
   drawCeilingLights();
@@ -284,60 +372,93 @@ function drawFloorAO() {
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.clip();
 
-  const backAO = ctx.createLinearGradient(s(640), s(floorTL.y), s(640), s(floorTL.y + 50));
-  backAO.addColorStop(0, 'rgba(0,0,0,0.25)');
+  // Back wall AO
+  const backAO = ctx.createLinearGradient(s(640), s(floorTL.y), s(640), s(floorTL.y + 55));
+  backAO.addColorStop(0, 'rgba(0,0,0,0.30)');
+  backAO.addColorStop(0.5, 'rgba(0,0,0,0.10)');
   backAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = backAO;
-  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(55));
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(60));
 
-  const leftAO = ctx.createLinearGradient(s(floorTL.x), s(floorTL.y), s(floorTL.x + 45), s(floorTL.y + 20));
-  leftAO.addColorStop(0, 'rgba(0,0,0,0.20)');
+  // Left wall AO
+  const leftAO = ctx.createLinearGradient(s(floorTL.x), s(floorTL.y), s(floorTL.x + 50), s(floorTL.y + 20));
+  leftAO.addColorStop(0, 'rgba(0,0,0,0.22)');
   leftAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = leftAO;
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y));
   ctx.lineTo(s(floorBL.x), s(floorBL.y));
-  ctx.lineTo(s(floorBL.x + 50), s(floorBL.y));
-  ctx.lineTo(s(floorTL.x + 45), s(floorTL.y));
+  ctx.lineTo(s(floorBL.x + 55), s(floorBL.y));
+  ctx.lineTo(s(floorTL.x + 50), s(floorTL.y));
   ctx.closePath();
   ctx.fill();
 
-  const rightAO = ctx.createLinearGradient(s(floorTR.x), s(floorTR.y), s(floorTR.x - 45), s(floorTR.y + 20));
-  rightAO.addColorStop(0, 'rgba(0,0,0,0.20)');
+  // Right wall AO
+  const rightAO = ctx.createLinearGradient(s(floorTR.x), s(floorTR.y), s(floorTR.x - 50), s(floorTR.y + 20));
+  rightAO.addColorStop(0, 'rgba(0,0,0,0.22)');
   rightAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = rightAO;
   ctx.beginPath();
   ctx.moveTo(s(floorTR.x), s(floorTR.y));
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
-  ctx.lineTo(s(floorBR.x - 50), s(floorBR.y));
-  ctx.lineTo(s(floorTR.x - 45), s(floorTR.y));
+  ctx.lineTo(s(floorBR.x - 55), s(floorBR.y));
+  ctx.lineTo(s(floorTR.x - 50), s(floorTR.y));
   ctx.closePath();
   ctx.fill();
+
+  // Corner AO puddles (where walls meet floor)
+  const cornerR = 40;
+  // Back-left corner
+  const blcGrad = ctx.createRadialGradient(s(floorTL.x), s(floorTL.y), 0, s(floorTL.x), s(floorTL.y), s(cornerR));
+  blcGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  blcGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = blcGrad;
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(cornerR), s(cornerR));
+  // Back-right corner
+  const brcGrad = ctx.createRadialGradient(s(floorTR.x), s(floorTR.y), 0, s(floorTR.x), s(floorTR.y), s(cornerR));
+  brcGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  brcGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = brcGrad;
+  ctx.fillRect(s(floorTR.x - cornerR), s(floorTR.y), s(cornerR), s(cornerR));
 
   ctx.restore();
 }
 
+function drawCeilingLight(lx, ly) {
+  const fixtW = 100, fixtH = 5;
+  // Housing (dark metal surround)
+  ctx.fillStyle = '#50535a';
+  ctx.fillRect(s(lx - fixtW / 2 - 3), s(ly - 1), s(fixtW + 6), s(fixtH + 2));
+  // Diffuser panel (bright)
+  const diffGrad = ctx.createLinearGradient(s(lx - fixtW / 2), 0, s(lx + fixtW / 2), 0);
+  diffGrad.addColorStop(0, '#c8cad0');
+  diffGrad.addColorStop(0.3, '#e8eaf0');
+  diffGrad.addColorStop(0.5, '#f0f2f8');
+  diffGrad.addColorStop(0.7, '#e8eaf0');
+  diffGrad.addColorStop(1, '#c8cad0');
+  ctx.fillStyle = diffGrad;
+  ctx.fillRect(s(lx - fixtW / 2), s(ly), s(fixtW), s(fixtH));
+  // Center hotspot line
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(lx - fixtW / 2 + 8), s(ly + fixtH / 2));
+  ctx.lineTo(s(lx + fixtW / 2 - 8), s(ly + fixtH / 2));
+  ctx.stroke();
+  // Glow cone
+  const glow = ctx.createRadialGradient(s(lx), s(ly + 2), s(5), s(lx), s(ly + 2), s(90));
+  glow.addColorStop(0, 'rgba(200,210,230,0.14)');
+  glow.addColorStop(0.5, 'rgba(200,210,230,0.05)');
+  glow.addColorStop(1, 'rgba(200,210,230,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(s(lx - 90), s(ly - 40), s(180), s(100));
+}
+
 function drawCeilingLights() {
   const { ceilTL, ceilTR } = ROOM;
-
-  const l1x = ceilTL.x + (ceilTR.x - ceilTL.x) * 0.3;
   const ly = ceilTL.y + 15;
-  ctx.fillStyle = '#e0e0e8';
-  ctx.fillRect(s(l1x - 50), s(ly), s(100), s(5));
-  const glow1 = ctx.createRadialGradient(s(l1x), s(ly + 2), s(5), s(l1x), s(ly + 2), s(80));
-  glow1.addColorStop(0, 'rgba(200,210,230,0.12)');
-  glow1.addColorStop(1, 'rgba(200,210,230,0)');
-  ctx.fillStyle = glow1;
-  ctx.fillRect(s(l1x - 80), s(ly - 40), s(160), s(90));
-
-  const l2x = ceilTL.x + (ceilTR.x - ceilTL.x) * 0.7;
-  ctx.fillStyle = '#e0e0e8';
-  ctx.fillRect(s(l2x - 50), s(ly), s(100), s(5));
-  const glow2 = ctx.createRadialGradient(s(l2x), s(ly + 2), s(5), s(l2x), s(ly + 2), s(80));
-  glow2.addColorStop(0, 'rgba(200,210,230,0.12)');
-  glow2.addColorStop(1, 'rgba(200,210,230,0)');
-  ctx.fillStyle = glow2;
-  ctx.fillRect(s(l2x - 80), s(ly - 40), s(160), s(90));
+  drawCeilingLight(ceilTL.x + (ceilTR.x - ceilTL.x) * 0.3, ly);
+  drawCeilingLight(ceilTL.x + (ceilTR.x - ceilTL.x) * 0.7, ly);
 }
 
 function drawExitDoor() {
@@ -359,21 +480,39 @@ function drawExitDoor() {
   const dbr = rightWallPoint(doorU2, doorT2);
   const dbl = rightWallPoint(doorU1, doorT2);
 
-  // Frame
-  ctx.fillStyle = '#5a5d65';
+  // Frame — outer metal surround with beveled look
+  const framePad = 4;
+  const frmGrad = ctx.createLinearGradient(s(dtl.x - framePad), 0, s(dtr.x + framePad), 0);
+  frmGrad.addColorStop(0, '#484b52');
+  frmGrad.addColorStop(0.15, '#5e6168');
+  frmGrad.addColorStop(0.85, '#5e6168');
+  frmGrad.addColorStop(1, '#484b52');
+  ctx.fillStyle = frmGrad;
   ctx.beginPath();
-  ctx.moveTo(s(dtl.x - 3), s(dtl.y - 3));
-  ctx.lineTo(s(dtr.x + 3), s(dtr.y - 3));
-  ctx.lineTo(s(dbr.x + 3), s(dbr.y + 3));
-  ctx.lineTo(s(dbl.x - 3), s(dbl.y + 3));
+  ctx.moveTo(s(dtl.x - framePad), s(dtl.y - framePad));
+  ctx.lineTo(s(dtr.x + framePad), s(dtr.y - framePad));
+  ctx.lineTo(s(dbr.x + framePad), s(dbr.y + framePad));
+  ctx.lineTo(s(dbl.x - framePad), s(dbl.y + framePad));
   ctx.closePath();
   ctx.fill();
+  // Frame inner edge (dark inset line)
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(dtl.x - 1), s(dtl.y - 1));
+  ctx.lineTo(s(dtr.x + 1), s(dtr.y - 1));
+  ctx.lineTo(s(dbr.x + 1), s(dbr.y + 1));
+  ctx.lineTo(s(dbl.x - 1), s(dbl.y + 1));
+  ctx.closePath();
+  ctx.stroke();
 
-  // Door surface
+  // Door surface — heavy steel gradient
   const doorGrad = ctx.createLinearGradient(s(dtl.x), s(dtl.y), s(dtr.x), s(dtr.y));
-  doorGrad.addColorStop(0, '#6a6d75');
-  doorGrad.addColorStop(0.5, '#757880');
-  doorGrad.addColorStop(1, '#6a6d75');
+  doorGrad.addColorStop(0, '#585b62');
+  doorGrad.addColorStop(0.2, '#686b72');
+  doorGrad.addColorStop(0.5, '#727580');
+  doorGrad.addColorStop(0.8, '#686b72');
+  doorGrad.addColorStop(1, '#585b62');
   ctx.fillStyle = doorGrad;
   ctx.beginPath();
   ctx.moveTo(s(dtl.x), s(dtl.y));
@@ -383,36 +522,89 @@ function drawExitDoor() {
   ctx.closePath();
   ctx.fill();
 
-  // Handle
-  const handlePos = rightWallPoint(doorU1 + 0.05, (doorT1 + doorT2) * 0.52);
-  ctx.fillStyle = '#c0c0c0';
+  // Door panel inset (recessed rectangle)
+  const pMid = 0.08;
+  const ptl = rightWallPoint(doorU1 + pMid, doorT1 + 0.06);
+  const ptr = rightWallPoint(doorU2 - pMid, doorT1 + 0.06);
+  const pbr = rightWallPoint(doorU2 - pMid, doorT2 - 0.06);
+  const pbl = rightWallPoint(doorU1 + pMid, doorT2 - 0.06);
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = s(1);
   ctx.beginPath();
-  ctx.arc(s(handlePos.x), s(handlePos.y), s(4), 0, Math.PI * 2);
+  ctx.moveTo(s(ptl.x), s(ptl.y));
+  ctx.lineTo(s(ptr.x), s(ptr.y));
+  ctx.lineTo(s(pbr.x), s(pbr.y));
+  ctx.lineTo(s(pbl.x), s(pbl.y));
+  ctx.closePath();
+  ctx.stroke();
+  // Panel inner highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = s(0.6);
+  ctx.beginPath();
+  ctx.moveTo(s(ptl.x + 1), s(ptl.y + 1));
+  ctx.lineTo(s(ptr.x - 1), s(ptr.y + 1));
+  ctx.stroke();
+
+  // Handle — lever style
+  const hBase = rightWallPoint(doorU1 + 0.05, (doorT1 + doorT2) * 0.52);
+  const hEnd  = rightWallPoint(doorU1 + 0.05, (doorT1 + doorT2) * 0.52 + 0.05);
+  // Handle plate
+  ctx.fillStyle = '#8a8d95';
+  ctx.beginPath();
+  ctx.ellipse(s(hBase.x), s(hBase.y), s(6), s(8), 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = '#6a6d75';
+  ctx.lineWidth = s(0.8);
+  ctx.stroke();
+  // Handle bar
+  ctx.strokeStyle = '#a0a3aa';
+  ctx.lineWidth = s(2.5);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(s(hBase.x), s(hBase.y));
+  ctx.lineTo(s(hEnd.x), s(hEnd.y));
+  ctx.stroke();
+  ctx.lineCap = 'butt';
 
   // Status light
   const lightPos = rightWallPoint(doorU1 + 0.06, doorT1 + 0.06);
   const litColor = hasKeycard ? '#40e040' : '#e04040';
+  // Light housing
+  ctx.fillStyle = '#2a2d34';
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(5), 0, Math.PI * 2);
+  ctx.fill();
+  // Light bulb
   ctx.fillStyle = litColor;
   ctx.beginPath();
   ctx.arc(s(lightPos.x), s(lightPos.y), s(3), 0, Math.PI * 2);
   ctx.fill();
+  // Specular dot
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x - 1), s(lightPos.y - 1), s(1), 0, Math.PI * 2);
+  ctx.fill();
+  // Glow
   ctx.save();
   const glowC = hasKeycard ? 'rgba(64,224,64,' : 'rgba(224,64,64,';
   const lightGlow = ctx.createRadialGradient(
     s(lightPos.x), s(lightPos.y), 0,
-    s(lightPos.x), s(lightPos.y), s(15)
+    s(lightPos.x), s(lightPos.y), s(18)
   );
-  lightGlow.addColorStop(0, glowC + '0.3)');
+  lightGlow.addColorStop(0, glowC + '0.35)');
+  lightGlow.addColorStop(0.5, glowC + '0.10)');
   lightGlow.addColorStop(1, glowC + '0)');
   ctx.fillStyle = lightGlow;
   ctx.beginPath();
-  ctx.arc(s(lightPos.x), s(lightPos.y), s(15), 0, Math.PI * 2);
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(18), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // EXIT label
+  // EXIT label — with backing sign
   const textPos = rightWallPoint((doorU1 + doorU2) * 0.5, doorT1 - 0.06);
+  // Sign backing
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(s(textPos.x - 18), s(textPos.y - 7), s(36), s(12));
   ctx.fillStyle = '#e04040';
   ctx.font = `bold ${s(10)}px monospace`;
   ctx.textAlign = 'center';
@@ -578,38 +770,97 @@ function drawDesk() {
   const br = floorToScreen(box.uMax, box.vMax);
   const deskW = br.x - bl.x;
   const legH = 50;
+  const sideW = 10;
   const dx = base.x - deskW / 2;
   const topY = base.y - legH;
 
   // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.moveTo(s(dx), s(base.y));
-  ctx.lineTo(s(dx + deskW), s(base.y));
-  ctx.lineTo(s(dx + deskW + 12), s(base.y + 10));
-  ctx.lineTo(s(dx - 6), s(base.y + 10));
+  ctx.moveTo(s(dx - 2), s(base.y));
+  ctx.lineTo(s(dx + deskW + 2), s(base.y));
+  ctx.lineTo(s(dx + deskW + 14), s(base.y + 12));
+  ctx.lineTo(s(dx - 6), s(base.y + 12));
   ctx.closePath();
   ctx.fill();
 
-  // Legs
-  ctx.strokeStyle = '#5a5d65';
-  ctx.lineWidth = s(4);
-  ctx.beginPath(); ctx.moveTo(s(dx + 8), s(topY + 8)); ctx.lineTo(s(dx + 6), s(base.y)); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(s(dx + deskW - 8), s(topY + 8)); ctx.lineTo(s(dx + deskW - 6), s(base.y)); ctx.stroke();
+  // Legs — metal tube with highlight
+  const legW = 3.5;
+  const legs = [
+    [dx + 8, dx + 6],
+    [dx + deskW - 8, dx + deskW - 6]
+  ];
+  for (const [topX, botX] of legs) {
+    // Leg shadow side
+    ctx.strokeStyle = '#3e4148';
+    ctx.lineWidth = s(legW + 2);
+    ctx.beginPath(); ctx.moveTo(s(topX), s(topY + 10)); ctx.lineTo(s(botX), s(base.y)); ctx.stroke();
+    // Leg body
+    ctx.strokeStyle = '#5a5d65';
+    ctx.lineWidth = s(legW);
+    ctx.beginPath(); ctx.moveTo(s(topX), s(topY + 10)); ctx.lineTo(s(botX), s(base.y)); ctx.stroke();
+    // Leg highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = s(1);
+    ctx.beginPath(); ctx.moveTo(s(topX - 1), s(topY + 12)); ctx.lineTo(s(botX - 1), s(base.y - 2)); ctx.stroke();
+    // Foot pad
+    ctx.fillStyle = '#3a3d44';
+    ctx.beginPath();
+    ctx.ellipse(s(botX), s(base.y), s(5), s(2), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Front face
-  ctx.fillStyle = '#5a5d65';
+  // Side face for volume
+  const sdGrad = ctx.createLinearGradient(s(dx + deskW), 0, s(dx + deskW + sideW), 0);
+  sdGrad.addColorStop(0, '#484b52');
+  sdGrad.addColorStop(1, '#3a3d44');
+  ctx.fillStyle = sdGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dx + deskW), s(topY + 4));
+  ctx.lineTo(s(dx + deskW + sideW), s(topY));
+  ctx.lineTo(s(dx + deskW + sideW), s(topY + 10));
+  ctx.lineTo(s(dx + deskW), s(topY + 12));
+  ctx.closePath();
+  ctx.fill();
+
+  // Front face — metal apron with gradient
+  const apronGrad = ctx.createLinearGradient(s(dx), 0, s(dx + deskW), 0);
+  apronGrad.addColorStop(0, '#484b52');
+  apronGrad.addColorStop(0.15, '#585b62');
+  apronGrad.addColorStop(0.5, '#606368');
+  apronGrad.addColorStop(0.85, '#585b62');
+  apronGrad.addColorStop(1, '#484b52');
+  ctx.fillStyle = apronGrad;
   ctx.fillRect(s(dx), s(topY + 4), s(deskW), s(8));
+  // Bottom edge shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(topY + 12));
+  ctx.lineTo(s(dx + deskW), s(topY + 12));
+  ctx.stroke();
 
   // Top surface
-  const topGrad = ctx.createLinearGradient(s(dx), s(topY), s(dx + deskW), s(topY));
-  topGrad.addColorStop(0, '#6a6d75');
-  topGrad.addColorStop(0.5, '#757880');
-  topGrad.addColorStop(1, '#6a6d75');
+  const topGrad = ctx.createLinearGradient(s(dx), 0, s(dx + deskW), 0);
+  topGrad.addColorStop(0, '#60636a');
+  topGrad.addColorStop(0.2, '#6e7178');
+  topGrad.addColorStop(0.5, '#787b82');
+  topGrad.addColorStop(0.8, '#6e7178');
+  topGrad.addColorStop(1, '#60636a');
   ctx.fillStyle = topGrad;
   ctx.fillRect(s(dx), s(topY - 2), s(deskW), s(6));
-  ctx.strokeStyle = '#808590';
-  ctx.lineWidth = s(1);
+  // Top surface connects to side
+  ctx.fillStyle = '#6a6d74';
+  ctx.beginPath();
+  ctx.moveTo(s(dx + deskW), s(topY - 2));
+  ctx.lineTo(s(dx + deskW + sideW), s(topY - 4));
+  ctx.lineTo(s(dx + deskW + sideW), s(topY));
+  ctx.lineTo(s(dx + deskW), s(topY + 4));
+  ctx.closePath();
+  ctx.fill();
+  // Front edge highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = s(0.8);
   ctx.beginPath();
   ctx.moveTo(s(dx), s(topY - 2));
   ctx.lineTo(s(dx + deskW), s(topY - 2));
@@ -628,25 +879,68 @@ function drawDesk() {
 
 function drawMonitor(cx, baseY) {
   const mw = 44, mh = 30;
-  // Stand
-  ctx.fillStyle = '#3a3d45';
-  ctx.fillRect(s(cx - 4), s(baseY - 6), s(8), s(6));
-  ctx.fillRect(s(cx - 10), s(baseY - 2), s(20), s(3));
-  // Screen frame
-  ctx.fillStyle = '#2a2d35';
-  ctx.fillRect(s(cx - mw / 2 - 2), s(baseY - 6 - mh - 2), s(mw + 4), s(mh + 4));
+  const standH = 6;
+  const standTop = baseY - standH;
+
+  // Stand neck — tapered
+  const nkGrad = ctx.createLinearGradient(s(cx - 3), 0, s(cx + 3), 0);
+  nkGrad.addColorStop(0, '#2e3138');
+  nkGrad.addColorStop(0.5, '#484b52');
+  nkGrad.addColorStop(1, '#2e3138');
+  ctx.fillStyle = nkGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(cx - 3), s(standTop));
+  ctx.lineTo(s(cx + 3), s(standTop));
+  ctx.lineTo(s(cx + 4), s(baseY));
+  ctx.lineTo(s(cx - 4), s(baseY));
+  ctx.closePath();
+  ctx.fill();
+  // Base plate
+  const bpGrad = ctx.createLinearGradient(s(cx - 10), 0, s(cx + 10), 0);
+  bpGrad.addColorStop(0, '#2e3138');
+  bpGrad.addColorStop(0.5, '#484b52');
+  bpGrad.addColorStop(1, '#2e3138');
+  ctx.fillStyle = bpGrad;
+  ctx.beginPath();
+  ctx.ellipse(s(cx), s(baseY), s(10), s(2.5), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bezel (frame) — with gradient
+  const bezGrad = ctx.createLinearGradient(s(cx - mw / 2 - 2), 0, s(cx + mw / 2 + 2), 0);
+  bezGrad.addColorStop(0, '#1e2028');
+  bezGrad.addColorStop(0.15, '#2e3138');
+  bezGrad.addColorStop(0.85, '#2e3138');
+  bezGrad.addColorStop(1, '#1e2028');
+  ctx.fillStyle = bezGrad;
+  ctx.fillRect(s(cx - mw / 2 - 2), s(standTop - mh - 3), s(mw + 4), s(mh + 5));
+
   // Screen
-  const scrGrad = ctx.createLinearGradient(s(cx - mw / 2), s(baseY - 6 - mh), s(cx - mw / 2), s(baseY - 6));
-  scrGrad.addColorStop(0, '#1a3a4a');
-  scrGrad.addColorStop(1, '#0a2030');
+  const scrGrad = ctx.createLinearGradient(0, s(standTop - mh - 1), 0, s(standTop - 1));
+  scrGrad.addColorStop(0, '#0e2a38');
+  scrGrad.addColorStop(0.5, '#142e3e');
+  scrGrad.addColorStop(1, '#0a1e2c');
   ctx.fillStyle = scrGrad;
-  ctx.fillRect(s(cx - mw / 2), s(baseY - 6 - mh), s(mw), s(mh));
+  ctx.fillRect(s(cx - mw / 2), s(standTop - mh - 1), s(mw), s(mh));
+
+  // Screen reflection (subtle top-edge highlight)
+  const reflGrad = ctx.createLinearGradient(0, s(standTop - mh - 1), 0, s(standTop - mh + 8));
+  reflGrad.addColorStop(0, 'rgba(100,160,200,0.08)');
+  reflGrad.addColorStop(1, 'rgba(100,160,200,0)');
+  ctx.fillStyle = reflGrad;
+  ctx.fillRect(s(cx - mw / 2), s(standTop - mh - 1), s(mw), s(8));
+
   // Text lines on screen
   ctx.fillStyle = 'rgba(80,200,120,0.5)';
   const widths = [18, 26, 12, 22, 15];
   for (let i = 0; i < 5; i++) {
-    ctx.fillRect(s(cx - mw / 2 + 4), s(baseY - 6 - mh + 5 + i * 5), s(widths[i]), s(2));
+    ctx.fillRect(s(cx - mw / 2 + 4), s(standTop - mh + 4 + i * 5), s(widths[i]), s(2));
   }
+
+  // Power LED on bezel
+  ctx.fillStyle = '#40e04060';
+  ctx.beginPath();
+  ctx.arc(s(cx), s(standTop + 1), s(1), 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawKeycard(cx, baseY) {
