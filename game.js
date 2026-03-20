@@ -49,7 +49,7 @@ window.addEventListener('keyup',   e => { keys[e.key] = false; });
 const player = {
   u: 0.15,
   v: 0.85,
-  speed: 0.28,
+  speed: 0.22,
   facing: 'up',
   walkPhase: 0,
 };
@@ -82,6 +82,7 @@ const guard = {
   u: PATROL[0].u,
   v: PATROL[0].v,
   speed: 0.13,
+  alertSpeed: 0.18,
   facing: 'down',
   waypointIdx: 0,
   waitTimer: 1.0,
@@ -89,6 +90,12 @@ const guard = {
   investigating: false,
   investigateTarget: null,
   investigateWaitTimer: 0,
+  // State machine: 'patrol' | 'alert' | 'suspicious'
+  state: 'patrol',
+  alertTimer: 0,
+  suspiciousTimer: 0,
+  lastSeenU: 0,
+  lastSeenV: 0,
 };
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
@@ -193,10 +200,10 @@ function guardCanSeePlayer() {
   const du = player.u - guard.u;
   const dv = player.v - guard.v;
   const dist = Math.hypot(du, dv);
-  if (dist > 0.35) return false;
+  if (dist > 0.40) return false;
   const angleToPlayer = Math.atan2(dv, du);
   const gAngle = facingAngle(guard.facing);
-  if (angleDiff(gAngle, angleToPlayer) > Math.PI * 0.42) return false;
+  if (angleDiff(gAngle, angleToPlayer) > Math.PI * 0.50) return false;
   return !rayBlocked(guard.u, guard.v, player.u, player.v);
 }
 
@@ -3061,64 +3068,135 @@ function drawNoiseRing() {
 
 // ─── Guard AI ────────────────────────────────────────────────────────────────
 
+function guardFaceToward(tu, tv) {
+  const du = tu - guard.u;
+  const dv = tv - guard.v;
+  if (Math.abs(du) > Math.abs(dv)) {
+    guard.facing = du > 0 ? 'right' : 'left';
+  } else {
+    guard.facing = dv > 0 ? 'down' : 'up';
+  }
+}
+
+function guardMoveToward(tu, tv, spd, dt) {
+  const du = tu - guard.u;
+  const dv = tv - guard.v;
+  const dist = Math.hypot(du, dv);
+  if (dist < 0.01) return true; // arrived
+  const step = spd * dt;
+  const ratio = Math.min(step / dist, 1);
+  guard.u += du * ratio;
+  guard.v += dv * ratio;
+  guard.walkPhase += dt * 8;
+  guardFaceToward(tu, tv);
+  return dist < 0.03;
+}
+
+function guardResumePatrol() {
+  guard.state = 'patrol';
+  guard.investigating = false;
+  guard.investigateTarget = null;
+  // Find nearest patrol waypoint
+  let bestIdx = 0, bestDist = Infinity;
+  for (let i = 0; i < PATROL.length; i++) {
+    const d = Math.hypot(PATROL[i].u - guard.u, PATROL[i].v - guard.v);
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  guard.waypointIdx = bestIdx;
+  guard.waitTimer = 0.3;
+}
+
 function updateGuard(dt) {
   if (detected) return;
 
   // Spool noise timer (visual ring)
   if (spoolNoiseTimer > 0) spoolNoiseTimer -= dt;
 
+  const canSee = guardCanSeePlayer();
+
+  // ── Alert state: guard has spotted player, closing in ──
+  if (guard.state === 'alert') {
+    if (canSee) {
+      // Still has LOS — track player, advance timer, move toward
+      guard.lastSeenU = player.u;
+      guard.lastSeenV = player.v;
+      guard.alertTimer += dt;
+      // Caught after 1.5s sustained LOS
+      if (guard.alertTimer >= 1.5) {
+        detected = true;
+        return;
+      }
+      // Slowly close distance toward player
+      guardMoveToward(player.u, player.v, guard.alertSpeed, dt);
+    } else {
+      // Lost LOS — transition to suspicious
+      guard.state = 'suspicious';
+      guard.suspiciousTimer = 2.5;
+    }
+    return;
+  }
+
+  // ── Suspicious state: guard walks to last-seen, looks around ──
+  if (guard.state === 'suspicious') {
+    if (canSee) {
+      // Re-spotted — back to alert (keep accumulated timer for pressure)
+      guard.state = 'alert';
+      guard.lastSeenU = player.u;
+      guard.lastSeenV = player.v;
+      return;
+    }
+    const arrived = guardMoveToward(guard.lastSeenU, guard.lastSeenV, guard.speed, dt);
+    if (arrived) {
+      guard.suspiciousTimer -= dt;
+      guard.walkPhase = 0;
+      // Look around — cycle facing
+      const lookPhase = Math.floor((2.5 - guard.suspiciousTimer) * 2) % 4;
+      const lookDirs = ['down', 'left', 'up', 'right'];
+      guard.facing = lookDirs[lookPhase];
+      if (guard.suspiciousTimer <= 0) {
+        guard.alertTimer = 0;
+        guardResumePatrol();
+      }
+    }
+    return;
+  }
+
+  // ── Patrol state: normal waypoint following ──
+
+  // Check for new LOS — enter alert
+  if (canSee) {
+    guard.state = 'alert';
+    guard.alertTimer = 0;
+    guard.lastSeenU = player.u;
+    guard.lastSeenV = player.v;
+    // Cancel investigation if active
+    guard.investigating = false;
+    guard.investigateTarget = null;
+    return;
+  }
+
   // Investigation behavior — walk to noise, look around, then resume patrol
   if (guard.investigating) {
     if (guard.investigateWaitTimer > 0) {
-      // Standing at noise location, looking around
       guard.investigateWaitTimer -= dt;
       guard.walkPhase = 0;
       if (guard.investigateWaitTimer <= 0) {
-        // Done investigating — find nearest patrol waypoint and resume
-        guard.investigating = false;
-        guard.investigateTarget = null;
-        let bestIdx = 0;
-        let bestDist = Infinity;
-        for (let i = 0; i < PATROL.length; i++) {
-          const d = Math.hypot(PATROL[i].u - guard.u, PATROL[i].v - guard.v);
-          if (d < bestDist) { bestDist = d; bestIdx = i; }
-        }
-        guard.waypointIdx = bestIdx;
-        guard.waitTimer = 0.3;
+        guardResumePatrol();
       }
       return;
     }
 
-    // Walk toward investigation target
     const tgt = guard.investigateTarget;
-    const idu = tgt.u - guard.u;
-    const idv = tgt.v - guard.v;
-    const idist = Math.hypot(idu, idv);
-
-    if (idist < 0.03) {
-      // Arrived at noise location — wait and look around
+    if (guardMoveToward(tgt.u, tgt.v, guard.speed, dt)) {
       guard.investigateWaitTimer = 2.0;
       guard.facing = 'down';
-      return;
-    }
-
-    const istep = guard.speed * dt;
-    const iratio = Math.min(istep / idist, 1);
-    guard.u += idu * iratio;
-    guard.v += idv * iratio;
-    guard.walkPhase += dt * 8;
-
-    if (Math.abs(idu) > Math.abs(idv)) {
-      guard.facing = idu > 0 ? 'right' : 'left';
-    } else {
-      guard.facing = idv > 0 ? 'down' : 'up';
     }
     return;
   }
 
   if (guard.waitTimer > 0) {
     guard.waitTimer -= dt;
-    guard.walkPhase = 0;  // idle while waiting
+    guard.walkPhase = 0;
     return;
   }
 
@@ -3130,15 +3208,8 @@ function updateGuard(dt) {
   if (dist < 0.02) {
     guard.waypointIdx = (guard.waypointIdx + 1) % PATROL.length;
     guard.waitTimer = 0.8;
-    // Face toward next waypoint
     const next = PATROL[guard.waypointIdx];
-    const ndu = next.u - guard.u;
-    const ndv = next.v - guard.v;
-    if (Math.abs(ndu) > Math.abs(ndv)) {
-      guard.facing = ndu > 0 ? 'right' : 'left';
-    } else {
-      guard.facing = ndv > 0 ? 'down' : 'up';
-    }
+    guardFaceToward(next.u, next.v);
     return;
   }
 
@@ -3146,25 +3217,40 @@ function updateGuard(dt) {
   const ratio = Math.min(step / dist, 1);
   guard.u += du * ratio;
   guard.v += dv * ratio;
-  guard.walkPhase += dt * 8;  // slightly slower stride than player
-
-  if (Math.abs(du) > Math.abs(dv)) {
-    guard.facing = du > 0 ? 'right' : 'left';
-  } else {
-    guard.facing = dv > 0 ? 'down' : 'up';
-  }
+  guard.walkPhase += dt * 8;
+  guardFaceToward(target.u, target.v);
 }
 
 // ─── Guard vision cone visual ────────────────────────────────────────────────
 
 function drawGuardVision() {
   const ga = facingAngle(guard.facing);
-  const coneAngle = Math.PI * 0.42;
-  const coneLen = 0.28;
+  const coneAngle = Math.PI * 0.50;
+  const coneLen = 0.32;
+
+  // State-based cone color
+  let coneColor, coneAlpha;
+  if (detected) {
+    coneColor = '#e04040';
+    coneAlpha = 0.20;
+  } else if (guard.state === 'alert') {
+    // Pulsing orange during alert — urgency feedback
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 8);
+    coneColor = '#e08020';
+    coneAlpha = 0.14 + 0.08 * pulse;
+  } else if (guard.state === 'suspicious') {
+    // Fading orange during suspicious
+    const fade = guard.suspiciousTimer / 2.5;
+    coneColor = '#e0a040';
+    coneAlpha = 0.08 * fade;
+  } else {
+    coneColor = '#e0e040';
+    coneAlpha = 0.10;
+  }
 
   ctx.save();
-  ctx.globalAlpha = detected ? 0.18 : 0.10;
-  ctx.fillStyle = detected ? '#e04040' : '#e0e040';
+  ctx.globalAlpha = coneAlpha;
+  ctx.fillStyle = coneColor;
 
   const gScreen = floorToScreen(guard.u, guard.v);
   ctx.beginPath();
@@ -3203,6 +3289,11 @@ function resetCurrentRoom() {
   guard.investigating = false;
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
+  guard.state = 'patrol';
+  guard.alertTimer = 0;
+  guard.suspiciousTimer = 0;
+  guard.lastSeenU = 0;
+  guard.lastSeenV = 0;
   spoolKnocked = false;
   spoolNoiseTimer = 0;
 }
@@ -3234,6 +3325,11 @@ function switchToRoom(n) {
   guard.investigating = false;
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
+  guard.state = 'patrol';
+  guard.alertTimer = 0;
+  guard.suspiciousTimer = 0;
+  guard.lastSeenU = 0;
+  guard.lastSeenV = 0;
   spoolKnocked = false;
   spoolNoiseTimer = 0;
   roomTransitionTimer = 2.0;
@@ -3261,6 +3357,11 @@ function resetGame() {
   guard.investigating = false;
   guard.investigateTarget = null;
   guard.investigateWaitTimer = 0;
+  guard.state = 'patrol';
+  guard.alertTimer = 0;
+  guard.suspiciousTimer = 0;
+  guard.lastSeenU = 0;
+  guard.lastSeenV = 0;
   spoolKnocked = false;
   spoolNoiseTimer = 0;
 }
@@ -3570,9 +3671,9 @@ function update(dt) {
   }
 
   // While hidden, skip movement and other interactions
+  // Guard still patrols; playerHidden blocks LOS in guardCanSeePlayer
   if (playerHidden) {
     updateGuard(dt);
-    if (guardCanSeePlayer()) detected = true;
     return;
   }
 
@@ -3645,7 +3746,10 @@ function update(dt) {
     if (Math.abs(player.u - spoolU) < 0.12 && Math.abs(player.v - spoolFrontV) < 0.10) {
       spoolKnocked = true;
       spoolNoiseTimer = 1.5;
-      // Send guard to investigate if not already detected
+      // Send guard to investigate — noise overrides alert/suspicious
+      guard.state = 'patrol';
+      guard.alertTimer = 0;
+      guard.suspiciousTimer = 0;
       guard.investigating = true;
       guard.investigateTarget = { u: SPOOL_LAND.u, v: SPOOL_LAND.v };
       guard.investigateWaitTimer = 0;
@@ -3679,13 +3783,8 @@ function update(dt) {
     }
   }
 
-  // Guard AI
+  // Guard AI (includes state machine: patrol → alert → suspicious → patrol, or caught)
   updateGuard(dt);
-
-  // LOS detection
-  if (guardCanSeePlayer()) {
-    detected = true;
-  }
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
