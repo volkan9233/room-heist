@@ -381,7 +381,11 @@ function drawRoom() {
   drawFloorAO();
 
   // ── Floor-surface decorative details ──
-  if (currentRoom === 2) drawRoom2FloorDrain();
+  if (currentRoom === 2) {
+    drawRoom2FloorDrain();
+    drawRoom2FloorStains();
+  }
+  if (currentRoom === 3) drawRoom3FloorCables();
 
   // ── Metal baseboard strips ──
   // Dark groove
@@ -1096,9 +1100,9 @@ function drawRoom2WallDecor() {
       ctx.fill();
     }
   }
-  // Hung tool silhouettes (wrench, screwdriver, pliers — simple dark shapes)
-  ctx.strokeStyle = 'rgba(50,50,50,0.25)';
-  ctx.lineWidth = s(2.5);
+  // Hung tool silhouettes (wrench, screwdriver, pliers — kept subtle)
+  ctx.strokeStyle = 'rgba(50,50,50,0.15)';
+  ctx.lineWidth = s(2);
   // Wrench
   ctx.beginPath();
   ctx.moveTo(s(pg.x - pgW / 2 + 12), s(pg.y - 8));
@@ -1108,18 +1112,18 @@ function drawRoom2WallDecor() {
   ctx.arc(s(pg.x - pgW / 2 + 12), s(pg.y + 16), s(3), 0, Math.PI * 2);
   ctx.stroke();
   // Screwdriver
-  ctx.lineWidth = s(2);
+  ctx.lineWidth = s(1.5);
   ctx.beginPath();
   ctx.moveTo(s(pg.x - 5), s(pg.y - 10));
   ctx.lineTo(s(pg.x - 5), s(pg.y + 16));
   ctx.stroke();
-  ctx.lineWidth = s(3.5);
+  ctx.lineWidth = s(2.5);
   ctx.beginPath();
   ctx.moveTo(s(pg.x - 5), s(pg.y - 10));
   ctx.lineTo(s(pg.x - 5), s(pg.y - 2));
   ctx.stroke();
   // Pliers
-  ctx.lineWidth = s(2);
+  ctx.lineWidth = s(1.5);
   ctx.beginPath();
   ctx.moveTo(s(pg.x + 18), s(pg.y - 8));
   ctx.lineTo(s(pg.x + 16), s(pg.y + 4));
@@ -1133,20 +1137,20 @@ function drawRoom2WallDecor() {
   ctx.lineWidth = s(1);
   ctx.strokeRect(s(pg.x - pgW / 2), s(pg.y - pgH / 2), s(pgW), s(pgH));
 
-  // ── Safety sign (back wall, right side above workbench) ──
+  // ── Safety sign (back wall, right side above workbench — weathered) ──
   const sgn = bw(0.82, 0.18);
   const sgnW = 32, sgnH = 24;
-  // Yellow/black caution sign
-  ctx.fillStyle = '#1a1a1a';
+  // Yellow/black caution sign — faded
+  ctx.fillStyle = '#2a2a2a';
   ctx.fillRect(s(sgn.x - sgnW / 2 - 1), s(sgn.y - sgnH / 2 - 1), s(sgnW + 2), s(sgnH + 2));
-  ctx.fillStyle = '#c8a020';
+  ctx.fillStyle = '#9a8428';
   ctx.fillRect(s(sgn.x - sgnW / 2), s(sgn.y - sgnH / 2), s(sgnW), s(sgnH));
-  // Hazard stripes (diagonal)
+  // Hazard stripes (diagonal, faded)
   ctx.save();
   ctx.beginPath();
   ctx.rect(s(sgn.x - sgnW / 2), s(sgn.y - sgnH / 2), s(sgnW), s(sgnH));
   ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.20)';
   ctx.lineWidth = s(3);
   for (let i = -4; i < 8; i++) {
     const sx = sgn.x - sgnW / 2 + i * 8;
@@ -1156,8 +1160,8 @@ function drawRoom2WallDecor() {
     ctx.stroke();
   }
   ctx.restore();
-  // Exclamation mark
-  ctx.fillStyle = '#1a1a1a';
+  // Exclamation mark (faded)
+  ctx.fillStyle = 'rgba(26,26,26,0.6)';
   ctx.font = `bold ${s(12)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText('!', s(sgn.x), s(sgn.y + 4));
@@ -1220,6 +1224,92 @@ function drawRoom2FloorDrain() {
   ctx.beginPath();
   ctx.ellipse(s(drainPos.x), s(drainPos.y), s(drainR + 10), s((drainR + 10) * 0.45), 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+function drawRoom2FloorStains() {
+  // Oil stain near workbench area (workshop lived-in feel)
+  const oilPos = floorToScreen(0.72, 0.30);
+  const oilGrad = ctx.createRadialGradient(
+    s(oilPos.x), s(oilPos.y), 0,
+    s(oilPos.x), s(oilPos.y), s(18)
+  );
+  oilGrad.addColorStop(0, 'rgba(20,18,10,0.10)');
+  oilGrad.addColorStop(0.5, 'rgba(20,18,10,0.05)');
+  oilGrad.addColorStop(1, 'rgba(20,18,10,0)');
+  ctx.fillStyle = oilGrad;
+  ctx.beginPath();
+  ctx.ellipse(s(oilPos.x), s(oilPos.y), s(18), s(9), 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Smaller grease spot near barrels
+  const g2 = floorToScreen(0.18, 0.72);
+  const g2Grad = ctx.createRadialGradient(s(g2.x), s(g2.y), 0, s(g2.x), s(g2.y), s(10));
+  g2Grad.addColorStop(0, 'rgba(15,12,8,0.08)');
+  g2Grad.addColorStop(1, 'rgba(15,12,8,0)');
+  ctx.fillStyle = g2Grad;
+  ctx.beginPath();
+  ctx.ellipse(s(g2.x), s(g2.y), s(10), s(5), -0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Scuff marks near workbench (foot traffic)
+  ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+  ctx.lineWidth = s(2);
+  const sc1 = floorToScreen(0.65, 0.38);
+  ctx.beginPath();
+  ctx.moveTo(s(sc1.x - 8), s(sc1.y));
+  ctx.lineTo(s(sc1.x + 6), s(sc1.y + 1));
+  ctx.stroke();
+  const sc2 = floorToScreen(0.60, 0.42);
+  ctx.beginPath();
+  ctx.moveTo(s(sc2.x - 5), s(sc2.y - 1));
+  ctx.lineTo(s(sc2.x + 8), s(sc2.y));
+  ctx.stroke();
+}
+
+function drawRoom3FloorCables() {
+  // Floor cable run — taped down cable crossing the room
+  const c1 = floorToScreen(0.50, 0.12);
+  const c2 = floorToScreen(0.52, 0.40);
+  const c3 = floorToScreen(0.40, 0.60);
+
+  // Cable shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.lineWidth = s(4);
+  ctx.beginPath();
+  ctx.moveTo(s(c1.x + 1), s(c1.y + 1));
+  ctx.quadraticCurveTo(s(c2.x + 1), s(c2.y + 1), s(c3.x + 1), s(c3.y + 1));
+  ctx.stroke();
+
+  // Cable body (dark gray)
+  ctx.strokeStyle = '#3a3d44';
+  ctx.lineWidth = s(2.5);
+  ctx.beginPath();
+  ctx.moveTo(s(c1.x), s(c1.y));
+  ctx.quadraticCurveTo(s(c2.x), s(c2.y), s(c3.x), s(c3.y));
+  ctx.stroke();
+
+  // Cable highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(c1.x - 0.5), s(c1.y - 0.5));
+  ctx.quadraticCurveTo(s(c2.x - 0.5), s(c2.y - 0.5), s(c3.x - 0.5), s(c3.y - 0.5));
+  ctx.stroke();
+
+  // Tape strips holding cable down
+  ctx.fillStyle = 'rgba(80,80,70,0.12)';
+  const tape1 = floorToScreen(0.51, 0.22);
+  ctx.save();
+  ctx.translate(s(tape1.x), s(tape1.y));
+  ctx.rotate(0.1);
+  ctx.fillRect(s(-6), s(-1.5), s(12), s(3));
+  ctx.restore();
+  const tape2 = floorToScreen(0.47, 0.50);
+  ctx.save();
+  ctx.translate(s(tape2.x), s(tape2.y));
+  ctx.rotate(-0.15);
+  ctx.fillRect(s(-6), s(-1.5), s(12), s(3));
   ctx.restore();
 }
 
@@ -2604,9 +2694,35 @@ function drawLocker(box) {
   const lockerH = (bl.y - tl.y) * 2.2;
   const dx = tl.x;
   const by = bl.y;
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
 
-  // Shadow behind locker
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  // Ground-plane footprint shadow (matches other objects)
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(lockerW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 8), s(br.y + 6));
+  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  const ctsGrad = ctx.createLinearGradient(0, s(by - 2), 0, s(by + 12));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.30)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.14)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
+  ctx.fillRect(s(dx - 6), s(by - 2), s(lockerW + 12), s(14));
+
+  // Drop shadow behind locker body
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.fillRect(s(dx + 4), s(by - lockerH + 4), s(lockerW), s(lockerH));
 
   // Main body
@@ -2648,8 +2764,17 @@ function drawLocker(box) {
       const vy = by - lockerH + 13 + i * 4;
       ctx.fillRect(s(dx + 7), s(vy), s(lockerW * 0.38), s(2));
     }
+    // Occupied indicator — faint interior glow spill from vents
+    const ventGlow = ctx.createRadialGradient(
+      s(dx + lockerW * 0.25), s(by - lockerH + 20), 0,
+      s(dx + lockerW * 0.25), s(by - lockerH + 20), s(18)
+    );
+    ventGlow.addColorStop(0, 'rgba(80,160,220,0.08)');
+    ventGlow.addColorStop(1, 'rgba(80,160,220,0)');
+    ctx.fillStyle = ventGlow;
+    ctx.fillRect(s(dx), s(by - lockerH), s(lockerW * 0.5), s(40));
   } else {
-    // Open/empty — show vents and handle normally
+    // Open/empty — show vents and handle
     // Top vent slits
     ctx.strokeStyle = '#2a2e36';
     ctx.lineWidth = s(1);
@@ -2660,9 +2785,21 @@ function drawLocker(box) {
       ctx.lineTo(s(dx + lockerW * 0.45), s(vy));
       ctx.stroke();
     }
-    // Handle
-    ctx.fillStyle = '#8a8e96';
+    // Handle — slightly brighter to draw attention as interaction target
+    ctx.fillStyle = '#9a9ea8';
     ctx.fillRect(s(dx + lockerW * 0.40), s(by - lockerH * 0.45), s(4), s(12));
+    // Handle highlight edge
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = s(0.6);
+    ctx.beginPath();
+    ctx.moveTo(s(dx + lockerW * 0.40), s(by - lockerH * 0.45));
+    ctx.lineTo(s(dx + lockerW * 0.40), s(by - lockerH * 0.45 + 12));
+    ctx.stroke();
+    // Stencil label on lower half — "STAFF"
+    ctx.fillStyle = 'rgba(200,200,180,0.10)';
+    ctx.font = `bold ${s(7)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('STAFF', s(dx + lockerW * 0.25), s(by - lockerH * 0.22));
   }
 
   // Top edge highlight
@@ -2679,6 +2816,14 @@ function drawLocker(box) {
   ctx.moveTo(s(dx), s(by));
   ctx.lineTo(s(dx + lockerW), s(by));
   ctx.stroke();
+
+  // Side edge highlight (left)
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 1), s(by - lockerH + 2));
+  ctx.lineTo(s(dx + 1), s(by - 2));
+  ctx.stroke();
 }
 
 // ─── Room 3: Utility table (small desk with keycard) ────────────────────────
@@ -2688,17 +2833,43 @@ function drawUtilTable(box) {
   const tr = floorToScreen(box.uMax, box.vMin);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
 
   const tableW = tr.x - tl.x;
   const tableD = bl.y - tl.y;
   const dx = tl.x;
   const topY = tl.y;
 
-  // Legs
+  // Ground-plane footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(tableW, base.y - tl.y) * 0.8)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.06)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 3), s(tl.y - 1));
+  ctx.lineTo(s(tr.x + 3), s(tr.y - 1));
+  ctx.lineTo(s(br.x + 5), s(br.y + 4));
+  ctx.lineTo(s(bl.x - 4), s(bl.y + 4));
+  ctx.closePath();
+  ctx.fill();
+
+  // Legs — with highlight
   const legW = 3, legH = tableD * 0.8;
-  ctx.fillStyle = '#3a3d44';
-  ctx.fillRect(s(dx + 3), s(topY + tableD * 0.2), s(legW), s(legH));
-  ctx.fillRect(s(dx + tableW - 6), s(topY + tableD * 0.2), s(legW), s(legH));
+  const legTops = [dx + 5, dx + tableW - 5];
+  for (const lx of legTops) {
+    ctx.fillStyle = '#3a3d44';
+    ctx.fillRect(s(lx), s(topY + tableD * 0.2), s(legW), s(legH));
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = s(0.5);
+    ctx.beginPath();
+    ctx.moveTo(s(lx), s(topY + tableD * 0.2));
+    ctx.lineTo(s(lx), s(topY + tableD * 0.2 + legH));
+    ctx.stroke();
+  }
 
   // Tabletop
   const topGrad = ctx.createLinearGradient(0, s(topY - 6), 0, s(topY + 2));
@@ -2724,16 +2895,16 @@ function drawUtilTable(box) {
     drawKeycard(dx + tableW * 0.5, topY - 8);
   }
 
-  // Small clutter — a pen and a screw
-  ctx.strokeStyle = '#1a2a5a';
-  ctx.lineWidth = s(1.2);
+  // Small clutter — pen and loose screw (subtle, below keycard)
+  ctx.strokeStyle = 'rgba(26,42,90,0.5)';
+  ctx.lineWidth = s(1);
   ctx.beginPath();
-  ctx.moveTo(s(dx + tableW * 0.25), s(topY - 4));
-  ctx.lineTo(s(dx + tableW * 0.40), s(topY - 7));
+  ctx.moveTo(s(dx + tableW * 0.18), s(topY - 3));
+  ctx.lineTo(s(dx + tableW * 0.32), s(topY - 6));
   ctx.stroke();
-  ctx.fillStyle = '#6a6d75';
+  ctx.fillStyle = 'rgba(106,109,117,0.5)';
   ctx.beginPath();
-  ctx.arc(s(dx + tableW * 0.70), s(topY - 5), s(1.2), 0, Math.PI * 2);
+  ctx.arc(s(dx + tableW * 0.78), s(topY - 4), s(1), 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -2797,16 +2968,16 @@ function drawRoom3WallDecor() {
   ctx.quadraticCurveTo(s(cab2.x - 5), s(cab2.y + 18), s(cab2b.x), s(cab2b.y));
   ctx.stroke();
 
-  // Warning sign on left wall
+  // Warning sign on left wall (faded)
   const ws = lw(0.45, 0.30);
   const wsW = 18, wsH = 14;
-  ctx.fillStyle = '#c8a020';
+  ctx.fillStyle = '#8a7420';
   ctx.fillRect(s(ws.x - wsW / 2), s(ws.y - wsH / 2), s(wsW), s(wsH));
-  ctx.strokeStyle = '#1a1a1a';
+  ctx.strokeStyle = '#2a2a2a';
   ctx.lineWidth = s(1);
   ctx.strokeRect(s(ws.x - wsW / 2), s(ws.y - wsH / 2), s(wsW), s(wsH));
   // Lightning bolt symbol
-  ctx.strokeStyle = '#1a1a1a';
+  ctx.strokeStyle = 'rgba(26,26,26,0.6)';
   ctx.lineWidth = s(1.5);
   ctx.beginPath();
   ctx.moveTo(s(ws.x + 1), s(ws.y - 4));
