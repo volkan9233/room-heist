@@ -209,27 +209,28 @@ function insideWalkableZone(u, v) {
 const ROOM1_HOTSPOTS = [
   // Bottom row (player entry area)
   { id: 'r1_start',       u: 0.15, v: 0.85, edges: ['r1_blCorner', 'r1_behindCrates'] },
-  { id: 'r1_blCorner',    u: 0.10, v: 0.75, edges: ['r1_start', 'r1_leftOfRack1', 'r1_behindCrates'] },
-  { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_southCrates', 'r1_midFloor'] },
+  { id: 'r1_blCorner',    u: 0.10, v: 0.75, edges: ['r1_start', 'r1_leftOfRack1', 'r1_behindCrates', 'r1_westCrates'] },
+  { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_midFloor'] },
   { id: 'r1_brCorner',    u: 0.80, v: 0.80, edges: ['r1_midFloor', 'r1_exitDoor'] },
-  // Mid row
-  { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1'] },
-  { id: 'r1_southCrates', u: 0.35, v: 0.48, edges: ['r1_behindCrates', 'r1_midFloor', 'r1_midUpper'] },
-  { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_southCrates', 'r1_brCorner', 'r1_eastOfCrates'] },
+  // Mid row — westCrates routes west of crate box (u < 0.27)
+  { id: 'r1_westCrates',  u: 0.22, v: 0.45, edges: ['r1_blCorner', 'r1_southCrates', 'r1_leftOfRack1'] },
+  { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1', 'r1_westCrates'] },
+  { id: 'r1_southCrates', u: 0.35, v: 0.48, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
+  { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates'] },
   { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates'] },
-  { id: 'r1_eastOfCrates',u: 0.55, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_midUpper', 'r1_frontDesk'] },
-  // Upper row
-  { id: 'r1_frontRack1',  u: 0.14, v: 0.28, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
+  { id: 'r1_eastOfCrates',u: 0.55, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2'] },
+  // Upper row — frontRack1 moved south of rack1 bounding box
+  { id: 'r1_frontRack1',  u: 0.14, v: 0.40, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
   { id: 'r1_midUpper',    u: 0.32, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
   { id: 'r1_frontRack2',  u: 0.48, v: 0.36, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
   { id: 'r1_frontDesk',   u: 0.78, v: 0.34, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
 ];
 
 const ROOM2_HOTSPOTS = [
-  // Back area (left of partition)
-  { id: 'r2_backStart',    u: 0.20, v: 0.75, edges: ['r2_backCenter', 'r2_gapSouth'] },
-  { id: 'r2_backCenter',   u: 0.20, v: 0.38, edges: ['r2_backStart', 'r2_frontBench', 'r2_behindBarrels'] },
-  { id: 'r2_frontBench',   u: 0.20, v: 0.28, edges: ['r2_backCenter'] },
+  // Back area (left of partition) — u=0.22 stays east of barrels (uMax=0.20)
+  { id: 'r2_backStart',    u: 0.22, v: 0.75, edges: ['r2_backCenter', 'r2_gapSouth', 'r2_behindBarrels', 'r2_exitArea'] },
+  { id: 'r2_backCenter',   u: 0.22, v: 0.38, edges: ['r2_backStart', 'r2_frontBench', 'r2_behindBarrels'] },
+  { id: 'r2_frontBench',   u: 0.22, v: 0.28, edges: ['r2_backCenter'] },
   { id: 'r2_behindBarrels',u: 0.24, v: 0.56, edges: ['r2_backCenter', 'r2_backStart'] },
   // Gap corridor
   { id: 'r2_gapSouth',     u: 0.43, v: 0.75, edges: ['r2_backStart', 'r2_gapNorth', 'r2_frontStart'] },
@@ -238,10 +239,10 @@ const ROOM2_HOTSPOTS = [
   { id: 'r2_frontStart',   u: 0.85, v: 0.85, edges: ['r2_gapSouth', 'r2_frontLower', 'r2_exitArea'] },
   { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates'] },
   { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool'] },
-  { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet'] },
+  { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet', 'r2_frontShelving'] },
   { id: 'r2_frontCabinet', u: 0.62, v: 0.30, edges: ['r2_frontSpool'] },
   { id: 'r2_frontShelving',u: 0.72, v: 0.45, edges: ['r2_frontLower', 'r2_frontSpool'] },
-  { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart'] },
+  { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart', 'r2_frontStart'] },
 ];
 
 const ROOM3_HOTSPOTS = [
@@ -249,11 +250,11 @@ const ROOM3_HOTSPOTS = [
   { id: 'r3_start',       u: 0.85, v: 0.85, edges: ['r3_nearLocker', 'r3_southCenter'] },
   { id: 'r3_nearLocker',  u: 0.83, v: 0.76, edges: ['r3_start', 'r3_southCenter', 'r3_westLocker'] },
   { id: 'r3_westLocker',  u: 0.70, v: 0.76, edges: ['r3_nearLocker', 'r3_southCenter', 'r3_gapSouth'] },
-  { id: 'r3_southCenter', u: 0.50, v: 0.78, edges: ['r3_start', 'r3_nearLocker', 'r3_nearCrates', 'r3_exitDoor'] },
+  { id: 'r3_southCenter', u: 0.50, v: 0.78, edges: ['r3_start', 'r3_nearLocker', 'r3_westLocker', 'r3_nearCrates', 'r3_exitDoor'] },
   { id: 'r3_nearCrates',  u: 0.30, v: 0.76, edges: ['r3_southCenter', 'r3_exitDoor'] },
   { id: 'r3_exitDoor',    u: 0.08, v: 0.76, edges: ['r3_southCenter', 'r3_nearCrates'] },
   // Gap passage (right side, between corridors)
-  { id: 'r3_gapSouth',    u: 0.70, v: 0.50, edges: ['r3_nearLocker', 'r3_gapNorth'] },
+  { id: 'r3_gapSouth',    u: 0.70, v: 0.50, edges: ['r3_westLocker', 'r3_gapNorth'] },
   { id: 'r3_gapNorth',    u: 0.70, v: 0.36, edges: ['r3_gapSouth', 'r3_northEast'] },
   // North corridor
   { id: 'r3_northEast',   u: 0.62, v: 0.32, edges: ['r3_gapNorth', 'r3_frontRack'] },
