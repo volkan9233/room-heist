@@ -628,14 +628,14 @@ function drawExitDoor() {
   const glowC = hasKeycard ? 'rgba(64,224,64,' : 'rgba(224,64,64,';
   const lightGlow = ctx.createRadialGradient(
     s(lightPos.x), s(lightPos.y), 0,
-    s(lightPos.x), s(lightPos.y), s(18)
+    s(lightPos.x), s(lightPos.y), s(26)
   );
-  lightGlow.addColorStop(0, glowC + '0.35)');
-  lightGlow.addColorStop(0.5, glowC + '0.10)');
+  lightGlow.addColorStop(0, glowC + '0.45)');
+  lightGlow.addColorStop(0.4, glowC + '0.15)');
   lightGlow.addColorStop(1, glowC + '0)');
   ctx.fillStyle = lightGlow;
   ctx.beginPath();
-  ctx.arc(s(lightPos.x), s(lightPos.y), s(18), 0, Math.PI * 2);
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(26), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
@@ -771,14 +771,14 @@ function drawExitDoorLeft() {
   const glowC2 = hasKeycard ? 'rgba(64,224,64,' : 'rgba(224,64,64,';
   const lightGlow2 = ctx.createRadialGradient(
     s(lightPos.x), s(lightPos.y), 0,
-    s(lightPos.x), s(lightPos.y), s(18)
+    s(lightPos.x), s(lightPos.y), s(26)
   );
-  lightGlow2.addColorStop(0, glowC2 + '0.35)');
-  lightGlow2.addColorStop(0.5, glowC2 + '0.10)');
+  lightGlow2.addColorStop(0, glowC2 + '0.45)');
+  lightGlow2.addColorStop(0.4, glowC2 + '0.15)');
   lightGlow2.addColorStop(1, glowC2 + '0)');
   ctx.fillStyle = lightGlow2;
   ctx.beginPath();
-  ctx.arc(s(lightPos.x), s(lightPos.y), s(18), 0, Math.PI * 2);
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(26), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
@@ -1185,12 +1185,12 @@ function drawMonitor(cx, baseY) {
 function drawKeycard(cx, baseY) {
   const kw = 30, kh = 18;
   const pulse = 0.55 + 0.45 * Math.sin(gameTime * 3.5);
-  const glowR = 35 + 10 * pulse;
+  const glowR = 42 + 12 * pulse;
 
   // Outer pulsing glow
   const glow = ctx.createRadialGradient(s(cx), s(baseY - kh / 2), 0, s(cx), s(baseY - kh / 2), s(glowR));
-  glow.addColorStop(0, `rgba(80,200,255,${0.35 * pulse})`);
-  glow.addColorStop(0.6, `rgba(80,200,255,${0.15 * pulse})`);
+  glow.addColorStop(0, `rgba(80,200,255,${0.40 * pulse})`);
+  glow.addColorStop(0.5, `rgba(80,200,255,${0.18 * pulse})`);
   glow.addColorStop(1, 'rgba(80,200,255,0)');
   ctx.fillStyle = glow;
   ctx.beginPath();
@@ -2503,12 +2503,17 @@ function render() {
     if (nearKeycard) {
       const promptPos = floorToScreen(kcCU, kcBox.vMax + 0.02);
       const bob = Math.sin(gameTime * 4) * 3;
+      const py = s(promptPos.y - 18 + bob);
       ctx.textAlign = 'center';
-      ctx.font = `bold ${s(14)}px monospace`;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillText('[E] Pick up keycard', s(promptPos.x + 1), s(promptPos.y - 18 + bob + 1));
+      ctx.font = `bold ${s(15)}px monospace`;
+      const ptxt = '[E] Pick up keycard';
+      const pw = ctx.measureText(ptxt).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.roundRect(s(promptPos.x) - pw / 2 - s(8), py - s(12), pw + s(16), s(20), s(6));
+      ctx.fill();
       ctx.fillStyle = '#80e0ff';
-      ctx.fillText('[E] Pick up keycard', s(promptPos.x), s(promptPos.y - 18 + bob));
+      ctx.fillText(ptxt, s(promptPos.x), py);
     }
 
     if (nearExit) {
@@ -2516,12 +2521,17 @@ function render() {
       const exitPromptV = currentRoom === 1 ? 0.55 : 0.50;
       const promptPos = floorToScreen(exitPromptU, exitPromptV);
       const bob = Math.sin(gameTime * 4) * 3;
+      const ey = s(promptPos.y - 20 + bob);
       ctx.textAlign = 'center';
-      ctx.font = `bold ${s(14)}px monospace`;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillText('[E] Use exit', s(promptPos.x + 1), s(promptPos.y - 20 + bob + 1));
+      ctx.font = `bold ${s(15)}px monospace`;
+      const etxt = '[E] Use exit';
+      const ew = ctx.measureText(etxt).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.roundRect(s(promptPos.x) - ew / 2 - s(8), ey - s(12), ew + s(16), s(20), s(6));
+      ctx.fill();
       ctx.fillStyle = '#60ff60';
-      ctx.fillText('[E] Use exit', s(promptPos.x), s(promptPos.y - 20 + bob));
+      ctx.fillText(etxt, s(promptPos.x), ey);
     }
   }
 
@@ -2530,10 +2540,14 @@ function render() {
     ctx.textAlign = 'left';
     ctx.font = `${s(13)}px monospace`;
     if (!hasKeycard) {
-      ctx.fillStyle = 'rgba(80,200,255,0.5)';
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillText('Find the keycard', s(31), s(691));
+      ctx.fillStyle = 'rgba(80,200,255,0.6)';
       ctx.fillText('Find the keycard', s(30), s(690));
     } else {
-      ctx.fillStyle = 'rgba(64,224,64,0.6)';
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillText('Reach the exit', s(31), s(691));
+      ctx.fillStyle = 'rgba(64,224,64,0.7)';
       ctx.fillText('Reach the exit', s(30), s(690));
     }
   }
