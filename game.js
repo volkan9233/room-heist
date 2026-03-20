@@ -42,7 +42,11 @@ function floorToScreen(u, v) {
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.key] = true; });
+const justPressed = {};  // edge-triggered: true only on the frame the key goes down
+window.addEventListener('keydown', e => {
+  if (!keys[e.key]) justPressed[e.key] = true;
+  keys[e.key] = true;
+});
 window.addEventListener('keyup',   e => { keys[e.key] = false; });
 
 // ─── Player ───────────────────────────────────────────────────────────────────
@@ -52,6 +56,11 @@ const player = {
   speed: 0.22,
   facing: 'up',
   walkPhase: 0,
+  // Hotspot movement state
+  currentHotspot: 'r1_start',  // id of hotspot player is at (null if mid-walk)
+  targetHotspot: null,         // id of hotspot player is walking toward
+  walkFromU: 0, walkFromV: 0,  // origin of current walk
+  walkProgress: 0,             // 0-1 lerp between from and target
 };
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
@@ -191,6 +200,75 @@ function insideWalkableZone(u, v) {
     }
   }
   return false;
+}
+
+// ─── Hotspot graphs (node-to-node movement per room) ────────────────────────
+// Each hotspot: { id, u, v, edges: [id...] }
+// Edges are bidirectional — listed from both sides for clarity
+
+const ROOM1_HOTSPOTS = [
+  // Bottom row (player entry area)
+  { id: 'r1_start',       u: 0.15, v: 0.85, edges: ['r1_blCorner', 'r1_behindCrates'] },
+  { id: 'r1_blCorner',    u: 0.10, v: 0.75, edges: ['r1_start', 'r1_leftOfRack1', 'r1_behindCrates'] },
+  { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_southCrates', 'r1_midFloor'] },
+  { id: 'r1_brCorner',    u: 0.80, v: 0.80, edges: ['r1_midFloor', 'r1_exitDoor'] },
+  // Mid row
+  { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1'] },
+  { id: 'r1_southCrates', u: 0.35, v: 0.48, edges: ['r1_behindCrates', 'r1_midFloor', 'r1_midUpper'] },
+  { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_southCrates', 'r1_brCorner', 'r1_eastOfCrates'] },
+  { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates'] },
+  { id: 'r1_eastOfCrates',u: 0.55, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_midUpper', 'r1_frontDesk'] },
+  // Upper row
+  { id: 'r1_frontRack1',  u: 0.14, v: 0.28, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
+  { id: 'r1_midUpper',    u: 0.32, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
+  { id: 'r1_frontRack2',  u: 0.48, v: 0.36, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
+  { id: 'r1_frontDesk',   u: 0.78, v: 0.34, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
+];
+
+const ROOM2_HOTSPOTS = [
+  // Back area (left of partition)
+  { id: 'r2_backStart',    u: 0.20, v: 0.75, edges: ['r2_backCenter', 'r2_gapSouth'] },
+  { id: 'r2_backCenter',   u: 0.20, v: 0.38, edges: ['r2_backStart', 'r2_frontBench', 'r2_behindBarrels'] },
+  { id: 'r2_frontBench',   u: 0.20, v: 0.28, edges: ['r2_backCenter'] },
+  { id: 'r2_behindBarrels',u: 0.24, v: 0.56, edges: ['r2_backCenter', 'r2_backStart'] },
+  // Gap corridor
+  { id: 'r2_gapSouth',     u: 0.43, v: 0.75, edges: ['r2_backStart', 'r2_gapNorth', 'r2_frontStart'] },
+  { id: 'r2_gapNorth',     u: 0.43, v: 0.64, edges: ['r2_gapSouth'] },
+  // Front area (right of partition)
+  { id: 'r2_frontStart',   u: 0.85, v: 0.85, edges: ['r2_gapSouth', 'r2_frontLower', 'r2_exitArea'] },
+  { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates'] },
+  { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool'] },
+  { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet'] },
+  { id: 'r2_frontCabinet', u: 0.62, v: 0.30, edges: ['r2_frontSpool'] },
+  { id: 'r2_frontShelving',u: 0.72, v: 0.45, edges: ['r2_frontLower', 'r2_frontSpool'] },
+  { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart'] },
+];
+
+const ROOM3_HOTSPOTS = [
+  // South corridor (player enters here)
+  { id: 'r3_start',       u: 0.85, v: 0.85, edges: ['r3_nearLocker', 'r3_southCenter'] },
+  { id: 'r3_nearLocker',  u: 0.83, v: 0.76, edges: ['r3_start', 'r3_southCenter', 'r3_westLocker'] },
+  { id: 'r3_westLocker',  u: 0.70, v: 0.76, edges: ['r3_nearLocker', 'r3_southCenter', 'r3_gapSouth'] },
+  { id: 'r3_southCenter', u: 0.50, v: 0.78, edges: ['r3_start', 'r3_nearLocker', 'r3_nearCrates', 'r3_exitDoor'] },
+  { id: 'r3_nearCrates',  u: 0.30, v: 0.76, edges: ['r3_southCenter', 'r3_exitDoor'] },
+  { id: 'r3_exitDoor',    u: 0.08, v: 0.76, edges: ['r3_southCenter', 'r3_nearCrates'] },
+  // Gap passage (right side, between corridors)
+  { id: 'r3_gapSouth',    u: 0.70, v: 0.50, edges: ['r3_nearLocker', 'r3_gapNorth'] },
+  { id: 'r3_gapNorth',    u: 0.70, v: 0.36, edges: ['r3_gapSouth', 'r3_northEast'] },
+  // North corridor
+  { id: 'r3_northEast',   u: 0.62, v: 0.32, edges: ['r3_gapNorth', 'r3_frontRack'] },
+  { id: 'r3_frontRack',   u: 0.52, v: 0.32, edges: ['r3_northEast', 'r3_northCenter'] },
+  { id: 'r3_northCenter', u: 0.36, v: 0.32, edges: ['r3_frontRack', 'r3_frontTable'] },
+  { id: 'r3_frontTable',  u: 0.20, v: 0.28, edges: ['r3_northCenter'] },
+];
+
+let HOTSPOTS = ROOM1_HOTSPOTS;
+
+function getHotspot(id) {
+  for (const h of HOTSPOTS) {
+    if (h.id === id) return h;
+  }
+  return null;
 }
 
 // ─── Game state ──────────────────────────────────────────────────────────────
@@ -3637,10 +3715,14 @@ function resetCurrentRoom() {
   hasKeycard = false;
   playerHidden = false;
   const cfg = ROOM_CONFIGS[currentRoom] || ROOM_CONFIGS[1];
-  player.u = cfg.startU;
-  player.v = 0.85;
+  const startHS = getHotspot(cfg.startHotspot);
+  player.u = startHS ? startHS.u : 0.50;
+  player.v = startHS ? startHS.v : 0.85;
   player.facing = 'up';
   player.walkPhase = 0;
+  player.currentHotspot = cfg.startHotspot;
+  player.targetHotspot = null;
+  player.walkProgress = 0;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
@@ -3661,9 +3743,9 @@ function resetCurrentRoom() {
 }
 
 const ROOM_CONFIGS = {
-  1: { colliders: ROOM1_COLLIDERS, patrol: ROOM1_PATROL, zones: ROOM1_ZONES, startU: 0.15 },
-  2: { colliders: ROOM2_COLLIDERS, patrol: ROOM2_PATROL, zones: ROOM2_ZONES, startU: 0.85 },
-  3: { colliders: ROOM3_COLLIDERS, patrol: ROOM3_PATROL, zones: ROOM3_ZONES, startU: 0.85 },
+  1: { colliders: ROOM1_COLLIDERS, patrol: ROOM1_PATROL, zones: ROOM1_ZONES, hotspots: ROOM1_HOTSPOTS, startHotspot: 'r1_start' },
+  2: { colliders: ROOM2_COLLIDERS, patrol: ROOM2_PATROL, zones: ROOM2_ZONES, hotspots: ROOM2_HOTSPOTS, startHotspot: 'r2_frontStart' },
+  3: { colliders: ROOM3_COLLIDERS, patrol: ROOM3_PATROL, zones: ROOM3_ZONES, hotspots: ROOM3_HOTSPOTS, startHotspot: 'r3_start' },
 };
 
 function switchToRoom(n) {
@@ -3675,10 +3757,15 @@ function switchToRoom(n) {
   COLLIDERS = cfg.colliders;
   PATROL = cfg.patrol;
   ZONES = cfg.zones;
-  player.u = cfg.startU;
-  player.v = 0.85;
+  HOTSPOTS = cfg.hotspots;
+  const startHS = getHotspot(cfg.startHotspot);
+  player.u = startHS ? startHS.u : 0.50;
+  player.v = startHS ? startHS.v : 0.85;
   player.facing = 'up';
   player.walkPhase = 0;
+  player.currentHotspot = cfg.startHotspot;
+  player.targetHotspot = null;
+  player.walkProgress = 0;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
@@ -3706,6 +3793,7 @@ function resetGame() {
   COLLIDERS = ROOM1_COLLIDERS;
   PATROL = ROOM1_PATROL;
   ZONES = ROOM1_ZONES;
+  HOTSPOTS = ROOM1_HOTSPOTS;
   detected = false;
   hasKeycard = false;
   playerHidden = false;
@@ -3713,6 +3801,9 @@ function resetGame() {
   player.v = 0.85;
   player.facing = 'up';
   player.walkPhase = 0;
+  player.currentHotspot = 'r1_start';
+  player.targetHotspot = null;
+  player.walkProgress = 0;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
@@ -3992,6 +4083,11 @@ const V_MIN = 0.06, V_MAX = 0.96;
 function update(dt) {
   gameTime += dt;
 
+  // Clear edge-triggered keys at start of each frame
+  // (processed once per frame, then cleared so they don't persist across early returns)
+  const framePressed = {};
+  for (const k in justPressed) { framePressed[k] = true; delete justPressed[k]; }
+
   if (roomTransitionTimer > 0) roomTransitionTimer -= dt;
 
   // Reset on R
@@ -4015,24 +4111,22 @@ function update(dt) {
   // Locker hide toggle — Room 3 only, not during detection
   if (currentRoom === 3 && !detected && (keys['e'] || keys['E'] || keys[' '])) {
     if (playerHidden) {
-      // Exit locker
+      // Exit locker — return to nearLocker hotspot
       playerHidden = false;
-      // Place player just in front of locker
-      const locker = COLLIDERS[3];
-      player.u = (locker.uMin + locker.uMax) / 2;
-      player.v = locker.vMax + 0.06;
+      const hs = getHotspot('r3_nearLocker');
+      if (hs) {
+        player.u = hs.u;
+        player.v = hs.v;
+        player.currentHotspot = 'r3_nearLocker';
+        player.targetHotspot = null;
+      }
       player.facing = 'down';
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
-    } else {
-      // Check proximity to locker
-      const locker = COLLIDERS[3];
-      const lockerCU = (locker.uMin + locker.uMax) / 2;
-      const lockerFrontV = locker.vMax + 0.06;
-      if (Math.abs(player.u - lockerCU) < 0.12 && Math.abs(player.v - lockerFrontV) < 0.10) {
-        playerHidden = true;
-        player.walkPhase = 0;
-        keys['e'] = false; keys['E'] = false; keys[' '] = false;
-      }
+    } else if (player.currentHotspot === 'r3_nearLocker') {
+      // At locker hotspot — hide
+      playerHidden = true;
+      player.walkPhase = 0;
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
   }
 
@@ -4043,65 +4137,106 @@ function update(dt) {
     return;
   }
 
-  // Perspective-normalized movement: compute local screen-space scale
-  // so forward/back feels as fast as left/right
-  const eps = 0.001;
-  const here = floorToScreen(player.u, player.v);
-  const rightPt = floorToScreen(player.u + eps, player.v);
-  const downPt = floorToScreen(player.u, player.v + eps);
-  const scaleU = Math.hypot(rightPt.x - here.x, rightPt.y - here.y) / eps;
-  const scaleV = Math.hypot(downPt.x - here.x, downPt.y - here.y) / eps;
-  const avgScale = (scaleU + scaleV) / 2;
-  const uFactor = avgScale / scaleU;
-  const vFactor = avgScale / scaleV;
+  // ── Hotspot movement: directional selection + auto-walk ──
 
-  const spd = player.speed * dt;
-  let du = 0, dv = 0;
+  // If at a hotspot, check for directional input to pick next destination
+  if (player.currentHotspot && !player.targetHotspot) {
+    let inputU = 0, inputV = 0;
+    // Accept both fresh presses and held keys (auto-chain when arriving at hotspot)
+    if (framePressed['ArrowLeft']  || framePressed['a'] || framePressed['A'] ||
+        keys['ArrowLeft']  || keys['a'] || keys['A']) inputU = -1;
+    if (framePressed['ArrowRight'] || framePressed['d'] || framePressed['D'] ||
+        keys['ArrowRight'] || keys['d'] || keys['D']) inputU = 1;
+    if (framePressed['ArrowUp']    || framePressed['w'] || framePressed['W'] ||
+        keys['ArrowUp']    || keys['w'] || keys['W']) inputV = -1;
+    if (framePressed['ArrowDown']  || framePressed['s'] || framePressed['S'] ||
+        keys['ArrowDown']  || keys['s'] || keys['S']) inputV = 1;
 
-  if (keys['ArrowLeft']  || keys['a'] || keys['A']) { du -= spd * uFactor; player.facing = 'left'; }
-  if (keys['ArrowRight'] || keys['d'] || keys['D']) { du += spd * uFactor; player.facing = 'right'; }
-  if (keys['ArrowUp']    || keys['w'] || keys['W']) { dv -= spd * vFactor; if (du === 0) player.facing = 'up'; }
-  if (keys['ArrowDown']  || keys['s'] || keys['S']) { dv += spd * vFactor; if (du === 0) player.facing = 'down'; }
+    if (inputU !== 0 || inputV !== 0) {
+      const from = getHotspot(player.currentHotspot);
+      if (from) {
+        // Convert input direction to screen-space for comparison
+        const fromScreen = floorToScreen(from.u, from.v);
+        const probeU = from.u + inputU * 0.1;
+        const probeV = from.v + inputV * 0.1;
+        const probeScreen = floorToScreen(probeU, probeV);
+        const inputDX = probeScreen.x - fromScreen.x;
+        const inputDY = probeScreen.y - fromScreen.y;
+        const inputAngle = Math.atan2(inputDY, inputDX);
 
-  const oldU = player.u, oldV = player.v;
-
-  // Combined rejection: collider hit OR outside walkable zones
-  function blocked(u, v) {
-    return collidesWithAny(u, v) || !insideWalkableZone(u, v);
-  }
-
-  // Try full move
-  player.u = Math.max(U_MIN, Math.min(U_MAX, oldU + du));
-  player.v = Math.max(V_MIN, Math.min(V_MAX, oldV + dv));
-  if (blocked(player.u, player.v)) {
-    // Try u only
-    player.u = Math.max(U_MIN, Math.min(U_MAX, oldU + du));
-    player.v = oldV;
-    if (blocked(player.u, player.v)) {
-      // Try v only
-      player.u = oldU;
-      player.v = Math.max(V_MIN, Math.min(V_MAX, oldV + dv));
-      if (blocked(player.u, player.v)) {
-        player.u = oldU;
-        player.v = oldV;
+        let bestId = null, bestScore = Infinity;
+        for (const edgeId of from.edges) {
+          const target = getHotspot(edgeId);
+          if (!target) continue;
+          const ts = floorToScreen(target.u, target.v);
+          const dx = ts.x - fromScreen.x;
+          const dy = ts.y - fromScreen.y;
+          const edgeAngle = Math.atan2(dy, dx);
+          let diff = Math.abs(edgeAngle - inputAngle);
+          if (diff > Math.PI) diff = Math.PI * 2 - diff;
+          // Only consider edges within ~90° of input direction
+          if (diff < Math.PI * 0.55) {
+            if (diff < bestScore) {
+              bestScore = diff;
+              bestId = edgeId;
+            }
+          }
+        }
+        if (bestId) {
+          player.targetHotspot = bestId;
+          player.walkFromU = from.u;
+          player.walkFromV = from.v;
+          player.walkProgress = 0;
+          player.currentHotspot = null;  // now mid-walk
+          // Face toward target
+          const tgt = getHotspot(bestId);
+          if (Math.abs(tgt.u - from.u) > Math.abs(tgt.v - from.v)) {
+            player.facing = tgt.u > from.u ? 'right' : 'left';
+          } else {
+            player.facing = tgt.v > from.v ? 'down' : 'up';
+          }
+        }
       }
     }
   }
 
-  // Walk animation phase — tick when actually moving
-  const moved = (player.u !== oldU || player.v !== oldV);
-  if (moved) {
-    player.walkPhase += dt * 10;  // ~10 rad/s ≈ brisk stride
-  } else {
-    player.walkPhase = 0;         // snap to idle
+  // Auto-walk toward target hotspot
+  if (player.targetHotspot) {
+    const tgt = getHotspot(player.targetHotspot);
+    if (tgt) {
+      const walkDist = Math.hypot(tgt.u - player.walkFromU, tgt.v - player.walkFromV);
+      const progressPerSec = walkDist > 0 ? player.speed / walkDist : 10;
+      player.walkProgress = Math.min(1, player.walkProgress + progressPerSec * dt);
+
+      player.u = player.walkFromU + (tgt.u - player.walkFromU) * player.walkProgress;
+      player.v = player.walkFromV + (tgt.v - player.walkFromV) * player.walkProgress;
+
+      // Walk animation
+      player.walkPhase += dt * 10;
+
+      // Arrived
+      if (player.walkProgress >= 1) {
+        player.u = tgt.u;
+        player.v = tgt.v;
+        player.currentHotspot = player.targetHotspot;
+        player.targetHotspot = null;
+        player.walkProgress = 0;
+        player.walkPhase = 0;
+      }
+    }
+  } else if (player.currentHotspot) {
+    // Idle at hotspot
+    player.walkPhase = 0;
   }
 
-  // Keycard pickup — press E or Space near keycard object
-  if (!hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
-    const kcBox = currentRoom === 1 ? COLLIDERS[2] : COLLIDERS[1];
-    const kcCU = (kcBox.uMin + kcBox.uMax) / 2;
-    const kcFrontV = kcBox.vMax + 0.06;
-    if (Math.abs(player.u - kcCU) < 0.18 && Math.abs(player.v - kcFrontV) < 0.10) {
+  // Keycard pickup — press E or Space at keycard hotspot
+  if (!hasKeycard && player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
+    const keycardHotspots = {
+      1: 'r1_frontDesk',
+      2: 'r2_frontBench',
+      3: 'r3_frontTable',
+    };
+    if (player.currentHotspot === keycardHotspots[currentRoom]) {
       hasKeycard = true;
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
@@ -4109,48 +4244,39 @@ function update(dt) {
 
   // Spool knock interaction — Room 2 only, one-shot, not during detection
   if (currentRoom === 2 && !spoolKnocked && !detected &&
+      player.currentHotspot === 'r2_frontSpool' &&
       (keys['e'] || keys['E'] || keys[' '])) {
-    // Near tool cabinet (where spool sits in front area)
-    const cab = COLLIDERS[3];
-    const spoolU = cab.uMin + (cab.uMax - cab.uMin) * 0.5;
-    const spoolFrontV = cab.vMax + 0.06;
-    if (Math.abs(player.u - spoolU) < 0.12 && Math.abs(player.v - spoolFrontV) < 0.10) {
-      spoolKnocked = true;
-      spoolNoiseTimer = 1.5;
-      // Send guard to investigate — noise overrides alert/notice/suspicious
-      guard.state = 'patrol';
-      guard.noticeTimer = 0;
-      guard.alertTimer = 0;
-      guard.suspiciousTimer = 0;
-      guard.investigating = true;
-      guard.investigateTarget = { u: SPOOL_LAND.u, v: SPOOL_LAND.v };
-      guard.investigateWaitTimer = 0;
-      guard.waitTimer = 0;
-      keys['e'] = false; keys['E'] = false; keys[' '] = false;
-    }
+    spoolKnocked = true;
+    spoolNoiseTimer = 1.5;
+    // Send guard to investigate — noise overrides alert/notice/suspicious
+    guard.state = 'patrol';
+    guard.noticeTimer = 0;
+    guard.alertTimer = 0;
+    guard.suspiciousTimer = 0;
+    guard.investigating = true;
+    guard.investigateTarget = { u: SPOOL_LAND.u, v: SPOOL_LAND.v };
+    guard.investigateWaitTimer = 0;
+    guard.waitTimer = 0;
+    keys['e'] = false; keys['E'] = false; keys[' '] = false;
   }
 
-  // Exit interaction — press E or Space near exit door
-  if (hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
-    if (currentRoom === 1) {
-      // Right wall exit → transition to Room 2
-      if (player.u > 0.82 && player.v > 0.28 && player.v < 0.82) {
+  // Exit interaction — press E or Space at exit hotspot
+  if (hasKeycard && player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
+    const exitHotspots = {
+      1: 'r1_exitDoor',
+      2: 'r2_exitArea',
+      3: 'r3_exitDoor',
+    };
+    if (player.currentHotspot === exitHotspots[currentRoom]) {
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+      if (currentRoom === 1) {
         switchToRoom(2);
-        keys['e'] = false; keys['E'] = false; keys[' '] = false;
         return;
-      }
-    } else if (currentRoom === 2) {
-      // Left wall exit → transition to Room 3
-      if (player.u < 0.14 && player.v > 0.30 && player.v < 0.70) {
+      } else if (currentRoom === 2) {
         switchToRoom(3);
-        keys['e'] = false; keys['E'] = false; keys[' '] = false;
         return;
-      }
-    } else if (currentRoom === 3) {
-      // Left wall exit in south corridor → transition forward (Room 4 placeholder)
-      if (player.u < 0.14 && player.v > 0.50 && player.v < 0.80) {
+      } else if (currentRoom === 3) {
         won = true;
-        keys['e'] = false; keys['E'] = false; keys[' '] = false;
       }
     }
   }
@@ -4252,104 +4378,45 @@ function render() {
     ctx.fillText(htxt, s(lpos.x), hy);
   }
 
-  // Proximity prompts (world-space)
-  if (!detected && !won && !playerHidden) {
-    const kcBox = currentRoom === 1 ? COLLIDERS[2] : COLLIDERS[1];
-    const kcCU = (kcBox.uMin + kcBox.uMax) / 2;
-    const kcFrontV = kcBox.vMax + 0.06;
-    const nearKeycard = !hasKeycard &&
-      Math.abs(player.u - kcCU) < 0.18 &&
-      Math.abs(player.v - kcFrontV) < 0.10;
+  // Hotspot-based interaction prompts
+  if (!detected && !won && !playerHidden && player.currentHotspot) {
+    const keycardHotspots = { 1: 'r1_frontDesk', 2: 'r2_frontBench', 3: 'r3_frontTable' };
+    const exitHotspots = { 1: 'r1_exitDoor', 2: 'r2_exitArea', 3: 'r3_exitDoor' };
+    const hs = player.currentHotspot;
 
-    let nearExit;
-    if (currentRoom === 1) {
-      nearExit = hasKeycard && player.u > 0.82 && player.v > 0.28 && player.v < 0.82;
-    } else if (currentRoom === 3) {
-      nearExit = hasKeycard && player.u < 0.14 && player.v > 0.50 && player.v < 0.80;
-    } else {
-      nearExit = hasKeycard && player.u < 0.14 && player.v > 0.30 && player.v < 0.70;
-    }
-
-    if (nearKeycard) {
-      const promptPos = floorToScreen(kcCU, kcBox.vMax + 0.02);
+    function drawPrompt(text, color, promptU, promptV) {
+      const promptPos = floorToScreen(promptU, promptV);
       const bob = Math.sin(gameTime * 4) * 3;
       const py = s(promptPos.y - 18 + bob);
       ctx.textAlign = 'center';
       ctx.font = `bold ${s(15)}px monospace`;
-      const ptxt = '[E] Pick up keycard';
-      const pw = ctx.measureText(ptxt).width;
+      const tw = ctx.measureText(text).width;
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.beginPath();
-      ctx.roundRect(s(promptPos.x) - pw / 2 - s(8), py - s(12), pw + s(16), s(20), s(6));
+      ctx.roundRect(s(promptPos.x) - tw / 2 - s(8), py - s(12), tw + s(16), s(20), s(6));
       ctx.fill();
-      ctx.fillStyle = '#80e0ff';
-      ctx.fillText(ptxt, s(promptPos.x), py);
+      ctx.fillStyle = color;
+      ctx.fillText(text, s(promptPos.x), py);
     }
 
-    if (nearExit) {
-      const exitPromptU = currentRoom === 1 ? 0.95 : 0.05;
-      const exitPromptV = currentRoom === 1 ? 0.55 : (currentRoom === 3 ? 0.65 : 0.50);
-      const promptPos = floorToScreen(exitPromptU, exitPromptV);
-      const bob = Math.sin(gameTime * 4) * 3;
-      const ey = s(promptPos.y - 20 + bob);
-      ctx.textAlign = 'center';
-      ctx.font = `bold ${s(15)}px monospace`;
-      const etxt = '[E] Use exit';
-      const ew = ctx.measureText(etxt).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.beginPath();
-      ctx.roundRect(s(promptPos.x) - ew / 2 - s(8), ey - s(12), ew + s(16), s(20), s(6));
-      ctx.fill();
-      ctx.fillStyle = '#60ff60';
-      ctx.fillText(etxt, s(promptPos.x), ey);
+    // Keycard prompt
+    if (!hasKeycard && hs === keycardHotspots[currentRoom]) {
+      drawPrompt('[E] Pick up keycard', '#80e0ff', player.u, player.v - 0.06);
     }
 
-    // Spool knock prompt (Room 2, not yet knocked)
-    if (currentRoom === 2 && !spoolKnocked) {
-      const cab = COLLIDERS[3];
-      const spoolU = cab.uMin + (cab.uMax - cab.uMin) * 0.5;
-      const spoolFrontV = cab.vMax + 0.06;
-      const nearSpool = Math.abs(player.u - spoolU) < 0.12 &&
-        Math.abs(player.v - spoolFrontV) < 0.10;
-      if (nearSpool) {
-        const promptPos = floorToScreen(spoolU, cab.vMax + 0.02);
-        const bob = Math.sin(gameTime * 4) * 3;
-        const sy = s(promptPos.y - 18 + bob);
-        ctx.textAlign = 'center';
-        ctx.font = `bold ${s(15)}px monospace`;
-        const stxt = '[E] Knock spool';
-        const sw = ctx.measureText(stxt).width;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath();
-        ctx.roundRect(s(promptPos.x) - sw / 2 - s(8), sy - s(12), sw + s(16), s(20), s(6));
-        ctx.fill();
-        ctx.fillStyle = '#ffc040';
-        ctx.fillText(stxt, s(promptPos.x), sy);
-      }
+    // Exit prompt
+    if (hasKeycard && hs === exitHotspots[currentRoom]) {
+      drawPrompt('[E] Use exit', '#60ff60', player.u, player.v - 0.06);
     }
 
-    // Locker hide prompt (Room 3, not yet hidden)
-    if (currentRoom === 3 && !playerHidden) {
-      const locker = COLLIDERS[3];
-      const lockerCU = (locker.uMin + locker.uMax) / 2;
-      const lockerFrontV = locker.vMax + 0.06;
-      const nearLocker = Math.abs(player.u - lockerCU) < 0.12 &&
-        Math.abs(player.v - lockerFrontV) < 0.10;
-      if (nearLocker) {
-        const promptPos = floorToScreen(lockerCU, locker.vMax + 0.02);
-        const bob = Math.sin(gameTime * 4) * 3;
-        const ly = s(promptPos.y - 18 + bob);
-        ctx.textAlign = 'center';
-        ctx.font = `bold ${s(15)}px monospace`;
-        const ltxt = '[E] Hide in locker';
-        const lw = ctx.measureText(ltxt).width;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath();
-        ctx.roundRect(s(promptPos.x) - lw / 2 - s(8), ly - s(12), lw + s(16), s(20), s(6));
-        ctx.fill();
-        ctx.fillStyle = '#ffc040';
-        ctx.fillText(ltxt, s(promptPos.x), ly);
-      }
+    // Spool knock prompt (Room 2)
+    if (currentRoom === 2 && !spoolKnocked && hs === 'r2_frontSpool') {
+      drawPrompt('[E] Knock spool', '#ffc040', player.u, player.v - 0.06);
+    }
+
+    // Locker hide prompt (Room 3)
+    if (currentRoom === 3 && !playerHidden && hs === 'r3_nearLocker') {
+      drawPrompt('[E] Hide in locker', '#ffc040', player.u, player.v - 0.06);
     }
   }
 
