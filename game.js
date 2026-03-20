@@ -51,6 +51,7 @@ const player = {
   v: 0.85,
   speed: 0.28,
   facing: 'up',
+  walkPhase: 0,
 };
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ const guard = {
   facing: 'down',
   waypointIdx: 0,
   waitTimer: 1.0,
+  walkPhase: 0,
 };
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
@@ -1262,6 +1264,7 @@ function updateGuard(dt) {
 
   if (guard.waitTimer > 0) {
     guard.waitTimer -= dt;
+    guard.walkPhase = 0;  // idle while waiting
     return;
   }
 
@@ -1289,6 +1292,7 @@ function updateGuard(dt) {
   const ratio = Math.min(step / dist, 1);
   guard.u += du * ratio;
   guard.v += dv * ratio;
+  guard.walkPhase += dt * 8;  // slightly slower stride than player
 
   if (Math.abs(du) > Math.abs(dv)) {
     guard.facing = du > 0 ? 'right' : 'left';
@@ -1334,20 +1338,30 @@ function resetGame() {
   player.u = 0.15;
   player.v = 0.85;
   player.facing = 'up';
+  player.walkPhase = 0;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
   guard.waitTimer = 1.0;
   guard.facing = 'down';
+  guard.walkPhase = 0;
 }
 
 // ─── Character draw ──────────────────────────────────────────────────────────
 
-function drawCharacter(pos, facing, type) {
+function drawCharacter(pos, facing, type, walkPhase) {
   const cx = s(pos.x);
-  const cy = s(pos.y);
   const sc = scale;
   const c = sc * 1.0;
+
+  // Walk cycle values
+  const wp = walkPhase || 0;
+  const walking = wp > 0;
+  const legSwing = walking ? Math.sin(wp) * 6 : 0;           // leg offset in px-units
+  const armSwing = walking ? Math.sin(wp + Math.PI) * 4 : 0; // counter to legs
+  const bodyBob  = walking ? Math.abs(Math.sin(wp * 2)) * 1.5 : 0; // subtle up-down
+
+  const cy = s(pos.y) - bodyBob * sc;
 
   const isGuard = type === 'guard';
 
@@ -1380,6 +1394,8 @@ function drawCharacter(pos, facing, type) {
 
   // --- Legs (longer for adult proportion) ---
   const legW = 7, legH = 30, legGap = 1;
+  const lLegOff = legSwing * c;   // left leg vertical offset
+  const rLegOff = -legSwing * c;  // right leg opposite
   // Left leg
   const llGrad = ctx.createLinearGradient(cx - (legGap + legW) * c, 0, cx - legGap * c, 0);
   llGrad.addColorStop(0, legLo);
@@ -1387,7 +1403,7 @@ function drawCharacter(pos, facing, type) {
   llGrad.addColorStop(1, legLo);
   ctx.fillStyle = llGrad;
   ctx.beginPath();
-  ctx.roundRect(cx - (legGap + legW) * c, cy - legH * c, legW * c, legH * c, 2 * c);
+  ctx.roundRect(cx - (legGap + legW) * c, cy - legH * c + lLegOff, legW * c, legH * c, 2 * c);
   ctx.fill();
   // Right leg
   const rlGrad = ctx.createLinearGradient(cx + legGap * c, 0, cx + (legGap + legW) * c, 0);
@@ -1396,16 +1412,16 @@ function drawCharacter(pos, facing, type) {
   rlGrad.addColorStop(1, legLo);
   ctx.fillStyle = rlGrad;
   ctx.beginPath();
-  ctx.roundRect(cx + legGap * c, cy - legH * c, legW * c, legH * c, 2 * c);
+  ctx.roundRect(cx + legGap * c, cy - legH * c + rLegOff, legW * c, legH * c, 2 * c);
   ctx.fill();
 
   // Shoes
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.ellipse(cx - (legGap + legW / 2) * c, cy - 1 * c, 6 * c, 3 * c, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(cx - (legGap + legW / 2) * c, cy - 1 * c + lLegOff, 6 * c, 3 * c, -0.15, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(cx + (legGap + legW / 2) * c, cy - 1 * c, 6 * c, 3 * c, 0.15, 0, Math.PI * 2);
+  ctx.ellipse(cx + (legGap + legW / 2) * c, cy - 1 * c + rLegOff, 6 * c, 3 * c, 0.15, 0, Math.PI * 2);
   ctx.fill();
 
   // --- Torso (slightly taller, narrower) ---
@@ -1442,6 +1458,8 @@ function drawCharacter(pos, facing, type) {
   // --- Arms (longer, slimmer) ---
   const armW = 7, armH = 28;
   const armTop = torsoTop - 1;
+  const lArmOff = armSwing * c;   // left arm vertical offset (counter to legs)
+  const rArmOff = -armSwing * c;  // right arm opposite
   // Left arm
   const laGrad = ctx.createLinearGradient(cx - (torsoW / 2 + armW) * c, 0, cx - torsoW / 2 * c, 0);
   laGrad.addColorStop(0, armLo);
@@ -1449,7 +1467,7 @@ function drawCharacter(pos, facing, type) {
   laGrad.addColorStop(1, armLo);
   ctx.fillStyle = laGrad;
   ctx.beginPath();
-  ctx.roundRect(cx - (torsoW / 2 + armW) * c, cy - armTop * c, armW * c, armH * c, 3 * c);
+  ctx.roundRect(cx - (torsoW / 2 + armW) * c, cy - armTop * c + lArmOff, armW * c, armH * c, 3 * c);
   ctx.fill();
   // Right arm
   const raGrad = ctx.createLinearGradient(cx + torsoW / 2 * c, 0, cx + (torsoW / 2 + armW) * c, 0);
@@ -1458,17 +1476,17 @@ function drawCharacter(pos, facing, type) {
   raGrad.addColorStop(1, armLo);
   ctx.fillStyle = raGrad;
   ctx.beginPath();
-  ctx.roundRect(cx + torsoW / 2 * c, cy - armTop * c, armW * c, armH * c, 3 * c);
+  ctx.roundRect(cx + torsoW / 2 * c, cy - armTop * c + rArmOff, armW * c, armH * c, 3 * c);
   ctx.fill();
 
   // Hands
   const handY = cy - (armTop - armH) * c;
   ctx.fillStyle = skinLo;
   ctx.beginPath();
-  ctx.arc(cx - (torsoW / 2 + armW / 2) * c, handY, 3.5 * c, 0, Math.PI * 2);
+  ctx.arc(cx - (torsoW / 2 + armW / 2) * c, handY + lArmOff, 3.5 * c, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + (torsoW / 2 + armW / 2) * c, handY, 3.5 * c, 0, Math.PI * 2);
+  ctx.arc(cx + (torsoW / 2 + armW / 2) * c, handY + rArmOff, 3.5 * c, 0, Math.PI * 2);
   ctx.fill();
 
   // --- Neck ---
@@ -1641,6 +1659,14 @@ function update(dt) {
     }
   }
 
+  // Walk animation phase — tick when actually moving
+  const moved = (player.u !== oldU || player.v !== oldV);
+  if (moved) {
+    player.walkPhase += dt * 10;  // ~10 rad/s ≈ brisk stride
+  } else {
+    player.walkPhase = 0;         // snap to idle
+  }
+
   // Keycard pickup — near desk front edge, press E or Space
   if (!hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
     const desk = COLLIDERS[2];
@@ -1696,7 +1722,7 @@ function render() {
     v: player.v,
     draw: () => {
       const ps = floorToScreen(player.u, player.v);
-      drawCharacter(ps, player.facing, 'player');
+      drawCharacter(ps, player.facing, 'player', player.walkPhase);
     }
   });
 
@@ -1705,7 +1731,7 @@ function render() {
     v: guard.v,
     draw: () => {
       const gs = floorToScreen(guard.u, guard.v);
-      drawCharacter(gs, guard.facing, 'guard');
+      drawCharacter(gs, guard.facing, 'guard', guard.walkPhase);
     }
   });
 
