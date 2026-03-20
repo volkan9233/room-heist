@@ -1141,6 +1141,31 @@ function drawRoom1FloorMarkings() {
   ctx.lineTo(s(sym.x - 1), s(sym.y + 4));
   ctx.stroke();
 
+  // Cooling vent marks on floor in front of rack area (subtle parallel lines)
+  ctx.strokeStyle = 'rgba(0,0,30,0.04)';
+  ctx.lineWidth = s(0.8);
+  for (let i = 0; i < 5; i++) {
+    const vy = 0.40 + i * 0.03;
+    const vl = floorToScreen(0.08, vy);
+    const vr = floorToScreen(0.48, vy);
+    ctx.beginPath();
+    ctx.moveTo(s(vl.x), s(vl.y));
+    ctx.lineTo(s(vr.x), s(vr.y));
+    ctx.stroke();
+  }
+
+  // Corner dust accumulation (front-left and front-right)
+  for (const cu of [0.06, 0.94]) {
+    const cp = floorToScreen(cu, 0.92);
+    const dg = ctx.createRadialGradient(s(cp.x), s(cp.y), 0, s(cp.x), s(cp.y), s(22));
+    dg.addColorStop(0, 'rgba(0,0,0,0.04)');
+    dg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = dg;
+    ctx.beginPath();
+    ctx.arc(s(cp.x), s(cp.y), s(22), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.restore();
 }
 
@@ -1584,6 +1609,25 @@ function drawRoom2FloorStains() {
   ctx.moveTo(s(sc2.x - 5), s(sc2.y - 1));
   ctx.lineTo(s(sc2.x + 8), s(sc2.y));
   ctx.stroke();
+
+  // Equipment dolly scuff arcs (curved wear from moving heavy items)
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = s(2.5);
+  const arc1s = floorToScreen(0.30, 0.40);
+  const arc1m = floorToScreen(0.42, 0.48);
+  const arc1e = floorToScreen(0.55, 0.44);
+  ctx.beginPath();
+  ctx.moveTo(s(arc1s.x), s(arc1s.y));
+  ctx.quadraticCurveTo(s(arc1m.x), s(arc1m.y), s(arc1e.x), s(arc1e.y));
+  ctx.stroke();
+  ctx.lineWidth = s(1.8);
+  const arc2s = floorToScreen(0.60, 0.70);
+  const arc2m = floorToScreen(0.68, 0.64);
+  const arc2e = floorToScreen(0.72, 0.56);
+  ctx.beginPath();
+  ctx.moveTo(s(arc2s.x), s(arc2s.y));
+  ctx.quadraticCurveTo(s(arc2m.x), s(arc2m.y), s(arc2e.x), s(arc2e.y));
+  ctx.stroke();
 }
 
 // ─── Room 2 wall aging (warm industrial wear on walls) ───────────────────────
@@ -1625,6 +1669,21 @@ function drawRoom2WallAging() {
   ctx.lineTo(s(floorBL.x), s(floorBL.y - 40));
   ctx.closePath();
   ctx.fill();
+
+  // Seepage streaks descending from wall panel seams (water damage)
+  ctx.strokeStyle = 'rgba(90,75,50,0.05)';
+  ctx.lineWidth = s(1.5);
+  for (const frac of [0.55, 0.75]) {
+    const sx = leftWallTop.x + (ceilTL.x - leftWallTop.x) * frac;
+    const sy = leftWallTop.y + (ceilTL.y - leftWallTop.y) * frac;
+    const ex = floorBL.x + (floorTL.x - floorBL.x) * frac;
+    const ey = floorBL.y + (floorTL.y - floorBL.y) * frac;
+    const midY = sy + (ey - sy) * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(s(sx), s(sy + 10));
+    ctx.quadraticCurveTo(s(sx - 2), s(midY), s(ex + 1), s(ey - 5));
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -1709,6 +1768,48 @@ function drawRoom3WallFraming() {
   glowGrad.addColorStop(1, 'rgba(60,100,180,0)');
   ctx.fillStyle = glowGrad;
   ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(30));
+  ctx.restore();
+
+  // Thermal bloom around network panel area on back wall (equipment heat signature)
+  ctx.save();
+  roomPath([ceilTL, ceilTR, floorTR, floorTL]);
+  ctx.clip();
+  const panelFrac = 0.52; // network panel position on back wall
+  const panelX = ceilTL.x + (ceilTR.x - ceilTL.x) * panelFrac;
+  const panelY = ceilTL.y + (floorTL.y - ceilTL.y) * 0.40;
+  const thermGrad = ctx.createRadialGradient(
+    s(panelX), s(panelY), 0, s(panelX), s(panelY), s(45)
+  );
+  thermGrad.addColorStop(0, 'rgba(80,130,200,0.05)');
+  thermGrad.addColorStop(0.5, 'rgba(80,130,200,0.02)');
+  thermGrad.addColorStop(1, 'rgba(80,130,200,0)');
+  ctx.fillStyle = thermGrad;
+  ctx.beginPath();
+  ctx.arc(s(panelX), s(panelY), s(45), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Asset label silhouettes on back wall (datacenter infrastructure tags)
+  ctx.save();
+  roomPath([ceilTL, ceilTR, floorTR, floorTL]);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(120,140,170,0.07)';
+  ctx.lineWidth = s(0.5);
+  for (const [fU, fV, w, h] of [[0.22, 0.20, 10, 5], [0.78, 0.30, 8, 4], [0.38, 0.65, 10, 5]]) {
+    const lx = ceilTL.x + (ceilTR.x - ceilTL.x) * fU;
+    const ly = ceilTL.y + (floorTL.y - ceilTL.y) * fV;
+    ctx.strokeRect(s(lx - w / 2), s(ly - h / 2), s(w), s(h));
+    // Tiny barcode lines inside
+    ctx.strokeStyle = 'rgba(120,140,170,0.05)';
+    for (let i = 0; i < 4; i++) {
+      const bx = lx - w / 2 + 2 + i * 2;
+      ctx.beginPath();
+      ctx.moveTo(s(bx), s(ly - h / 2 + 1));
+      ctx.lineTo(s(bx), s(ly + h / 2 - 1));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(120,140,170,0.07)';
+  }
   ctx.restore();
 }
 
