@@ -69,6 +69,13 @@ const ROOM2_PATROL = [
   { u: 0.15, v: 0.32 },
 ];
 
+const ROOM3_PATROL = [
+  { u: 0.55, v: 0.20 },
+  { u: 0.55, v: 0.70 },
+  { u: 0.20, v: 0.70 },
+  { u: 0.20, v: 0.20 },
+];
+
 let PATROL = ROOM1_PATROL;
 
 const guard = {
@@ -100,6 +107,13 @@ const ROOM2_COLLIDERS = [
   { id: 'crates2',   uMin: 0.56, vMin: 0.55, uMax: 0.73, vMax: 0.72 },
 ];
 
+const ROOM3_COLLIDERS = [
+  { id: 'locker',    uMin: 0.74, vMin: 0.38, uMax: 0.88, vMax: 0.58 },
+  { id: 'utilTable', uMin: 0.08, vMin: 0.08, uMax: 0.35, vMax: 0.22 },
+  { id: 'rackR3',   uMin: 0.45, vMin: 0.08, uMax: 0.62, vMax: 0.30 },
+  { id: 'cratesR3', uMin: 0.30, vMin: 0.50, uMax: 0.48, vMax: 0.68 },
+];
+
 let COLLIDERS = ROOM1_COLLIDERS;
 
 // ─── Game state ──────────────────────────────────────────────────────────────
@@ -111,6 +125,7 @@ let currentRoom = 1;
 let roomTransitionTimer = 0;
 let spoolKnocked = false;
 let spoolNoiseTimer = 0;
+let playerHidden = false;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -174,6 +189,7 @@ function rayBlocked(fromU, fromV, toU, toV) {
 }
 
 function guardCanSeePlayer() {
+  if (playerHidden) return false;
   const du = player.u - guard.u;
   const dv = player.v - guard.v;
   const dist = Math.hypot(du, dv);
@@ -300,7 +316,8 @@ function drawRoom() {
 
   // ── Wall-mounted decorative props ──
   if (currentRoom === 1) drawRoom1WallDecor();
-  else drawRoom2WallDecor();
+  else if (currentRoom === 2) drawRoom2WallDecor();
+  else if (currentRoom === 3) drawRoom3WallDecor();
 
   // ── Exit door ──
   if (currentRoom === 1) drawExitDoor();
@@ -2575,6 +2592,246 @@ function drawBarrels(box) {
   }
 }
 
+// ─── Room 3: Locker ─────────────────────────────────────────────────────────
+
+function drawLocker(box) {
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+
+  const lockerW = tr.x - tl.x;
+  const lockerH = (bl.y - tl.y) * 2.2;
+  const dx = tl.x;
+  const by = bl.y;
+
+  // Shadow behind locker
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(s(dx + 4), s(by - lockerH + 4), s(lockerW), s(lockerH));
+
+  // Main body
+  const bodyGrad = ctx.createLinearGradient(s(dx), 0, s(dx + lockerW), 0);
+  bodyGrad.addColorStop(0, '#4a5058');
+  bodyGrad.addColorStop(0.3, '#5a6068');
+  bodyGrad.addColorStop(0.7, '#555b63');
+  bodyGrad.addColorStop(1, '#484e56');
+  ctx.fillStyle = bodyGrad;
+  ctx.fillRect(s(dx), s(by - lockerH), s(lockerW), s(lockerH));
+
+  // Door seam (vertical center line)
+  ctx.strokeStyle = '#383c44';
+  ctx.lineWidth = s(1.5);
+  const midX = dx + lockerW * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(s(midX), s(by - lockerH + 4));
+  ctx.lineTo(s(midX), s(by - 4));
+  ctx.stroke();
+
+  if (playerHidden && currentRoom === 3) {
+    // Closed door — show vents and handle, slight glow hint
+    // Top vent slits
+    ctx.strokeStyle = '#2a2e36';
+    ctx.lineWidth = s(1);
+    for (let i = 0; i < 4; i++) {
+      const vy = by - lockerH + 14 + i * 4;
+      ctx.beginPath();
+      ctx.moveTo(s(dx + 6), s(vy));
+      ctx.lineTo(s(dx + lockerW * 0.45), s(vy));
+      ctx.stroke();
+    }
+    // Handle
+    ctx.fillStyle = '#8a8e96';
+    ctx.fillRect(s(dx + lockerW * 0.40), s(by - lockerH * 0.45), s(4), s(12));
+    // Subtle player silhouette hint through vents
+    ctx.fillStyle = 'rgba(90,136,200,0.12)';
+    for (let i = 0; i < 4; i++) {
+      const vy = by - lockerH + 13 + i * 4;
+      ctx.fillRect(s(dx + 7), s(vy), s(lockerW * 0.38), s(2));
+    }
+  } else {
+    // Open/empty — show vents and handle normally
+    // Top vent slits
+    ctx.strokeStyle = '#2a2e36';
+    ctx.lineWidth = s(1);
+    for (let i = 0; i < 4; i++) {
+      const vy = by - lockerH + 14 + i * 4;
+      ctx.beginPath();
+      ctx.moveTo(s(dx + 6), s(vy));
+      ctx.lineTo(s(dx + lockerW * 0.45), s(vy));
+      ctx.stroke();
+    }
+    // Handle
+    ctx.fillStyle = '#8a8e96';
+    ctx.fillRect(s(dx + lockerW * 0.40), s(by - lockerH * 0.45), s(4), s(12));
+  }
+
+  // Top edge highlight
+  ctx.strokeStyle = '#6a6e76';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by - lockerH));
+  ctx.lineTo(s(dx + lockerW), s(by - lockerH));
+  ctx.stroke();
+
+  // Bottom edge shadow
+  ctx.strokeStyle = '#2a2e36';
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by));
+  ctx.lineTo(s(dx + lockerW), s(by));
+  ctx.stroke();
+}
+
+// ─── Room 3: Utility table (small desk with keycard) ────────────────────────
+
+function drawUtilTable(box) {
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+
+  const tableW = tr.x - tl.x;
+  const tableD = bl.y - tl.y;
+  const dx = tl.x;
+  const topY = tl.y;
+
+  // Legs
+  const legW = 3, legH = tableD * 0.8;
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(dx + 3), s(topY + tableD * 0.2), s(legW), s(legH));
+  ctx.fillRect(s(dx + tableW - 6), s(topY + tableD * 0.2), s(legW), s(legH));
+
+  // Tabletop
+  const topGrad = ctx.createLinearGradient(0, s(topY - 6), 0, s(topY + 2));
+  topGrad.addColorStop(0, '#5a5d64');
+  topGrad.addColorStop(1, '#4a4d54');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(s(dx - 2), s(topY - 6), s(tableW + 4), s(8));
+
+  // Front edge
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(dx - 2), s(topY + 2), s(tableW + 4), s(3));
+
+  // Top edge highlight
+  ctx.strokeStyle = '#6a6d74';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx - 2), s(topY - 6));
+  ctx.lineTo(s(dx + tableW + 2), s(topY - 6));
+  ctx.stroke();
+
+  // Keycard on table (drawn last, on top)
+  if (!hasKeycard) {
+    drawKeycard(dx + tableW * 0.5, topY - 8);
+  }
+
+  // Small clutter — a pen and a screw
+  ctx.strokeStyle = '#1a2a5a';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(dx + tableW * 0.25), s(topY - 4));
+  ctx.lineTo(s(dx + tableW * 0.40), s(topY - 7));
+  ctx.stroke();
+  ctx.fillStyle = '#6a6d75';
+  ctx.beginPath();
+  ctx.arc(s(dx + tableW * 0.70), s(topY - 5), s(1.2), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ─── Room 3: Wall decor (server closet feel) ────────────────────────────────
+
+function drawRoom3WallDecor() {
+  const { ceilTL, ceilTR, floorTL, floorBL, leftWallTop } = ROOM;
+
+  // Back wall helper
+  function bw(u, v) {
+    return {
+      x: ceilTL.x + u * (ceilTR.x - ceilTL.x),
+      y: ceilTL.y + v * (floorTL.y - ceilTL.y)
+    };
+  }
+
+  // Left wall helper
+  function lw(u, v) {
+    return {
+      x: (1 - u) * (1 - v) * ceilTL.x + u * (1 - v) * leftWallTop.x
+          + (1 - u) * v * floorTL.x + u * v * floorBL.x,
+      y: (1 - u) * (1 - v) * ceilTL.y + u * (1 - v) * leftWallTop.y
+          + (1 - u) * v * floorTL.y + u * v * floorBL.y
+    };
+  }
+
+  // Cable tray along back wall top
+  const ct1 = bw(0.10, 0.08);
+  const ct2 = bw(0.90, 0.08);
+  ctx.strokeStyle = '#3a3d44';
+  ctx.lineWidth = s(3);
+  ctx.beginPath();
+  ctx.moveTo(s(ct1.x), s(ct1.y));
+  ctx.lineTo(s(ct2.x), s(ct2.y));
+  ctx.stroke();
+  // Cable tray brackets
+  ctx.strokeStyle = '#4a4d55';
+  ctx.lineWidth = s(1.5);
+  for (let i = 0; i < 4; i++) {
+    const bp = bw(0.15 + i * 0.22, 0.08);
+    ctx.beginPath();
+    ctx.moveTo(s(bp.x), s(bp.y));
+    ctx.lineTo(s(bp.x), s(bp.y + 8));
+    ctx.stroke();
+  }
+  // Cables draped from tray
+  ctx.strokeStyle = '#2a4a6a';
+  ctx.lineWidth = s(1);
+  const cab1 = bw(0.25, 0.08);
+  const cab1b = bw(0.28, 0.18);
+  ctx.beginPath();
+  ctx.moveTo(s(cab1.x), s(cab1.y));
+  ctx.quadraticCurveTo(s(cab1.x + 10), s(cab1.y + 20), s(cab1b.x), s(cab1b.y));
+  ctx.stroke();
+  ctx.strokeStyle = '#6a2a2a';
+  ctx.lineWidth = s(1);
+  const cab2 = bw(0.60, 0.08);
+  const cab2b = bw(0.58, 0.20);
+  ctx.beginPath();
+  ctx.moveTo(s(cab2.x), s(cab2.y));
+  ctx.quadraticCurveTo(s(cab2.x - 5), s(cab2.y + 18), s(cab2b.x), s(cab2b.y));
+  ctx.stroke();
+
+  // Warning sign on left wall
+  const ws = lw(0.45, 0.30);
+  const wsW = 18, wsH = 14;
+  ctx.fillStyle = '#c8a020';
+  ctx.fillRect(s(ws.x - wsW / 2), s(ws.y - wsH / 2), s(wsW), s(wsH));
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = s(1);
+  ctx.strokeRect(s(ws.x - wsW / 2), s(ws.y - wsH / 2), s(wsW), s(wsH));
+  // Lightning bolt symbol
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(ws.x + 1), s(ws.y - 4));
+  ctx.lineTo(s(ws.x - 2), s(ws.y));
+  ctx.lineTo(s(ws.x + 1), s(ws.y));
+  ctx.lineTo(s(ws.x - 1), s(ws.y + 4));
+  ctx.stroke();
+
+  // Small network panel on back wall (right side, near server rack)
+  const np = bw(0.75, 0.40);
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(np.x - 12), s(np.y - 8), s(24), s(16));
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(0.8);
+  ctx.strokeRect(s(np.x - 12), s(np.y - 8), s(24), s(16));
+  // Port indicators (tiny colored dots)
+  const portColors = ['#20a020', '#20a020', '#a04020', '#20a020'];
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = portColors[i];
+    ctx.beginPath();
+    ctx.arc(s(np.x - 7 + i * 5), s(np.y - 2), s(1.5), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 // ─── Fallen spool + noise ring (Room 2 distraction) ─────────────────────────
 
 const SPOOL_LAND = { u: 0.70, v: 0.40 };
@@ -2760,13 +3017,10 @@ function drawGuardVision() {
 function resetCurrentRoom() {
   detected = false;
   hasKeycard = false;
-  if (currentRoom === 1) {
-    player.u = 0.15;
-    player.v = 0.85;
-  } else {
-    player.u = 0.85;
-    player.v = 0.85;
-  }
+  playerHidden = false;
+  const cfg = ROOM_CONFIGS[currentRoom] || ROOM_CONFIGS[1];
+  player.u = cfg.startU;
+  player.v = 0.85;
   player.facing = 'up';
   player.walkPhase = 0;
   guard.u = PATROL[0].u;
@@ -2782,13 +3036,21 @@ function resetCurrentRoom() {
   spoolNoiseTimer = 0;
 }
 
+const ROOM_CONFIGS = {
+  1: { colliders: ROOM1_COLLIDERS, patrol: ROOM1_PATROL, startU: 0.15 },
+  2: { colliders: ROOM2_COLLIDERS, patrol: ROOM2_PATROL, startU: 0.85 },
+  3: { colliders: ROOM3_COLLIDERS, patrol: ROOM3_PATROL, startU: 0.85 },
+};
+
 function switchToRoom(n) {
   currentRoom = n;
   detected = false;
   hasKeycard = false;
-  COLLIDERS = n === 2 ? ROOM2_COLLIDERS : ROOM1_COLLIDERS;
-  PATROL = n === 2 ? ROOM2_PATROL : ROOM1_PATROL;
-  player.u = n === 2 ? 0.85 : 0.15;
+  playerHidden = false;
+  const cfg = ROOM_CONFIGS[n] || ROOM_CONFIGS[1];
+  COLLIDERS = cfg.colliders;
+  PATROL = cfg.patrol;
+  player.u = cfg.startU;
   player.v = 0.85;
   player.facing = 'up';
   player.walkPhase = 0;
@@ -2814,6 +3076,7 @@ function resetGame() {
   PATROL = ROOM1_PATROL;
   detected = false;
   hasKeycard = false;
+  playerHidden = false;
   player.u = 0.15;
   player.v = 0.85;
   player.facing = 'up';
@@ -3111,6 +3374,37 @@ function update(dt) {
 
   if (detected || won) return;
 
+  // Locker hide toggle — Room 3 only, not during detection
+  if (currentRoom === 3 && !detected && (keys['e'] || keys['E'] || keys[' '])) {
+    if (playerHidden) {
+      // Exit locker
+      playerHidden = false;
+      // Place player just in front of locker
+      const locker = COLLIDERS[0];
+      player.u = (locker.uMin + locker.uMax) / 2;
+      player.v = locker.vMax + 0.06;
+      player.facing = 'down';
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+    } else {
+      // Check proximity to locker
+      const locker = COLLIDERS[0];
+      const lockerCU = (locker.uMin + locker.uMax) / 2;
+      const lockerFrontV = locker.vMax + 0.06;
+      if (Math.abs(player.u - lockerCU) < 0.12 && Math.abs(player.v - lockerFrontV) < 0.10) {
+        playerHidden = true;
+        player.walkPhase = 0;
+        keys['e'] = false; keys['E'] = false; keys[' '] = false;
+      }
+    }
+  }
+
+  // While hidden, skip movement and other interactions
+  if (playerHidden) {
+    updateGuard(dt);
+    if (guardCanSeePlayer()) detected = true;
+    return;
+  }
+
   // Perspective-normalized movement: compute local screen-space scale
   // so forward/back feels as fast as left/right
   const eps = 0.001;
@@ -3198,8 +3492,15 @@ function update(dt) {
         keys['e'] = false; keys['E'] = false; keys[' '] = false;
         return;
       }
-    } else {
-      // Left wall exit → mission complete
+    } else if (currentRoom === 2) {
+      // Left wall exit → transition to Room 3
+      if (player.u < 0.14 && player.v > 0.30 && player.v < 0.70) {
+        switchToRoom(3);
+        keys['e'] = false; keys['E'] = false; keys[' '] = false;
+        return;
+      }
+    } else if (currentRoom === 3) {
+      // Left wall exit → transition forward (Room 4 placeholder)
       if (player.u < 0.14 && player.v > 0.30 && player.v < 0.70) {
         won = true;
         keys['e'] = false; keys['E'] = false; keys[' '] = false;
@@ -3241,7 +3542,7 @@ function render() {
     // Decorative floor props (no colliders)
     sortable.push({ v: 0.36, draw: drawTrashBin });
     sortable.push({ v: 0.48, draw: drawFireExtinguisher });
-  } else {
+  } else if (currentRoom === 2) {
     sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawToolCabinet(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawWorkbench(COLLIDERS[1]) });
     sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawShelving(COLLIDERS[2]) });
@@ -3253,16 +3554,23 @@ function render() {
     if (spoolKnocked) {
       sortable.push({ v: SPOOL_LAND.v, draw: drawFallenSpool });
     }
+  } else if (currentRoom === 3) {
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawLocker(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawUtilTable(COLLIDERS[1]) });
+    sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawServerRack(COLLIDERS[2]) });
+    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawCrates(COLLIDERS[3]) });
   }
 
-  // Player
-  sortable.push({
-    v: player.v,
-    draw: () => {
-      const ps = floorToScreen(player.u, player.v);
-      drawCharacter(ps, player.facing, 'player', player.walkPhase);
-    }
-  });
+  // Player (hidden when inside locker)
+  if (!playerHidden) {
+    sortable.push({
+      v: player.v,
+      draw: () => {
+        const ps = floorToScreen(player.u, player.v);
+        drawCharacter(ps, player.facing, 'player', player.walkPhase);
+      }
+    });
+  }
 
   // Guard
   sortable.push({
@@ -3279,8 +3587,26 @@ function render() {
   // Noise ring effect (over everything, floor-level)
   drawNoiseRing();
 
+  // Hidden-in-locker indicator
+  if (playerHidden && currentRoom === 3 && !detected && !won) {
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${s(14)}px monospace`;
+    const htxt = '[E] Exit locker';
+    const hw = ctx.measureText(htxt).width;
+    const locker = COLLIDERS[0];
+    const lpos = floorToScreen((locker.uMin + locker.uMax) / 2, locker.vMax + 0.02);
+    const bob = Math.sin(gameTime * 3) * 2;
+    const hy = s(lpos.y - 15 + bob);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.roundRect(s(lpos.x) - hw / 2 - s(8), hy - s(12), hw + s(16), s(20), s(6));
+    ctx.fill();
+    ctx.fillStyle = '#80e0ff';
+    ctx.fillText(htxt, s(lpos.x), hy);
+  }
+
   // Proximity prompts (world-space)
-  if (!detected && !won) {
+  if (!detected && !won && !playerHidden) {
     const kcBox = currentRoom === 1 ? COLLIDERS[2] : COLLIDERS[1];
     const kcCU = (kcBox.uMin + kcBox.uMax) / 2;
     const kcFrontV = kcBox.vMax + 0.06;
@@ -3352,6 +3678,30 @@ function render() {
         ctx.fillText(stxt, s(promptPos.x), sy);
       }
     }
+
+    // Locker hide prompt (Room 3, not yet hidden)
+    if (currentRoom === 3 && !playerHidden) {
+      const locker = COLLIDERS[0];
+      const lockerCU = (locker.uMin + locker.uMax) / 2;
+      const lockerFrontV = locker.vMax + 0.06;
+      const nearLocker = Math.abs(player.u - lockerCU) < 0.12 &&
+        Math.abs(player.v - lockerFrontV) < 0.10;
+      if (nearLocker) {
+        const promptPos = floorToScreen(lockerCU, locker.vMax + 0.02);
+        const bob = Math.sin(gameTime * 4) * 3;
+        const ly = s(promptPos.y - 18 + bob);
+        ctx.textAlign = 'center';
+        ctx.font = `bold ${s(15)}px monospace`;
+        const ltxt = '[E] Hide in locker';
+        const lw = ctx.measureText(ltxt).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath();
+        ctx.roundRect(s(promptPos.x) - lw / 2 - s(8), ly - s(12), lw + s(16), s(20), s(6));
+        ctx.fill();
+        ctx.fillStyle = '#ffc040';
+        ctx.fillText(ltxt, s(promptPos.x), ly);
+      }
+    }
   }
 
   // Objective status (bottom-left)
@@ -3399,18 +3749,24 @@ function render() {
 
   // Room transition label
   if (roomTransitionTimer > 0 && !detected && !won) {
+    const roomNames = { 2: 'ROOM 2', 3: 'ROOM 3' };
+    const roomSubs = { 2: 'Maintenance Workshop', 3: 'Server Closet' };
+    const rName = roomNames[currentRoom] || ('ROOM ' + currentRoom);
+    const rSub = roomSubs[currentRoom] || '';
     const alpha = Math.min(roomTransitionTimer / 0.5, 1) * 0.9;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.textAlign = 'center';
     ctx.font = `bold ${s(28)}px monospace`;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillText('ROOM 2', s(641), s(61));
+    ctx.fillText(rName, s(641), s(61));
     ctx.fillStyle = '#c0c0c0';
-    ctx.fillText('ROOM 2', s(640), s(60));
-    ctx.font = `${s(13)}px monospace`;
-    ctx.fillStyle = '#808080';
-    ctx.fillText('Maintenance Workshop', s(640), s(82));
+    ctx.fillText(rName, s(640), s(60));
+    if (rSub) {
+      ctx.font = `${s(13)}px monospace`;
+      ctx.fillStyle = '#808080';
+      ctx.fillText(rSub, s(640), s(82));
+    }
     ctx.restore();
   }
 
