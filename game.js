@@ -421,15 +421,56 @@ function guardCanSeePlayer() { return guardAwareOfPlayer(); }
 
 // ─── Facility room: walls, floor, structure ──────────────────────────────────
 
+// Per-room colour palettes — gives each room a distinct visual identity
+const ROOM_PALETTES = {
+  1: { // Server Room: cool, clean corporate — slight blue undertone
+    backWall:  ['#4a4f5a', '#424752', '#3a3f4a'],
+    leftWall:  ['#323844', '#383e4a', '#3e444e'],
+    rightWall: ['#3e444e', '#383e4a', '#343a46'],
+    floor:     ['#484d58', '#424752', '#3c414a'],
+    tileGroove: 'rgba(0,0,20,0.10)',
+    tileHighlight: 'rgba(180,190,220,0.03)',
+    seamDark:  'rgba(0,0,20,0.10)',
+    seamLight: 'rgba(200,210,240,0.03)',
+    baseboard: '#2a2e38',
+    baseHighlight: '#5e6270',
+  },
+  2: { // Maintenance Workshop: warm brownish grays — industrial, worn
+    backWall:  ['#524c44', '#4a443e', '#423c38'],
+    leftWall:  ['#3a3632', '#423e38', '#4a4640'],
+    rightWall: ['#4a4640', '#423e38', '#3e3a36'],
+    floor:     ['#4e4840', '#48423c', '#423e38'],
+    tileGroove: 'rgba(40,20,0,0.10)',
+    tileHighlight: 'rgba(220,200,170,0.03)',
+    seamDark:  'rgba(40,20,0,0.09)',
+    seamLight: 'rgba(220,200,170,0.03)',
+    baseboard: '#302c28',
+    baseHighlight: '#625c54',
+  },
+  3: { // Server Closet: cool blue-shifted grays — tight, technical
+    backWall:  ['#464e5a', '#3e4652', '#38404c'],
+    leftWall:  ['#343c4a', '#3a4250', '#404854'],
+    rightWall: ['#404854', '#3a4250', '#363e4c'],
+    floor:     ['#444c58', '#3e4650', '#384048'],
+    tileGroove: 'rgba(0,10,40,0.12)',
+    tileHighlight: 'rgba(160,180,220,0.03)',
+    seamDark:  'rgba(0,10,40,0.11)',
+    seamLight: 'rgba(160,180,220,0.03)',
+    baseboard: '#262e38',
+    baseHighlight: '#565e6c',
+  },
+};
+
 function drawRoom() {
   const { floorTL, floorTR, floorBL, floorBR,
           ceilTL, ceilTR, leftWallTop, rightWallTop } = ROOM;
+  const pal = ROOM_PALETTES[currentRoom] || ROOM_PALETTES[1];
 
   // ── Back wall ──
   const backGrad = ctx.createLinearGradient(s(260), s(60), s(260), s(270));
-  backGrad.addColorStop(0, '#464950');
-  backGrad.addColorStop(0.6, '#3c3f46');
-  backGrad.addColorStop(1, '#35383e');
+  backGrad.addColorStop(0, pal.backWall[0]);
+  backGrad.addColorStop(0.6, pal.backWall[1]);
+  backGrad.addColorStop(1, pal.backWall[2]);
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.fillStyle = backGrad;
   ctx.fill();
@@ -439,7 +480,7 @@ function drawRoom() {
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.clip();
   // Horizontal seams
-  ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+  ctx.strokeStyle = pal.seamDark;
   ctx.lineWidth = s(1);
   for (let i = 0; i <= 8; i++) {
     const t = i / 8;
@@ -452,12 +493,12 @@ function drawRoom() {
     ctx.lineTo(s(lx2), s(ly2));
     ctx.stroke();
     // Highlight line just below each seam
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.strokeStyle = pal.seamLight;
     ctx.beginPath();
     ctx.moveTo(s(lx1), s(ly1 + 1.5));
     ctx.lineTo(s(lx2), s(ly2 + 1.5));
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+    ctx.strokeStyle = pal.seamDark;
   }
   // Vertical seams
   for (let i = 1; i <= 5; i++) {
@@ -481,9 +522,9 @@ function drawRoom() {
 
   // ── Left side wall ──
   const leftGrad = ctx.createLinearGradient(s(80), s(130), s(260), s(270));
-  leftGrad.addColorStop(0, '#2e3138');
-  leftGrad.addColorStop(0.5, '#34373e');
-  leftGrad.addColorStop(1, '#383b42');
+  leftGrad.addColorStop(0, pal.leftWall[0]);
+  leftGrad.addColorStop(0.5, pal.leftWall[1]);
+  leftGrad.addColorStop(1, pal.leftWall[2]);
   roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
   ctx.fillStyle = leftGrad;
   ctx.fill();
@@ -508,9 +549,9 @@ function drawRoom() {
 
   // ── Right side wall ──
   const rightGrad = ctx.createLinearGradient(s(1020), s(270), s(1200), s(130));
-  rightGrad.addColorStop(0, '#383b42');
-  rightGrad.addColorStop(0.5, '#34373e');
-  rightGrad.addColorStop(1, '#30333a');
+  rightGrad.addColorStop(0, pal.rightWall[0]);
+  rightGrad.addColorStop(0.5, pal.rightWall[1]);
+  rightGrad.addColorStop(1, pal.rightWall[2]);
   roomPath([ceilTR, rightWallTop, floorBR, floorTR]);
   ctx.fillStyle = rightGrad;
   ctx.fill();
@@ -544,9 +585,9 @@ function drawRoom() {
 
   // ── Floor ──
   const floorGrad = ctx.createLinearGradient(s(640), s(270), s(640), s(640));
-  floorGrad.addColorStop(0, '#44474e');
-  floorGrad.addColorStop(0.5, '#3e4148');
-  floorGrad.addColorStop(1, '#383b42');
+  floorGrad.addColorStop(0, pal.floor[0]);
+  floorGrad.addColorStop(0.5, pal.floor[1]);
+  floorGrad.addColorStop(1, pal.floor[2]);
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.fillStyle = floorGrad;
   ctx.fill();
@@ -558,7 +599,7 @@ function drawRoom() {
   const gridH = 12;
   const gridV = 16;
   // Tile groove (dark line)
-  ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+  ctx.strokeStyle = pal.tileGroove;
   ctx.lineWidth = s(1);
   for (let i = 0; i <= gridH; i++) {
     const t = i / gridH;
@@ -581,7 +622,7 @@ function drawRoom() {
     ctx.stroke();
   }
   // Tile highlight (light line offset by 1px from each groove)
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.strokeStyle = pal.tileHighlight;
   ctx.lineWidth = s(0.6);
   for (let i = 0; i <= gridH; i++) {
     const t = i / gridH;
@@ -600,15 +641,20 @@ function drawRoom() {
   drawFloorAO();
 
   // ── Floor-surface decorative details ──
+  if (currentRoom === 1) drawRoom1FloorMarkings();
   if (currentRoom === 2) {
     drawRoom2FloorDrain();
     drawRoom2FloorStains();
+    drawRoom2WallAging();
   }
-  if (currentRoom === 3) drawRoom3FloorCables();
+  if (currentRoom === 3) {
+    drawRoom3FloorCables();
+    drawRoom3WallFraming();
+  }
 
   // ── Metal baseboard strips ──
   // Dark groove
-  ctx.strokeStyle = '#2a2d34';
+  ctx.strokeStyle = pal.baseboard;
   ctx.lineWidth = s(3);
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y));
@@ -623,7 +669,7 @@ function drawRoom() {
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
   ctx.stroke();
   // Metal highlight
-  ctx.strokeStyle = '#5e6168';
+  ctx.strokeStyle = pal.baseHighlight;
   ctx.lineWidth = s(1.2);
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y + 1));
@@ -715,18 +761,26 @@ function drawFloorAO() {
   ctx.restore();
 }
 
+// Per-room light tints: [diffuser edge, diffuser mid, diffuser center, glow RGBA]
+const LIGHT_TINTS = {
+  1: { de: '#c8ccd6', dm: '#e0e4f0', dc: '#eaf0fa', glow: '190,200,235' }, // cool white
+  2: { de: '#d0c8b8', dm: '#e8dece', dc: '#f2e8d8', glow: '230,210,180' }, // warm
+  3: { de: '#c0c8d6', dm: '#d8e2f0', dc: '#e4eefa', glow: '170,190,230' }, // cool blue
+};
+
 function drawCeilingLight(lx, ly) {
   const fixtW = 100, fixtH = 5;
+  const lt = LIGHT_TINTS[currentRoom] || LIGHT_TINTS[1];
   // Housing (dark metal surround)
   ctx.fillStyle = '#50535a';
   ctx.fillRect(s(lx - fixtW / 2 - 3), s(ly - 1), s(fixtW + 6), s(fixtH + 2));
-  // Diffuser panel (bright)
+  // Diffuser panel (bright — tinted per room)
   const diffGrad = ctx.createLinearGradient(s(lx - fixtW / 2), 0, s(lx + fixtW / 2), 0);
-  diffGrad.addColorStop(0, '#c8cad0');
-  diffGrad.addColorStop(0.3, '#e8eaf0');
-  diffGrad.addColorStop(0.5, '#f0f2f8');
-  diffGrad.addColorStop(0.7, '#e8eaf0');
-  diffGrad.addColorStop(1, '#c8cad0');
+  diffGrad.addColorStop(0, lt.de);
+  diffGrad.addColorStop(0.3, lt.dm);
+  diffGrad.addColorStop(0.5, lt.dc);
+  diffGrad.addColorStop(0.7, lt.dm);
+  diffGrad.addColorStop(1, lt.de);
   ctx.fillStyle = diffGrad;
   ctx.fillRect(s(lx - fixtW / 2), s(ly), s(fixtW), s(fixtH));
   // Center hotspot line
@@ -738,9 +792,9 @@ function drawCeilingLight(lx, ly) {
   ctx.stroke();
   // Glow cone
   const glow = ctx.createRadialGradient(s(lx), s(ly + 2), s(5), s(lx), s(ly + 2), s(90));
-  glow.addColorStop(0, 'rgba(200,210,230,0.14)');
-  glow.addColorStop(0.5, 'rgba(200,210,230,0.05)');
-  glow.addColorStop(1, 'rgba(200,210,230,0)');
+  glow.addColorStop(0, `rgba(${lt.glow},0.14)`);
+  glow.addColorStop(0.5, `rgba(${lt.glow},0.05)`);
+  glow.addColorStop(1, `rgba(${lt.glow},0)`);
   ctx.fillStyle = glow;
   ctx.fillRect(s(lx - 90), s(ly - 40), s(180), s(100));
 }
@@ -1044,6 +1098,49 @@ function drawExitDoorLeft() {
   ctx.font = `bold ${s(10)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText('EXIT', s(textPos.x), s(textPos.y));
+}
+
+// ─── Room 1 floor markings (clean server-room anti-static stripe) ─────────────
+
+function drawRoom1FloorMarkings() {
+  const { floorTL, floorTR, floorBL, floorBR } = ROOM;
+  ctx.save();
+  roomPath([floorTL, floorTR, floorBR, floorBL]);
+  ctx.clip();
+
+  // Anti-static warning stripe along back wall edge (faded yellow dashes)
+  const stripeV = 0.06; // near back wall
+  const sl = floorToScreen(0.10, stripeV);
+  const sr = floorToScreen(0.90, stripeV);
+  ctx.strokeStyle = 'rgba(180,160,60,0.08)';
+  ctx.lineWidth = s(2.5);
+  ctx.setLineDash([s(8), s(12)]);
+  ctx.beginPath();
+  ctx.moveTo(s(sl.x), s(sl.y));
+  ctx.lineTo(s(sr.x), s(sr.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Subtle ESD symbol stencil on floor near center (faded)
+  const sym = floorToScreen(0.50, 0.55);
+  ctx.strokeStyle = 'rgba(100,120,180,0.06)';
+  ctx.lineWidth = s(1.2);
+  // Triangle outline
+  ctx.beginPath();
+  ctx.moveTo(s(sym.x), s(sym.y - 8));
+  ctx.lineTo(s(sym.x - 7), s(sym.y + 5));
+  ctx.lineTo(s(sym.x + 7), s(sym.y + 5));
+  ctx.closePath();
+  ctx.stroke();
+  // Lightning line inside
+  ctx.beginPath();
+  ctx.moveTo(s(sym.x + 1), s(sym.y - 4));
+  ctx.lineTo(s(sym.x - 2), s(sym.y));
+  ctx.lineTo(s(sym.x + 2), s(sym.y));
+  ctx.lineTo(s(sym.x - 1), s(sym.y + 4));
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 // ─── Room 1 decorative props (draw-only, no colliders) ───────────────────────
@@ -1488,6 +1585,48 @@ function drawRoom2FloorStains() {
   ctx.stroke();
 }
 
+// ─── Room 2 wall aging (warm industrial wear on walls) ───────────────────────
+
+function drawRoom2WallAging() {
+  const { ceilTL, ceilTR, floorTL, floorTR, floorBL, leftWallTop } = ROOM;
+
+  // Moisture/rust stain near bottom of back wall (seepage)
+  ctx.save();
+  roomPath([ceilTL, ceilTR, floorTR, floorTL]);
+  ctx.clip();
+  const rustPos = { x: floorTL.x + (floorTR.x - floorTL.x) * 0.65, y: floorTL.y - 12 };
+  const rustGrad = ctx.createRadialGradient(
+    s(rustPos.x), s(rustPos.y), 0,
+    s(rustPos.x), s(rustPos.y), s(35)
+  );
+  rustGrad.addColorStop(0, 'rgba(100,70,40,0.06)');
+  rustGrad.addColorStop(0.6, 'rgba(80,60,35,0.03)');
+  rustGrad.addColorStop(1, 'rgba(80,60,35,0)');
+  ctx.fillStyle = rustGrad;
+  ctx.fillRect(s(rustPos.x - 40), s(rustPos.y - 30), s(80), s(40));
+  ctx.restore();
+
+  // Faded dust/dirt band along left wall base
+  ctx.save();
+  roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
+  ctx.clip();
+  const dirtGrad = ctx.createLinearGradient(
+    s(floorBL.x), s(floorBL.y), s(floorBL.x), s(floorBL.y - 40)
+  );
+  dirtGrad.addColorStop(0, 'rgba(80,65,45,0.08)');
+  dirtGrad.addColorStop(0.5, 'rgba(80,65,45,0.03)');
+  dirtGrad.addColorStop(1, 'rgba(80,65,45,0)');
+  ctx.fillStyle = dirtGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(floorBL.x), s(floorBL.y));
+  ctx.lineTo(s(floorTL.x), s(floorTL.y));
+  ctx.lineTo(s(floorTL.x), s(floorTL.y - 40));
+  ctx.lineTo(s(floorBL.x), s(floorBL.y - 40));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawRoom3FloorCables() {
   // Floor cable run — taped down cable in north corridor (above partition)
   const c1 = floorToScreen(0.35, 0.10);
@@ -1531,6 +1670,44 @@ function drawRoom3FloorCables() {
   ctx.translate(s(tape2.x), s(tape2.y));
   ctx.rotate(-0.15);
   ctx.fillRect(s(-6), s(-1.5), s(12), s(3));
+  ctx.restore();
+}
+
+// ─── Room 3 wall framing (structural/conduit lines — tight utility corridor) ─
+
+function drawRoom3WallFraming() {
+  const { ceilTL, ceilTR, floorTL, floorTR, floorBL, floorBR,
+          leftWallTop, rightWallTop } = ROOM;
+
+  // Thin horizontal conduit lines on back wall (cable trunking runs)
+  ctx.save();
+  roomPath([ceilTL, ceilTR, floorTR, floorTL]);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(80,110,150,0.06)';
+  ctx.lineWidth = s(1);
+  // Two thin horizontal lines suggesting cable management channels
+  for (const frac of [0.35, 0.75]) {
+    const ly = ceilTL.y + (floorTL.y - ceilTL.y) * frac;
+    const ry = ceilTR.y + (floorTR.y - ceilTR.y) * frac;
+    ctx.beginPath();
+    ctx.moveTo(s(ceilTL.x + 8), s(ly));
+    ctx.lineTo(s(ceilTR.x - 8), s(ry));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Faint blue ambient glow along floor edge (LED strip / equipment indicator light bleed)
+  ctx.save();
+  roomPath([floorTL, floorTR, floorBR, floorBL]);
+  ctx.clip();
+  const glowGrad = ctx.createLinearGradient(
+    s(640), s(floorTL.y), s(640), s(floorTL.y + 30)
+  );
+  glowGrad.addColorStop(0, 'rgba(60,100,180,0.05)');
+  glowGrad.addColorStop(0.5, 'rgba(60,100,180,0.02)');
+  glowGrad.addColorStop(1, 'rgba(60,100,180,0)');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(30));
   ctx.restore();
 }
 
