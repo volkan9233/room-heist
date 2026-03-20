@@ -82,10 +82,20 @@ const ROOM2_PATROL = [
 ];
 
 const ROOM3_PATROL = [
-  { u: 0.55, v: 0.20 },
-  { u: 0.55, v: 0.70 },
-  { u: 0.20, v: 0.70 },
-  { u: 0.20, v: 0.20 },
+  // North corridor: in front of utility table and server rack
+  { u: 0.20, v: 0.32 },
+  { u: 0.62, v: 0.32 },
+  // Through gap to south (right of partition uMax=0.64, left of locker uMin=0.76)
+  { u: 0.70, v: 0.32 },
+  { u: 0.70, v: 0.78 },
+  // South corridor: sweep left past crates
+  { u: 0.50, v: 0.78 },
+  { u: 0.12, v: 0.78 },
+  // South corridor: sweep back right toward gap
+  { u: 0.50, v: 0.78 },
+  { u: 0.70, v: 0.78 },
+  // Back up through gap to north
+  { u: 0.70, v: 0.32 },
 ];
 
 let PATROL = ROOM1_PATROL;
@@ -112,32 +122,75 @@ const guard = {
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
 const ROOM1_COLLIDERS = [
-  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38 },
-  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34 },
-  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30 },
-  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67 },
+  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38, cover: ['south', 'east'] },
+  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34, cover: ['south', 'west'] },
+  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30, cover: ['south'] },
+  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67, cover: ['north', 'south', 'east', 'west'] },
 ];
 
 const ROOM2_COLLIDERS = [
   // Partition wall: runs from back wall down, gap at bottom (v > 0.62)
   { id: 'partition', uMin: 0.40, vMin: 0.02, uMax: 0.46, vMax: 0.62 },
   // Back area (left of partition)
-  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24 },
-  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56 },
+  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24, cover: ['south'] },
+  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56, cover: ['south', 'east'] },
   // Front area (right of partition)
-  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28 },
-  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54 },
-  { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62 },
+  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28, cover: ['south', 'west'] },
+  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54, cover: ['west', 'south'] },
+  { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62, cover: ['north', 'south', 'west'] },
 ];
 
 const ROOM3_COLLIDERS = [
-  { id: 'locker',    uMin: 0.74, vMin: 0.38, uMax: 0.88, vMax: 0.58 },
-  { id: 'utilTable', uMin: 0.08, vMin: 0.08, uMax: 0.35, vMax: 0.22 },
-  { id: 'rackR3',   uMin: 0.45, vMin: 0.08, uMax: 0.62, vMax: 0.30 },
-  { id: 'cratesR3', uMin: 0.30, vMin: 0.50, uMax: 0.48, vMax: 0.68 },
+  // Horizontal partition: gap on right (u > 0.64), attached to left wall
+  { id: 'partitionR3', uMin: 0.02, vMin: 0.40, uMax: 0.64, vMax: 0.46 },
+  // North corridor (above partition)
+  { id: 'utilTable',   uMin: 0.08, vMin: 0.08, uMax: 0.32, vMax: 0.22, cover: ['south', 'east'] },
+  { id: 'rackR3',     uMin: 0.44, vMin: 0.08, uMax: 0.60, vMax: 0.28, cover: ['south', 'west'] },
+  // South corridor (below partition)
+  { id: 'locker',     uMin: 0.76, vMin: 0.54, uMax: 0.90, vMax: 0.72, cover: ['west', 'north'] },
+  { id: 'cratesR3',   uMin: 0.20, vMin: 0.58, uMax: 0.38, vMax: 0.72, cover: ['north', 'east', 'west'] },
 ];
 
 let COLLIDERS = ROOM1_COLLIDERS;
+
+// ─── Walkable zones (UV rectangles — player can only move within these) ─────
+// Room 1: generous open layout — tutorial room stays easy
+const ROOM1_ZONES = [
+  { uMin: 0.04, vMin: 0.04, uMax: 0.96, vMax: 0.96 },  // nearly full room
+];
+
+// Room 2: two areas connected by gap below partition (uMax=0.46, vMax=0.62)
+const ROOM2_ZONES = [
+  // Back area (left of partition)
+  { uMin: 0.04, vMin: 0.04, uMax: 0.38, vMax: 0.82 },
+  // Front area (right of partition)
+  { uMin: 0.48, vMin: 0.04, uMax: 0.96, vMax: 0.82 },
+  // Gap corridor below partition
+  { uMin: 0.24, vMin: 0.64, uMax: 0.72, vMax: 0.96 },
+  // Player start area (bottom-right)
+  { uMin: 0.48, vMin: 0.64, uMax: 0.96, vMax: 0.96 },
+];
+
+// Room 3: north + south corridors connected by right-side gap
+const ROOM3_ZONES = [
+  // North corridor (above partition, v < 0.40)
+  { uMin: 0.04, vMin: 0.04, uMax: 0.96, vMax: 0.38 },
+  // Gap passage (right of partition uMax=0.64)
+  { uMin: 0.66, vMin: 0.30, uMax: 0.96, vMax: 0.52 },
+  // South corridor (below partition)
+  { uMin: 0.04, vMin: 0.48, uMax: 0.96, vMax: 0.96 },
+];
+
+let ZONES = ROOM1_ZONES;
+
+function insideWalkableZone(u, v) {
+  for (const z of ZONES) {
+    if (u >= z.uMin && u <= z.uMax && v >= z.vMin && v <= z.vMax) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // ─── Game state ──────────────────────────────────────────────────────────────
 let detected = false;
@@ -211,6 +264,56 @@ function rayBlocked(fromU, fromV, toU, toV) {
   return false;
 }
 
+// Cover proximity: check if player is tucked behind a cover face
+// Returns true if any cover object shields the player from the guard
+function shieldedByCover() {
+  const COVER_DIST = 0.06;  // how close to the face the player must be
+  const COVER_PAD = 0.04;   // how much the collider expands for the LOS check
+  for (const b of COLLIDERS) {
+    if (!b.cover) continue;
+    for (const face of b.cover) {
+      let nearFace = false;
+      let guardOnOppositeSide = false;
+      if (face === 'south') {
+        nearFace = player.v > b.vMax && player.v < b.vMax + COVER_DIST &&
+                   player.u > b.uMin - 0.02 && player.u < b.uMax + 0.02;
+        guardOnOppositeSide = guard.v < b.vMin;
+      } else if (face === 'north') {
+        nearFace = player.v < b.vMin && player.v > b.vMin - COVER_DIST &&
+                   player.u > b.uMin - 0.02 && player.u < b.uMax + 0.02;
+        guardOnOppositeSide = guard.v > b.vMax;
+      } else if (face === 'east') {
+        nearFace = player.u > b.uMax && player.u < b.uMax + COVER_DIST &&
+                   player.v > b.vMin - 0.02 && player.v < b.vMax + 0.02;
+        guardOnOppositeSide = guard.u < b.uMin;
+      } else if (face === 'west') {
+        nearFace = player.u < b.uMin && player.u > b.uMin - COVER_DIST &&
+                   player.v > b.vMin - 0.02 && player.v < b.vMax + 0.02;
+        guardOnOppositeSide = guard.u > b.uMax;
+      }
+      if (nearFace && guardOnOppositeSide) {
+        // Expand this collider for the LOS ray check
+        const padBox = {
+          uMin: b.uMin - COVER_PAD, vMin: b.vMin - COVER_PAD,
+          uMax: b.uMax + COVER_PAD, vMax: b.vMax + COVER_PAD
+        };
+        // Check if the ray from guard to player passes through the padded box
+        const steps = 20;
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          const ru = guard.u + (player.u - guard.u) * t;
+          const rv = guard.v + (player.v - guard.v) * t;
+          if (ru > padBox.uMin && ru < padBox.uMax &&
+              rv > padBox.vMin && rv < padBox.vMax) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function guardCanSeePlayer() {
   if (playerHidden) return false;
   const du = player.u - guard.u;
@@ -220,7 +323,9 @@ function guardCanSeePlayer() {
   const angleToPlayer = Math.atan2(dv, du);
   const gAngle = facingAngle(guard.facing);
   if (angleDiff(gAngle, angleToPlayer) > Math.PI * 0.50) return false;
-  return !rayBlocked(guard.u, guard.v, player.u, player.v);
+  if (rayBlocked(guard.u, guard.v, player.u, player.v)) return false;
+  if (shieldedByCover()) return false;
+  return true;
 }
 
 // ─── Facility room: walls, floor, structure ──────────────────────────────────
@@ -718,7 +823,9 @@ function drawExitDoorLeft() {
   }
 
   const doorU1 = 0.3, doorU2 = 0.55;
-  const doorT1 = 0.35, doorT2 = 0.78;
+  // Room 3: door only in south corridor (below partition)
+  const doorT1 = currentRoom === 3 ? 0.55 : 0.35;
+  const doorT2 = currentRoom === 3 ? 0.88 : 0.78;
 
   const dtl = leftWallPoint(doorU1, doorT1);
   const dtr = leftWallPoint(doorU2, doorT1);
@@ -1291,10 +1398,10 @@ function drawRoom2FloorStains() {
 }
 
 function drawRoom3FloorCables() {
-  // Floor cable run — taped down cable crossing the room
-  const c1 = floorToScreen(0.50, 0.12);
-  const c2 = floorToScreen(0.52, 0.40);
-  const c3 = floorToScreen(0.40, 0.60);
+  // Floor cable run — taped down cable in north corridor (above partition)
+  const c1 = floorToScreen(0.35, 0.10);
+  const c2 = floorToScreen(0.50, 0.22);
+  const c3 = floorToScreen(0.62, 0.34);
 
   // Cable shadow
   ctx.strokeStyle = 'rgba(0,0,0,0.06)';
@@ -1322,13 +1429,13 @@ function drawRoom3FloorCables() {
 
   // Tape strips holding cable down
   ctx.fillStyle = 'rgba(80,80,70,0.12)';
-  const tape1 = floorToScreen(0.51, 0.22);
+  const tape1 = floorToScreen(0.42, 0.15);
   ctx.save();
   ctx.translate(s(tape1.x), s(tape1.y));
   ctx.rotate(0.1);
   ctx.fillRect(s(-6), s(-1.5), s(12), s(3));
   ctx.restore();
-  const tape2 = floorToScreen(0.47, 0.50);
+  const tape2 = floorToScreen(0.56, 0.28);
   ctx.save();
   ctx.translate(s(tape2.x), s(tape2.y));
   ctx.rotate(-0.15);
@@ -3132,8 +3239,8 @@ function drawRoom3WallDecor() {
   ctx.lineTo(s(ws.x - 1), s(ws.y + 4));
   ctx.stroke();
 
-  // Small network panel on back wall (right side, near server rack)
-  const np = bw(0.75, 0.40);
+  // Small network panel on back wall (above server rack)
+  const np = bw(0.52, 0.40);
   ctx.fillStyle = '#3a3d44';
   ctx.fillRect(s(np.x - 12), s(np.y - 8), s(24), s(16));
   ctx.strokeStyle = '#2a2d34';
@@ -3438,9 +3545,9 @@ function resetCurrentRoom() {
 }
 
 const ROOM_CONFIGS = {
-  1: { colliders: ROOM1_COLLIDERS, patrol: ROOM1_PATROL, startU: 0.15 },
-  2: { colliders: ROOM2_COLLIDERS, patrol: ROOM2_PATROL, startU: 0.85 },
-  3: { colliders: ROOM3_COLLIDERS, patrol: ROOM3_PATROL, startU: 0.85 },
+  1: { colliders: ROOM1_COLLIDERS, patrol: ROOM1_PATROL, zones: ROOM1_ZONES, startU: 0.15 },
+  2: { colliders: ROOM2_COLLIDERS, patrol: ROOM2_PATROL, zones: ROOM2_ZONES, startU: 0.85 },
+  3: { colliders: ROOM3_COLLIDERS, patrol: ROOM3_PATROL, zones: ROOM3_ZONES, startU: 0.85 },
 };
 
 function switchToRoom(n) {
@@ -3451,6 +3558,7 @@ function switchToRoom(n) {
   const cfg = ROOM_CONFIGS[n] || ROOM_CONFIGS[1];
   COLLIDERS = cfg.colliders;
   PATROL = cfg.patrol;
+  ZONES = cfg.zones;
   player.u = cfg.startU;
   player.v = 0.85;
   player.facing = 'up';
@@ -3480,6 +3588,7 @@ function resetGame() {
   currentRoom = 1;
   COLLIDERS = ROOM1_COLLIDERS;
   PATROL = ROOM1_PATROL;
+  ZONES = ROOM1_ZONES;
   detected = false;
   hasKeycard = false;
   playerHidden = false;
@@ -3791,14 +3900,14 @@ function update(dt) {
       // Exit locker
       playerHidden = false;
       // Place player just in front of locker
-      const locker = COLLIDERS[0];
+      const locker = COLLIDERS[3];
       player.u = (locker.uMin + locker.uMax) / 2;
       player.v = locker.vMax + 0.06;
       player.facing = 'down';
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     } else {
       // Check proximity to locker
-      const locker = COLLIDERS[0];
+      const locker = COLLIDERS[3];
       const lockerCU = (locker.uMin + locker.uMax) / 2;
       const lockerFrontV = locker.vMax + 0.06;
       if (Math.abs(player.u - lockerCU) < 0.12 && Math.abs(player.v - lockerFrontV) < 0.10) {
@@ -3838,18 +3947,23 @@ function update(dt) {
 
   const oldU = player.u, oldV = player.v;
 
+  // Combined rejection: collider hit OR outside walkable zones
+  function blocked(u, v) {
+    return collidesWithAny(u, v) || !insideWalkableZone(u, v);
+  }
+
   // Try full move
   player.u = Math.max(U_MIN, Math.min(U_MAX, oldU + du));
   player.v = Math.max(V_MIN, Math.min(V_MAX, oldV + dv));
-  if (collidesWithAny(player.u, player.v)) {
+  if (blocked(player.u, player.v)) {
     // Try u only
     player.u = Math.max(U_MIN, Math.min(U_MAX, oldU + du));
     player.v = oldV;
-    if (collidesWithAny(player.u, player.v)) {
+    if (blocked(player.u, player.v)) {
       // Try v only
       player.u = oldU;
       player.v = Math.max(V_MIN, Math.min(V_MAX, oldV + dv));
-      if (collidesWithAny(player.u, player.v)) {
+      if (blocked(player.u, player.v)) {
         player.u = oldU;
         player.v = oldV;
       }
@@ -3914,8 +4028,8 @@ function update(dt) {
         return;
       }
     } else if (currentRoom === 3) {
-      // Left wall exit → transition forward (Room 4 placeholder)
-      if (player.u < 0.14 && player.v > 0.30 && player.v < 0.70) {
+      // Left wall exit in south corridor → transition forward (Room 4 placeholder)
+      if (player.u < 0.14 && player.v > 0.50 && player.v < 0.80) {
         won = true;
         keys['e'] = false; keys['E'] = false; keys[' '] = false;
       }
@@ -3965,10 +4079,11 @@ function render() {
       sortable.push({ v: SPOOL_LAND.v, draw: drawFallenSpool });
     }
   } else if (currentRoom === 3) {
-    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawLocker(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawPartition(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawUtilTable(COLLIDERS[1]) });
     sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawServerRack(COLLIDERS[2]) });
-    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawCrates(COLLIDERS[3]) });
+    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawLocker(COLLIDERS[3]) });
+    sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawCrates(COLLIDERS[4]) });
   }
 
   // Player (hidden when inside locker)
@@ -4003,7 +4118,7 @@ function render() {
     ctx.font = `bold ${s(14)}px monospace`;
     const htxt = '[E] Exit locker';
     const hw = ctx.measureText(htxt).width;
-    const locker = COLLIDERS[0];
+    const locker = COLLIDERS[3];
     const lpos = floorToScreen((locker.uMin + locker.uMax) / 2, locker.vMax + 0.02);
     const bob = Math.sin(gameTime * 3) * 2;
     const hy = s(lpos.y - 15 + bob);
@@ -4027,6 +4142,8 @@ function render() {
     let nearExit;
     if (currentRoom === 1) {
       nearExit = hasKeycard && player.u > 0.82 && player.v > 0.28 && player.v < 0.82;
+    } else if (currentRoom === 3) {
+      nearExit = hasKeycard && player.u < 0.14 && player.v > 0.50 && player.v < 0.80;
     } else {
       nearExit = hasKeycard && player.u < 0.14 && player.v > 0.30 && player.v < 0.70;
     }
@@ -4049,7 +4166,7 @@ function render() {
 
     if (nearExit) {
       const exitPromptU = currentRoom === 1 ? 0.95 : 0.05;
-      const exitPromptV = currentRoom === 1 ? 0.55 : 0.50;
+      const exitPromptV = currentRoom === 1 ? 0.55 : (currentRoom === 3 ? 0.65 : 0.50);
       const promptPos = floorToScreen(exitPromptU, exitPromptV);
       const bob = Math.sin(gameTime * 4) * 3;
       const ey = s(promptPos.y - 20 + bob);
@@ -4091,7 +4208,7 @@ function render() {
 
     // Locker hide prompt (Room 3, not yet hidden)
     if (currentRoom === 3 && !playerHidden) {
-      const locker = COLLIDERS[0];
+      const locker = COLLIDERS[3];
       const lockerCU = (locker.uMin + locker.uMax) / 2;
       const lockerFrontV = locker.vMax + 0.06;
       const nearLocker = Math.abs(player.u - lockerCU) < 0.12 &&
