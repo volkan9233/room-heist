@@ -295,6 +295,7 @@ function drawRoom() {
 
   // ── Wall-mounted decorative props ──
   if (currentRoom === 1) drawRoom1WallDecor();
+  else drawRoom2WallDecor();
 
   // ── Exit door ──
   if (currentRoom === 1) drawExitDoor();
@@ -356,6 +357,9 @@ function drawRoom() {
 
   // ── Floor AO ──
   drawFloorAO();
+
+  // ── Floor-surface decorative details ──
+  if (currentRoom === 2) drawRoom2FloorDrain();
 
   // ── Metal baseboard strips ──
   // Dark groove
@@ -1021,6 +1025,255 @@ function drawFireExtinguisher() {
   ctx.moveTo(s(bx + 2), s(by + 6));
   ctx.lineTo(s(bx + 2), s(pos.y - 3));
   ctx.stroke();
+}
+
+// ─── Room 2 decorative props (draw-only, no colliders) ───────────────────────
+
+function drawRoom2WallDecor() {
+  const { ceilTL, ceilTR, floorTL, leftWallTop, floorBL } = ROOM;
+
+  // Helper: back wall position
+  function bw(u, v) {
+    return {
+      x: ceilTL.x + u * (ceilTR.x - ceilTL.x),
+      y: ceilTL.y + v * (floorTL.y - ceilTL.y)
+    };
+  }
+
+  // Helper: left wall position (u: 0=inner/ceilTL, 1=outer/leftWallTop; v: 0=top, 1=bottom)
+  function lw(u, v) {
+    return {
+      x: (1 - u) * (1 - v) * ceilTL.x + u * (1 - v) * leftWallTop.x
+          + (1 - u) * v * floorTL.x + u * v * floorBL.x,
+      y: (1 - u) * (1 - v) * ceilTL.y + u * (1 - v) * leftWallTop.y
+          + (1 - u) * v * floorTL.y + u * v * floorBL.y
+    };
+  }
+
+  // ── Pegboard (back wall, gap between cabinet and workbench) ──
+  const pg = bw(0.35, 0.25);
+  const pgW = 80, pgH = 60;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  ctx.fillRect(s(pg.x - pgW / 2 + 3), s(pg.y - pgH / 2 + 3), s(pgW), s(pgH));
+  // Board body (warm brown hardboard)
+  const pgGrad = ctx.createLinearGradient(0, s(pg.y - pgH / 2), 0, s(pg.y + pgH / 2));
+  pgGrad.addColorStop(0, '#7a6a50');
+  pgGrad.addColorStop(0.5, '#6e5e48');
+  pgGrad.addColorStop(1, '#625440');
+  ctx.fillStyle = pgGrad;
+  ctx.fillRect(s(pg.x - pgW / 2), s(pg.y - pgH / 2), s(pgW), s(pgH));
+  // Peg holes (grid of small dots)
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 7; col++) {
+      const hx = pg.x - pgW / 2 + 8 + col * (pgW - 16) / 6;
+      const hy = pg.y - pgH / 2 + 8 + row * (pgH - 16) / 4;
+      ctx.beginPath();
+      ctx.arc(s(hx), s(hy), s(1.2), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Hung tool silhouettes (wrench, screwdriver, pliers — simple dark shapes)
+  ctx.strokeStyle = 'rgba(50,50,50,0.25)';
+  ctx.lineWidth = s(2.5);
+  // Wrench
+  ctx.beginPath();
+  ctx.moveTo(s(pg.x - pgW / 2 + 12), s(pg.y - 8));
+  ctx.lineTo(s(pg.x - pgW / 2 + 12), s(pg.y + 14));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(s(pg.x - pgW / 2 + 12), s(pg.y + 16), s(3), 0, Math.PI * 2);
+  ctx.stroke();
+  // Screwdriver
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(pg.x - 5), s(pg.y - 10));
+  ctx.lineTo(s(pg.x - 5), s(pg.y + 16));
+  ctx.stroke();
+  ctx.lineWidth = s(3.5);
+  ctx.beginPath();
+  ctx.moveTo(s(pg.x - 5), s(pg.y - 10));
+  ctx.lineTo(s(pg.x - 5), s(pg.y - 2));
+  ctx.stroke();
+  // Pliers
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(pg.x + 18), s(pg.y - 8));
+  ctx.lineTo(s(pg.x + 16), s(pg.y + 4));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(pg.x + 22), s(pg.y - 8));
+  ctx.lineTo(s(pg.x + 20), s(pg.y + 4));
+  ctx.stroke();
+  // Outline
+  ctx.strokeStyle = '#4a4030';
+  ctx.lineWidth = s(1);
+  ctx.strokeRect(s(pg.x - pgW / 2), s(pg.y - pgH / 2), s(pgW), s(pgH));
+
+  // ── Safety sign (back wall, right side above workbench) ──
+  const sgn = bw(0.82, 0.18);
+  const sgnW = 32, sgnH = 24;
+  // Yellow/black caution sign
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(s(sgn.x - sgnW / 2 - 1), s(sgn.y - sgnH / 2 - 1), s(sgnW + 2), s(sgnH + 2));
+  ctx.fillStyle = '#c8a020';
+  ctx.fillRect(s(sgn.x - sgnW / 2), s(sgn.y - sgnH / 2), s(sgnW), s(sgnH));
+  // Hazard stripes (diagonal)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(s(sgn.x - sgnW / 2), s(sgn.y - sgnH / 2), s(sgnW), s(sgnH));
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.lineWidth = s(3);
+  for (let i = -4; i < 8; i++) {
+    const sx = sgn.x - sgnW / 2 + i * 8;
+    ctx.beginPath();
+    ctx.moveTo(s(sx), s(sgn.y - sgnH / 2));
+    ctx.lineTo(s(sx + sgnH), s(sgn.y + sgnH / 2));
+    ctx.stroke();
+  }
+  ctx.restore();
+  // Exclamation mark
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = `bold ${s(12)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('!', s(sgn.x), s(sgn.y + 4));
+
+  // ── First aid box (left wall, mid-height) ──
+  const fa = lw(0.35, 0.42);
+  const faW = 22, faH = 18;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(s(fa.x - faW / 2 + 2), s(fa.y - faH / 2 + 2), s(faW), s(faH));
+  // Box body (white)
+  ctx.fillStyle = '#d0d2d0';
+  ctx.fillRect(s(fa.x - faW / 2), s(fa.y - faH / 2), s(faW), s(faH));
+  // Red cross
+  ctx.fillStyle = '#c03030';
+  ctx.fillRect(s(fa.x - 2), s(fa.y - 6), s(4), s(12));
+  ctx.fillRect(s(fa.x - 6), s(fa.y - 2), s(12), s(4));
+  // Outline
+  ctx.strokeStyle = '#8a8c8a';
+  ctx.lineWidth = s(0.8);
+  ctx.strokeRect(s(fa.x - faW / 2), s(fa.y - faH / 2), s(faW), s(faH));
+}
+
+function drawRoom2FloorDrain() {
+  // Circular drain grate on the floor (flat detail)
+  const drainPos = floorToScreen(0.40, 0.75);
+  const drainR = 12;
+
+  ctx.save();
+  // Dark circle
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(s(drainPos.x), s(drainPos.y), s(drainR), s(drainR * 0.45), 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Grate ring
+  ctx.strokeStyle = 'rgba(80,85,90,0.4)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.ellipse(s(drainPos.x), s(drainPos.y), s(drainR), s(drainR * 0.45), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Cross bars
+  ctx.strokeStyle = 'rgba(80,85,90,0.3)';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(drainPos.x - drainR + 2), s(drainPos.y));
+  ctx.lineTo(s(drainPos.x + drainR - 2), s(drainPos.y));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(drainPos.x), s(drainPos.y - drainR * 0.4));
+  ctx.lineTo(s(drainPos.x), s(drainPos.y + drainR * 0.4));
+  ctx.stroke();
+  // Moisture stain ring around drain
+  const stain = ctx.createRadialGradient(
+    s(drainPos.x), s(drainPos.y), s(drainR),
+    s(drainPos.x), s(drainPos.y), s(drainR + 10)
+  );
+  stain.addColorStop(0, 'rgba(0,0,0,0.06)');
+  stain.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = stain;
+  ctx.beginPath();
+  ctx.ellipse(s(drainPos.x), s(drainPos.y), s(drainR + 10), s((drainR + 10) * 0.45), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawMopBucket() {
+  // Position: bottom-right area, near player start, out of stealth lanes
+  const pos = floorToScreen(0.82, 0.82);
+  const bucW = 18, bucH = 20;
+  const bx = pos.x - bucW / 2;
+  const by = pos.y - bucH;
+
+  // Contact shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x), s(pos.y), s(14), s(5.5), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bucket body (dark blue/grey plastic)
+  const bucGrad = ctx.createLinearGradient(s(bx - 1), 0, s(bx + bucW + 1), 0);
+  bucGrad.addColorStop(0, '#2a3a4a');
+  bucGrad.addColorStop(0.3, '#3a4e62');
+  bucGrad.addColorStop(0.7, '#3a4e62');
+  bucGrad.addColorStop(1, '#2a3a4a');
+  ctx.fillStyle = bucGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 2), s(pos.y));
+  ctx.lineTo(s(bx + bucW - 2), s(pos.y));
+  ctx.lineTo(s(bx + bucW + 1), s(by));
+  ctx.lineTo(s(bx - 1), s(by));
+  ctx.closePath();
+  ctx.fill();
+
+  // Rim
+  ctx.strokeStyle = '#4a6078';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 2), s(by));
+  ctx.lineTo(s(bx + bucW + 2), s(by));
+  ctx.stroke();
+
+  // Wire handle (arc)
+  ctx.strokeStyle = '#6a6d75';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.arc(s(pos.x), s(by - 6), s(bucW / 2 - 2), Math.PI * 0.15, Math.PI * 0.85);
+  ctx.stroke();
+
+  // Outline
+  ctx.strokeStyle = '#1e2a38';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 2), s(pos.y));
+  ctx.lineTo(s(bx + bucW - 2), s(pos.y));
+  ctx.lineTo(s(bx + bucW + 1), s(by));
+  ctx.lineTo(s(bx - 1), s(by));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Mop handle (diagonal stick leaning from bucket)
+  ctx.strokeStyle = '#6a5a3a';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(pos.x + 4), s(by));
+  ctx.lineTo(s(pos.x + 14), s(by - 42));
+  ctx.stroke();
+  // Mop handle highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = s(0.6);
+  ctx.beginPath();
+  ctx.moveTo(s(pos.x + 3), s(by));
+  ctx.lineTo(s(pos.x + 13), s(by - 40));
+  ctx.stroke();
+  // Mop head (small grey tuft at top)
+  ctx.fillStyle = '#808080';
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x + 15), s(by - 43), s(4), s(3), 0.3, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 // ─── Facility objects ─────────────────────────────────────────────────────────
@@ -2695,6 +2948,8 @@ function render() {
     sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawShelving(COLLIDERS[2]) });
     sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawBarrels(COLLIDERS[3]) });
     sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawCrates(COLLIDERS[4]) });
+    // Decorative floor props (no colliders)
+    sortable.push({ v: 0.82, draw: drawMopBucket });
   }
 
   // Player
