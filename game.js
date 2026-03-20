@@ -813,142 +813,228 @@ function drawCharacter(pos, facing, type) {
   const cx = s(pos.x);
   const cy = s(pos.y);
   const sc = scale;
-  const csc = sc * 1.0;
+  const c = sc * 1.0;
 
   const isGuard = type === 'guard';
-  const torsoC1 = isGuard ? '#404040' : '#5080c0';
-  const torsoC2 = isGuard ? '#2a2a2a' : '#3060a0';
-  const legC    = isGuard ? '#2a2a2a' : '#2a3a6a';
-  const armC    = isGuard ? '#353535' : '#4070b0';
 
-  // Shadow
+  // Palette
+  const torsoHi  = isGuard ? '#4a4a4a' : '#5a88c8';
+  const torsoLo  = isGuard ? '#2a2a2a' : '#3a5e98';
+  const legHi    = isGuard ? '#303030' : '#2e3e6e';
+  const legLo    = isGuard ? '#1e1e1e' : '#1e2a50';
+  const armHi    = isGuard ? '#3e3e3e' : '#4878b8';
+  const armLo    = isGuard ? '#282828' : '#305898';
+  const skinHi   = '#dca070';
+  const skinLo   = '#c08858';
+
+  // Ground shadow
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + sc * 2, sc * 14, sc * 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + sc * 2, sc * 12, sc * 5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Legs
-  ctx.fillStyle = legC;
+  // --- Legs (longer for adult proportion) ---
+  const legW = 7, legH = 30, legGap = 1;
+  // Left leg
+  const llGrad = ctx.createLinearGradient(cx - (legGap + legW) * c, 0, cx - legGap * c, 0);
+  llGrad.addColorStop(0, legLo);
+  llGrad.addColorStop(0.5, legHi);
+  llGrad.addColorStop(1, legLo);
+  ctx.fillStyle = llGrad;
   ctx.beginPath();
-  ctx.roundRect(cx - 9 * csc, cy - 24 * csc, 9 * csc, 24 * csc, 3 * csc);
+  ctx.roundRect(cx - (legGap + legW) * c, cy - legH * c, legW * c, legH * c, 2 * c);
   ctx.fill();
+  // Right leg
+  const rlGrad = ctx.createLinearGradient(cx + legGap * c, 0, cx + (legGap + legW) * c, 0);
+  rlGrad.addColorStop(0, legLo);
+  rlGrad.addColorStop(0.5, legHi);
+  rlGrad.addColorStop(1, legLo);
+  ctx.fillStyle = rlGrad;
   ctx.beginPath();
-  ctx.roundRect(cx + 1 * csc, cy - 24 * csc, 9 * csc, 24 * csc, 3 * csc);
+  ctx.roundRect(cx + legGap * c, cy - legH * c, legW * c, legH * c, 2 * c);
   ctx.fill();
+
   // Shoes
   ctx.fillStyle = '#1a1a1a';
   ctx.beginPath();
-  ctx.ellipse(cx - 5 * csc, cy - 1 * csc, 8 * csc, 4 * csc, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(cx - (legGap + legW / 2) * c, cy - 1 * c, 6 * c, 3 * c, -0.15, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(cx + 5 * csc, cy - 1 * csc, 8 * csc, 4 * csc, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(cx + (legGap + legW / 2) * c, cy - 1 * c, 6 * c, 3 * c, 0.15, 0, Math.PI * 2);
   ctx.fill();
 
-  // Torso
-  const torsoGrad = ctx.createLinearGradient(
-    cx - 13 * csc, cy - 56 * csc, cx + 13 * csc, cy - 24 * csc
+  // --- Torso (slightly taller, narrower) ---
+  const torsoW = 22, torsoH = 34, torsoBot = legH + 2, torsoTop = torsoBot + torsoH;
+  const tGrad = ctx.createLinearGradient(cx - torsoW / 2 * c, 0, cx + torsoW / 2 * c, 0);
+  tGrad.addColorStop(0, torsoLo);
+  tGrad.addColorStop(0.35, torsoHi);
+  tGrad.addColorStop(0.65, torsoHi);
+  tGrad.addColorStop(1, torsoLo);
+  ctx.fillStyle = tGrad;
+  ctx.beginPath();
+  ctx.roundRect(
+    cx - torsoW / 2 * c, cy - torsoTop * c, torsoW * c, torsoH * c,
+    [3 * c, 3 * c, 1 * c, 1 * c]
   );
-  torsoGrad.addColorStop(0, torsoC1);
-  torsoGrad.addColorStop(1, torsoC2);
-  ctx.fillStyle = torsoGrad;
-  ctx.beginPath();
-  ctx.roundRect(cx - 13 * csc, cy - 56 * csc, 26 * csc, 32 * csc,
-    [4 * csc, 4 * csc, 2 * csc, 2 * csc]);
   ctx.fill();
 
-  // Arms
-  ctx.fillStyle = armC;
+  // Belt line
+  ctx.strokeStyle = isGuard ? '#1a1a1a' : '#283860';
+  ctx.lineWidth = c * 1.5;
   ctx.beginPath();
-  ctx.roundRect(cx - 21 * csc, cy - 55 * csc, 9 * csc, 22 * csc, 4 * csc);
-  ctx.fill();
+  ctx.moveTo(cx - torsoW / 2 * c, cy - torsoBot * c);
+  ctx.lineTo(cx + torsoW / 2 * c, cy - torsoBot * c);
+  ctx.stroke();
+
+  // Shoulder seam
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = c * 0.8;
   ctx.beginPath();
-  ctx.roundRect(cx + 12 * csc, cy - 55 * csc, 9 * csc, 22 * csc, 4 * csc);
+  ctx.moveTo(cx - torsoW / 2 * c, cy - (torsoTop - 3) * c);
+  ctx.lineTo(cx + torsoW / 2 * c, cy - (torsoTop - 3) * c);
+  ctx.stroke();
+
+  // --- Arms (longer, slimmer) ---
+  const armW = 7, armH = 28;
+  const armTop = torsoTop - 1;
+  // Left arm
+  const laGrad = ctx.createLinearGradient(cx - (torsoW / 2 + armW) * c, 0, cx - torsoW / 2 * c, 0);
+  laGrad.addColorStop(0, armLo);
+  laGrad.addColorStop(0.6, armHi);
+  laGrad.addColorStop(1, armLo);
+  ctx.fillStyle = laGrad;
+  ctx.beginPath();
+  ctx.roundRect(cx - (torsoW / 2 + armW) * c, cy - armTop * c, armW * c, armH * c, 3 * c);
   ctx.fill();
+  // Right arm
+  const raGrad = ctx.createLinearGradient(cx + torsoW / 2 * c, 0, cx + (torsoW / 2 + armW) * c, 0);
+  raGrad.addColorStop(0, armLo);
+  raGrad.addColorStop(0.4, armHi);
+  raGrad.addColorStop(1, armLo);
+  ctx.fillStyle = raGrad;
+  ctx.beginPath();
+  ctx.roundRect(cx + torsoW / 2 * c, cy - armTop * c, armW * c, armH * c, 3 * c);
+  ctx.fill();
+
   // Hands
-  ctx.fillStyle = '#d4956a';
+  const handY = cy - (armTop - armH) * c;
+  ctx.fillStyle = skinLo;
   ctx.beginPath();
-  ctx.arc(cx - 16 * csc, cy - 34 * csc, 5 * csc, 0, Math.PI * 2);
+  ctx.arc(cx - (torsoW / 2 + armW / 2) * c, handY, 3.5 * c, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 16 * csc, cy - 34 * csc, 5 * csc, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Neck
-  ctx.fillStyle = '#d4956a';
-  ctx.beginPath();
-  ctx.roundRect(cx - 5 * csc, cy - 64 * csc, 10 * csc, 10 * csc, 2 * csc);
+  ctx.arc(cx + (torsoW / 2 + armW / 2) * c, handY, 3.5 * c, 0, Math.PI * 2);
   ctx.fill();
 
-  // Head
-  ctx.fillStyle = '#e0a878';
+  // --- Neck ---
+  const neckBot = torsoTop;
+  const neckTop = neckBot + 7;
+  const nGrad = ctx.createLinearGradient(cx - 4 * c, 0, cx + 4 * c, 0);
+  nGrad.addColorStop(0, skinLo);
+  nGrad.addColorStop(0.5, skinHi);
+  nGrad.addColorStop(1, skinLo);
+  ctx.fillStyle = nGrad;
   ctx.beginPath();
-  ctx.ellipse(cx, cy - 78 * csc, 16 * csc, 18 * csc, 0, 0, Math.PI * 2);
+  ctx.roundRect(cx - 4 * c, cy - neckTop * c, 8 * c, 7 * c, 1.5 * c);
+  ctx.fill();
+
+  // --- Head (smaller, more adult) ---
+  const headCY = cy - (neckTop + 12) * c;
+  const headRX = 12, headRY = 13;
+  const hGrad = ctx.createRadialGradient(
+    cx - 2 * c, headCY - 2 * c, 0,
+    cx, headCY, headRY * c
+  );
+  hGrad.addColorStop(0, skinHi);
+  hGrad.addColorStop(1, skinLo);
+  ctx.fillStyle = hGrad;
+  ctx.beginPath();
+  ctx.ellipse(cx, headCY, headRX * c, headRY * c, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ear hints
+  ctx.fillStyle = skinLo;
+  ctx.beginPath();
+  ctx.ellipse(cx - headRX * c, headCY + 1 * c, 2.5 * c, 4 * c, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + headRX * c, headCY + 1 * c, 2.5 * c, 4 * c, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Hair / beret
   if (isGuard) {
+    // Beret
     ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.ellipse(cx - 2 * csc, cy - 92 * csc, 14 * csc, 8 * csc, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(cx - 1 * c, headCY - 11 * c, 12 * c, 6 * c, -0.12, 0, Math.PI * 2);
+    ctx.fill();
+    // Beret brim
+    ctx.fillStyle = '#101010';
+    ctx.beginPath();
+    ctx.ellipse(cx, headCY - 7 * c, 13 * c, 2.5 * c, 0, 0, Math.PI * 2);
     ctx.fill();
   } else {
+    // Short hair
     ctx.fillStyle = '#3a2810';
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 88 * csc, 15 * csc, 10 * csc, 0, Math.PI, 0);
+    ctx.ellipse(cx, headCY - 5 * c, 13 * c, 10 * c, 0, Math.PI, 0);
+    ctx.fill();
+    // Side hair
+    ctx.beginPath();
+    ctx.arc(cx - 12 * c, headCY - 2 * c, 4 * c, 0.5, 2.6);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx - 15 * csc, cy - 80 * csc, 6 * csc, 0.8, 2.4);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx + 15 * csc, cy - 80 * csc, 6 * csc, 0.7, 2.3);
+    ctx.arc(cx + 12 * c, headCY - 2 * c, 4 * c, 0.5, 2.6);
     ctx.fill();
   }
 
-  // Eyes
-  const eyeY = cy - 78 * csc;
+  // --- Eyes (smaller, sharper) ---
+  const eyeY = headCY + 1 * c;
   if (facing === 'left') {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(cx - 8 * csc, eyeY, 5 * csc, 4 * csc, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 5 * c, eyeY, 3.5 * c, 2.8 * c, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#2a1a0a';
+    ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.arc(cx - 10 * csc, eyeY, 2.5 * csc, 0, Math.PI * 2);
+    ctx.arc(cx - 6.5 * c, eyeY, 1.8 * c, 0, Math.PI * 2);
     ctx.fill();
   } else if (facing === 'right') {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(cx + 8 * csc, eyeY, 5 * csc, 4 * csc, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 5 * c, eyeY, 3.5 * c, 2.8 * c, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#2a1a0a';
+    ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.arc(cx + 10 * csc, eyeY, 2.5 * csc, 0, Math.PI * 2);
+    ctx.arc(cx + 6.5 * c, eyeY, 1.8 * c, 0, Math.PI * 2);
     ctx.fill();
   } else if (facing !== 'up') {
+    // Forward-facing: two eyes
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(cx - 6 * csc, eyeY, 4 * csc, 3.5 * csc, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 4 * c, eyeY, 3 * c, 2.5 * c, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 6 * csc, eyeY, 4 * csc, 3.5 * csc, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 4 * c, eyeY, 3 * c, 2.5 * c, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#2a1a0a';
+    ctx.fillStyle = '#1a1a1a';
     ctx.beginPath();
-    ctx.arc(cx - 6 * csc, eyeY, 2 * csc, 0, Math.PI * 2);
+    ctx.arc(cx - 4 * c, eyeY, 1.5 * c, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx + 6 * csc, eyeY, 2 * csc, 0, Math.PI * 2);
+    ctx.arc(cx + 4 * c, eyeY, 1.5 * c, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Mouth
+  // Subtle mouth line (not a smiley arc)
   if (facing !== 'up') {
-    ctx.strokeStyle = isGuard ? '#805040' : '#a0604a';
-    ctx.lineWidth = sc * 1.5;
+    ctx.strokeStyle = 'rgba(120,70,50,0.35)';
+    ctx.lineWidth = c * 1;
     ctx.beginPath();
-    ctx.arc(cx, cy - 70 * csc, 5 * csc, 0.2, Math.PI - 0.2);
+    ctx.moveTo(cx - 3 * c, headCY + 7 * c);
+    ctx.lineTo(cx + 3 * c, headCY + 7 * c);
     ctx.stroke();
   }
 }
