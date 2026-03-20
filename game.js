@@ -526,13 +526,7 @@ function drawServerRack(box) {
     ctx.arc(s(bx + 9), s(py + panelH / 2), s(1.8), 0, Math.PI * 2);
     ctx.fill();
     // LED glow
-    const glowGrad = ctx.createRadialGradient(
-      s(bx + 9), s(py + panelH / 2), 0,
-      s(bx + 9), s(py + panelH / 2), s(6)
-    );
-    glowGrad.addColorStop(0, ledC.replace(')', ',0.25)').replace('rgb', 'rgba').replace('#', ''));
-    // Use hex alpha approach instead
-    ctx.fillStyle = ledC + '20';
+    ctx.fillStyle = ledC + '30';
     ctx.beginPath();
     ctx.arc(s(bx + 9), s(py + panelH / 2), s(5), 0, Math.PI * 2);
     ctx.fill();
