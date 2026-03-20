@@ -234,6 +234,7 @@ function drawRoom() {
 
   // ── Room objects ──────────────────────────────────────────────────────────
   drawRug();
+  drawArmchair();
   drawWardrobe();
   drawSideTable();
 }
@@ -655,12 +656,13 @@ function drawWindow() {
 function drawRug() {
   // A persian-ish rug centered in the room floor
   // floor-space center: u=0.48, v=0.55
-  const c  = floorToScreen(0.48, 0.55);
+  const cu = 0.48, cv = 0.55;
+  const c  = floorToScreen(cu, cv);
   // rug extends ~0.32 in u, ~0.24 in v
-  const tl = floorToScreen(0.48 - 0.16, 0.55 - 0.12);
-  const tr = floorToScreen(0.48 + 0.16, 0.55 - 0.12);
-  const br = floorToScreen(0.48 + 0.16, 0.55 + 0.12);
-  const bl = floorToScreen(0.48 - 0.16, 0.55 + 0.12);
+  const tl = floorToScreen(cu - 0.16, cv - 0.12);
+  const tr = floorToScreen(cu + 0.16, cv - 0.12);
+  const br = floorToScreen(cu + 0.16, cv + 0.12);
+  const bl = floorToScreen(cu - 0.16, cv + 0.12);
 
   // outer rug
   ctx.beginPath();
@@ -672,11 +674,26 @@ function drawRug() {
   ctx.fillStyle = '#7b3030';
   ctx.fill();
 
-  // inner rug border
-  const itl = floorToScreen(0.48 - 0.13, 0.55 - 0.09);
-  const itr = floorToScreen(0.48 + 0.13, 0.55 - 0.09);
-  const ibr = floorToScreen(0.48 + 0.13, 0.55 + 0.09);
-  const ibl = floorToScreen(0.48 - 0.13, 0.55 + 0.09);
+  // ── Decorative outer border stripe ─────────────────────────────────────
+  const b1tl = floorToScreen(cu - 0.145, cv - 0.105);
+  const b1tr = floorToScreen(cu + 0.145, cv - 0.105);
+  const b1br = floorToScreen(cu + 0.145, cv + 0.105);
+  const b1bl = floorToScreen(cu - 0.145, cv + 0.105);
+  ctx.strokeStyle = '#c8a040';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(b1tl.x), s(b1tl.y));
+  ctx.lineTo(s(b1tr.x), s(b1tr.y));
+  ctx.lineTo(s(b1br.x), s(b1br.y));
+  ctx.lineTo(s(b1bl.x), s(b1bl.y));
+  ctx.closePath();
+  ctx.stroke();
+
+  // inner rug field
+  const itl = floorToScreen(cu - 0.13, cv - 0.09);
+  const itr = floorToScreen(cu + 0.13, cv - 0.09);
+  const ibr = floorToScreen(cu + 0.13, cv + 0.09);
+  const ibl = floorToScreen(cu - 0.13, cv + 0.09);
   ctx.beginPath();
   ctx.moveTo(s(itl.x), s(itl.y));
   ctx.lineTo(s(itr.x), s(itr.y));
@@ -686,6 +703,74 @@ function drawRug() {
   ctx.fillStyle = '#9b4040';
   ctx.fill();
 
+  // ── Inner decorative border stripe ─────────────────────────────────────
+  const b2tl = floorToScreen(cu - 0.115, cv - 0.075);
+  const b2tr = floorToScreen(cu + 0.115, cv - 0.075);
+  const b2br = floorToScreen(cu + 0.115, cv + 0.075);
+  const b2bl = floorToScreen(cu - 0.115, cv + 0.075);
+  ctx.strokeStyle = '#c8a040';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(b2tl.x), s(b2tl.y));
+  ctx.lineTo(s(b2tr.x), s(b2tr.y));
+  ctx.lineTo(s(b2br.x), s(b2br.y));
+  ctx.lineTo(s(b2bl.x), s(b2bl.y));
+  ctx.closePath();
+  ctx.stroke();
+
+  // ── Corner marks (small diagonal ticks at inner border corners) ────────
+  ctx.strokeStyle = '#c8a040';
+  ctx.lineWidth = s(1.5);
+  const cornerLen = 0.018;
+  const corners = [
+    { u: cu - 0.115, v: cv - 0.075, du: 1, dv: 1 },
+    { u: cu + 0.115, v: cv - 0.075, du: -1, dv: 1 },
+    { u: cu + 0.115, v: cv + 0.075, du: -1, dv: -1 },
+    { u: cu - 0.115, v: cv + 0.075, du: 1, dv: -1 },
+  ];
+  for (const cn of corners) {
+    const cp = floorToScreen(cn.u, cn.v);
+    const ce1 = floorToScreen(cn.u + cn.du * cornerLen, cn.v);
+    const ce2 = floorToScreen(cn.u, cn.v + cn.dv * cornerLen);
+    // two short lines from corner
+    ctx.beginPath();
+    ctx.moveTo(s(ce1.x), s(ce1.y));
+    ctx.lineTo(s(cp.x), s(cp.y));
+    ctx.lineTo(s(ce2.x), s(ce2.y));
+    ctx.stroke();
+  }
+
+  // ── Small repeating motifs along the border band ───────────────────────
+  ctx.fillStyle = '#c8a040';
+  const motifCount = 8;
+  for (let i = 1; i < motifCount; i++) {
+    const t = i / motifCount;
+    // top edge motifs
+    const mt = floorToScreen(cu - 0.13 + 0.26 * t, cv - 0.082);
+    ctx.beginPath();
+    ctx.arc(s(mt.x), s(mt.y), s(2), 0, Math.PI * 2);
+    ctx.fill();
+    // bottom edge motifs
+    const mb = floorToScreen(cu - 0.13 + 0.26 * t, cv + 0.082);
+    ctx.beginPath();
+    ctx.arc(s(mb.x), s(mb.y), s(2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const sideMotifCount = 5;
+  for (let i = 1; i < sideMotifCount; i++) {
+    const t = i / sideMotifCount;
+    // left edge motifs
+    const ml = floorToScreen(cu - 0.138, cv - 0.09 + 0.18 * t);
+    ctx.beginPath();
+    ctx.arc(s(ml.x), s(ml.y), s(2), 0, Math.PI * 2);
+    ctx.fill();
+    // right edge motifs
+    const mr = floorToScreen(cu + 0.138, cv - 0.09 + 0.18 * t);
+    ctx.beginPath();
+    ctx.arc(s(mr.x), s(mr.y), s(2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // center medallion
   ctx.beginPath();
   ctx.ellipse(s(c.x), s(c.y), s(28), s(16), 0, 0, Math.PI * 2);
@@ -694,6 +779,84 @@ function drawRug() {
   ctx.beginPath();
   ctx.ellipse(s(c.x), s(c.y), s(14), s(8), 0, 0, Math.PI * 2);
   ctx.fillStyle = '#e08080';
+  ctx.fill();
+}
+
+function drawArmchair() {
+  // Forest-green armchair, left-center floor area to balance side table on right
+  const pos = floorToScreen(0.20, 0.52);
+  const cw = 58, ch = 50; // chair width/height of seat
+  const cx = pos.x - cw / 2;
+  const seatY = pos.y - ch;
+
+  // ── Shadow ─────────────────────────────────────────────────────────────
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.beginPath();
+  ctx.moveTo(s(cx - 2), s(pos.y));
+  ctx.lineTo(s(cx + cw + 2), s(pos.y));
+  ctx.lineTo(s(cx + cw + 10), s(pos.y + 10));
+  ctx.lineTo(s(cx - 6), s(pos.y + 10));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // ── Back rest ──────────────────────────────────────────────────────────
+  const backH = 36;
+  const backGrad = ctx.createLinearGradient(s(cx), s(seatY - backH), s(cx), s(seatY));
+  backGrad.addColorStop(0, '#2a5a38');
+  backGrad.addColorStop(1, '#1e4a2c');
+  ctx.fillStyle = backGrad;
+  ctx.beginPath();
+  ctx.roundRect(s(cx + 4), s(seatY - backH), s(cw - 8), s(backH + 4), [s(6), s(6), 0, 0]);
+  ctx.fill();
+
+  // ── Left armrest ───────────────────────────────────────────────────────
+  ctx.fillStyle = '#1e4a2c';
+  ctx.beginPath();
+  ctx.roundRect(s(cx - 8), s(seatY - 18), s(16), s(ch + 14), [s(5), s(5), s(3), s(3)]);
+  ctx.fill();
+  // armrest top highlight
+  ctx.fillStyle = '#2e6a40';
+  ctx.beginPath();
+  ctx.roundRect(s(cx - 7), s(seatY - 18), s(14), s(8), [s(4), s(4), 0, 0]);
+  ctx.fill();
+
+  // ── Right armrest ──────────────────────────────────────────────────────
+  ctx.fillStyle = '#1e4a2c';
+  ctx.beginPath();
+  ctx.roundRect(s(cx + cw - 8), s(seatY - 18), s(16), s(ch + 14), [s(5), s(5), s(3), s(3)]);
+  ctx.fill();
+  ctx.fillStyle = '#2e6a40';
+  ctx.beginPath();
+  ctx.roundRect(s(cx + cw - 7), s(seatY - 18), s(14), s(8), [s(4), s(4), 0, 0]);
+  ctx.fill();
+
+  // ── Seat cushion ───────────────────────────────────────────────────────
+  const seatGrad = ctx.createLinearGradient(s(cx), s(seatY), s(cx), s(seatY + 14));
+  seatGrad.addColorStop(0, '#2e6a40');
+  seatGrad.addColorStop(1, '#245830');
+  ctx.fillStyle = seatGrad;
+  ctx.beginPath();
+  ctx.roundRect(s(cx + 2), s(seatY - 2), s(cw - 4), s(16), s(3));
+  ctx.fill();
+
+  // ── Front face of seat ─────────────────────────────────────────────────
+  ctx.fillStyle = '#1a4028';
+  ctx.fillRect(s(cx + 2), s(seatY + 12), s(cw - 4), s(ch - 14));
+
+  // ── Stubby legs (two visible front ones) ───────────────────────────────
+  ctx.fillStyle = '#3a2a14';
+  ctx.fillRect(s(cx + 4), s(pos.y - 6), s(8), s(8));
+  ctx.fillRect(s(cx + cw - 12), s(pos.y - 6), s(8), s(8));
+
+  // ── Button detail on backrest ──────────────────────────────────────────
+  ctx.fillStyle = '#1a3a22';
+  ctx.beginPath();
+  ctx.arc(s(pos.x - 10), s(seatY - backH / 2), s(3), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(s(pos.x + 10), s(seatY - backH / 2), s(3), 0, Math.PI * 2);
   ctx.fill();
 }
 
