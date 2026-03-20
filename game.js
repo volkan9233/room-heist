@@ -198,6 +198,12 @@ function drawRoom() {
   }
   ctx.restore();
 
+  // ── Floor AO shadows (ambient occlusion at wall-floor junctions) ─────────
+  drawFloorAO();
+
+  // ── Wall corner shadows (where side walls meet back wall) ───────────────
+  drawWallCornerShadows();
+
   // ── Baseboards ────────────────────────────────────────────────────────────
   ctx.strokeStyle = '#7a6a55';
   ctx.lineWidth = s(3);
@@ -224,6 +230,147 @@ function drawRoom() {
   drawRug();
   drawWardrobe();
   drawSideTable();
+}
+
+function drawFloorAO() {
+  const { floorTL, floorTR, floorBL, floorBR } = ROOM;
+
+  // Clip to floor quad so shadows don't bleed outside
+  ctx.save();
+  ctx.beginPath();
+  roomPath([floorTL, floorTR, floorBR, floorBL]);
+  ctx.clip();
+
+  // ── Back wall base: linear gradient darkening along the back edge ──────
+  const backAO = ctx.createLinearGradient(
+    s(640), s(floorTL.y), s(640), s(floorTL.y + 60)
+  );
+  backAO.addColorStop(0, 'rgba(0,0,0,0.22)');
+  backAO.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = backAO;
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(65));
+
+  // ── Left wall base: linear gradient from left edge inward ──────────────
+  const leftAO = ctx.createLinearGradient(
+    s(floorTL.x), s(floorTL.y),
+    s(floorTL.x + 55), s(floorTL.y + 30)
+  );
+  leftAO.addColorStop(0, 'rgba(0,0,0,0.18)');
+  leftAO.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = leftAO;
+  ctx.beginPath();
+  ctx.moveTo(s(floorTL.x), s(floorTL.y));
+  ctx.lineTo(s(floorBL.x), s(floorBL.y));
+  ctx.lineTo(s(floorBL.x + 60), s(floorBL.y));
+  ctx.lineTo(s(floorTL.x + 55), s(floorTL.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Right wall base: linear gradient from right edge inward ────────────
+  const rightAO = ctx.createLinearGradient(
+    s(floorTR.x), s(floorTR.y),
+    s(floorTR.x - 55), s(floorTR.y + 30)
+  );
+  rightAO.addColorStop(0, 'rgba(0,0,0,0.18)');
+  rightAO.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rightAO;
+  ctx.beginPath();
+  ctx.moveTo(s(floorTR.x), s(floorTR.y));
+  ctx.lineTo(s(floorBR.x), s(floorBR.y));
+  ctx.lineTo(s(floorBR.x - 60), s(floorBR.y));
+  ctx.lineTo(s(floorTR.x - 55), s(floorTR.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Corner radials: back-left and back-right floor corners ─────────────
+  const cornerRadius = 80;
+
+  // Back-left corner radial
+  const blAO = ctx.createRadialGradient(
+    s(floorTL.x), s(floorTL.y), 0,
+    s(floorTL.x), s(floorTL.y), s(cornerRadius)
+  );
+  blAO.addColorStop(0, 'rgba(0,0,0,0.25)');
+  blAO.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = blAO;
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(cornerRadius), s(cornerRadius));
+
+  // Back-right corner radial
+  const brAO = ctx.createRadialGradient(
+    s(floorTR.x), s(floorTR.y), 0,
+    s(floorTR.x), s(floorTR.y), s(cornerRadius)
+  );
+  brAO.addColorStop(0, 'rgba(0,0,0,0.25)');
+  brAO.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = brAO;
+  ctx.fillRect(s(floorTR.x - cornerRadius), s(floorTR.y), s(cornerRadius), s(cornerRadius));
+
+  ctx.restore();
+}
+
+function drawWallCornerShadows() {
+  const { floorTL, floorTR, ceilTL, ceilTR } = ROOM;
+
+  // ── Left wall-back wall junction: vertical shadow strip ────────────────
+  // Gradient from the junction edge outward onto the back wall (rightward)
+  const leftJunctionGrad = ctx.createLinearGradient(
+    s(ceilTL.x), s(ceilTL.y), s(ceilTL.x + 30), s(ceilTL.y)
+  );
+  leftJunctionGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  leftJunctionGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = leftJunctionGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTL.x), s(ceilTL.y));
+  ctx.lineTo(s(ceilTL.x + 30), s(ceilTL.y));
+  ctx.lineTo(s(floorTL.x + 30), s(floorTL.y));
+  ctx.lineTo(s(floorTL.x), s(floorTL.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Also darken the left wall side near the junction
+  const leftWallJGrad = ctx.createLinearGradient(
+    s(ceilTL.x), s(ceilTL.y), s(ceilTL.x - 25), s(ceilTL.y)
+  );
+  leftWallJGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  leftWallJGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = leftWallJGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTL.x), s(ceilTL.y));
+  ctx.lineTo(s(ceilTL.x - 25), s(ceilTL.y + 5));
+  ctx.lineTo(s(floorTL.x - 25), s(floorTL.y + 5));
+  ctx.lineTo(s(floorTL.x), s(floorTL.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Right wall-back wall junction: vertical shadow strip ───────────────
+  const rightJunctionGrad = ctx.createLinearGradient(
+    s(ceilTR.x), s(ceilTR.y), s(ceilTR.x - 30), s(ceilTR.y)
+  );
+  rightJunctionGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  rightJunctionGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rightJunctionGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTR.x), s(ceilTR.y));
+  ctx.lineTo(s(ceilTR.x - 30), s(ceilTR.y));
+  ctx.lineTo(s(floorTR.x - 30), s(floorTR.y));
+  ctx.lineTo(s(floorTR.x), s(floorTR.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Also darken the right wall side near the junction
+  const rightWallJGrad = ctx.createLinearGradient(
+    s(ceilTR.x), s(ceilTR.y), s(ceilTR.x + 25), s(ceilTR.y)
+  );
+  rightWallJGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  rightWallJGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rightWallJGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTR.x), s(ceilTR.y));
+  ctx.lineTo(s(ceilTR.x + 25), s(ceilTR.y + 5));
+  ctx.lineTo(s(floorTR.x + 25), s(floorTR.y + 5));
+  ctx.lineTo(s(floorTR.x), s(floorTR.y));
+  ctx.closePath();
+  ctx.fill();
 }
 
 function drawWindow() {
