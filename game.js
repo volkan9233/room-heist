@@ -468,18 +468,39 @@ function drawRug() {
 function drawWardrobe() {
   // Wardrobe against the back-left area of the back wall
   // Placed at u≈0.18 on back wall
-  const bx = 370, by = 120;  // top-left of wardrobe in design coords
+  const bx = 370, by = 120;  // top-left of wardrobe front face
   const bw = 140, bh = 170;
+  const topDepth = 18;  // perspective depth for 3D top face
+  const topShearX = -12; // horizontal offset for perspective skew
 
-  // shadow
+  // ── Cast shadow on floor — perspective-correct trapezoid ────────────────
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.beginPath();
-  ctx.ellipse(s(bx + bw / 2), s(by + bh + 8), s(bw * 0.55), s(12), 0, 0, Math.PI * 2);
+  // shadow base at wardrobe feet, extending forward and slightly right
+  ctx.moveTo(s(bx + 4), s(by + bh));
+  ctx.lineTo(s(bx + bw - 4), s(by + bh));
+  ctx.lineTo(s(bx + bw + 18), s(by + bh + 22));
+  ctx.lineTo(s(bx - 6), s(by + bh + 22));
+  ctx.closePath();
+  ctx.fill();
+  // softer outer penumbra
+  const shadowGrad = ctx.createLinearGradient(
+    s(bx + bw / 2), s(by + bh), s(bx + bw / 2), s(by + bh + 28)
+  );
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0.12)');
+  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 6), s(by + bh + 18));
+  ctx.lineTo(s(bx + bw + 18), s(by + bh + 18));
+  ctx.lineTo(s(bx + bw + 24), s(by + bh + 32));
+  ctx.lineTo(s(bx - 10), s(by + bh + 32));
+  ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-  // body
+  // ── Front face (body) ──────────────────────────────────────────────────
   const bodyGrad = ctx.createLinearGradient(s(bx), s(by), s(bx + bw), s(by));
   bodyGrad.addColorStop(0,   '#4a3520');
   bodyGrad.addColorStop(0.5, '#6b5030');
@@ -487,9 +508,29 @@ function drawWardrobe() {
   ctx.fillStyle = bodyGrad;
   ctx.fillRect(s(bx), s(by), s(bw), s(bh));
 
-  // top cap
+  // ── 3D top face (perspective parallelogram) ────────────────────────────
+  const topGrad = ctx.createLinearGradient(
+    s(bx), s(by - topDepth), s(bx), s(by)
+  );
+  topGrad.addColorStop(0, '#8a7050');
+  topGrad.addColorStop(1, '#7a6040');
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  // front-left of top → front-right → back-right → back-left
+  ctx.moveTo(s(bx - 4), s(by - 4));
+  ctx.lineTo(s(bx + bw + 4), s(by - 4));
+  ctx.lineTo(s(bx + bw + 4 + topShearX), s(by - 4 - topDepth));
+  ctx.lineTo(s(bx - 4 + topShearX), s(by - 4 - topDepth));
+  ctx.closePath();
+  ctx.fill();
+  // top face edge highlight
+  ctx.strokeStyle = '#9a8060';
+  ctx.lineWidth = s(1);
+  ctx.stroke();
+
+  // ── Front cap strip (cornice) ──────────────────────────────────────────
   ctx.fillStyle = '#7a6040';
-  ctx.fillRect(s(bx - 4), s(by - 8), s(bw + 8), s(12));
+  ctx.fillRect(s(bx - 4), s(by - 4), s(bw + 8), s(6));
 
   // center split line
   ctx.strokeStyle = '#2a1e0f';
@@ -519,54 +560,95 @@ function drawWardrobe() {
 function drawSideTable() {
   // Small side table, right wall area, floor-space u≈0.82, v≈0.38
   const pos = floorToScreen(0.82, 0.38);
-  const tw = 80, th = 55;
+  const tw = 76, tth = 8;     // top face: width and visible thickness
+  const legH = 48;             // leg height
+  const sideH = tth;           // visible side face height
   const tx = pos.x - tw / 2;
-  const ty = pos.y - th;
+  const topY = pos.y - legH - sideH;  // top surface Y
 
-  // shadow
+  // ── Shadow on floor ────────────────────────────────────────────────────
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
   ctx.beginPath();
-  ctx.ellipse(s(pos.x), s(pos.y + 4), s(tw * 0.45), s(10), 0, 0, Math.PI * 2);
+  ctx.moveTo(s(tx + 4), s(pos.y));
+  ctx.lineTo(s(tx + tw - 4), s(pos.y));
+  ctx.lineTo(s(tx + tw + 8), s(pos.y + 10));
+  ctx.lineTo(s(tx - 4), s(pos.y + 10));
+  ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-  // table top
-  ctx.fillStyle = '#7a5a30';
-  ctx.beginPath();
-  ctx.ellipse(s(pos.x), s(ty + 8), s(tw / 2), s(12), 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // table legs (two visible)
+  // ── Table legs (four, two visible in front) ────────────────────────────
   ctx.strokeStyle = '#5a4020';
   ctx.lineWidth = s(5);
+  // back-left leg (partially hidden)
   ctx.beginPath();
-  ctx.moveTo(s(pos.x - 20), s(ty + 14));
-  ctx.lineTo(s(pos.x - 18), s(pos.y));
+  ctx.moveTo(s(tx + 6), s(topY + sideH));
+  ctx.lineTo(s(tx + 4), s(pos.y));
   ctx.stroke();
+  // back-right leg (partially hidden)
   ctx.beginPath();
-  ctx.moveTo(s(pos.x + 20), s(ty + 14));
-  ctx.lineTo(s(pos.x + 18), s(pos.y));
+  ctx.moveTo(s(tx + tw - 6), s(topY + sideH));
+  ctx.lineTo(s(tx + tw - 4), s(pos.y));
+  ctx.stroke();
+  // front-left leg
+  ctx.strokeStyle = '#4a3518';
+  ctx.beginPath();
+  ctx.moveTo(s(tx + 8), s(topY + sideH + 2));
+  ctx.lineTo(s(tx + 5), s(pos.y + 2));
+  ctx.stroke();
+  // front-right leg
+  ctx.beginPath();
+  ctx.moveTo(s(tx + tw - 8), s(topY + sideH + 2));
+  ctx.lineTo(s(tx + tw - 5), s(pos.y + 2));
   ctx.stroke();
 
-  // small object on table (a lamp or book shape)
+  // ── Visible front side face of the table top ───────────────────────────
+  const sideFaceGrad = ctx.createLinearGradient(
+    s(tx), s(topY + 2), s(tx), s(topY + sideH + 2)
+  );
+  sideFaceGrad.addColorStop(0, '#6a4a28');
+  sideFaceGrad.addColorStop(1, '#54391c');
+  ctx.fillStyle = sideFaceGrad;
+  ctx.fillRect(s(tx), s(topY + 2), s(tw), s(sideH));
+  // side face edge
+  ctx.strokeStyle = '#3e2a10';
+  ctx.lineWidth = s(1);
+  ctx.strokeRect(s(tx), s(topY + 2), s(tw), s(sideH));
+
+  // ── Solid rectangular top surface ──────────────────────────────────────
+  const topGrad = ctx.createLinearGradient(s(tx), s(topY), s(tx + tw), s(topY));
+  topGrad.addColorStop(0, '#8a6838');
+  topGrad.addColorStop(0.5, '#9a7844');
+  topGrad.addColorStop(1, '#7a5a30');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(s(tx), s(topY - 2), s(tw), s(6));
+  // top edge highlight
+  ctx.strokeStyle = '#a08050';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(tx), s(topY - 2));
+  ctx.lineTo(s(tx + tw), s(topY - 2));
+  ctx.stroke();
+
+  // ── Lamp on table ──────────────────────────────────────────────────────
   ctx.fillStyle = '#3a5070';
-  ctx.fillRect(s(pos.x - 10), s(ty - 2), s(20), s(14));
+  ctx.fillRect(s(pos.x - 10), s(topY - 16), s(20), s(14));
   ctx.fillStyle = '#2a3a50';
   ctx.beginPath();
-  ctx.arc(s(pos.x), s(ty - 4), s(7), Math.PI, 0);
+  ctx.arc(s(pos.x), s(topY - 18), s(7), Math.PI, 0);
   ctx.fill();
-  // lamp glow suggestion
+  // lamp glow
   ctx.save();
   const lampGlow = ctx.createRadialGradient(
-    s(pos.x), s(ty - 4), s(2),
-    s(pos.x), s(ty - 4), s(40)
+    s(pos.x), s(topY - 18), s(2),
+    s(pos.x), s(topY - 18), s(40)
   );
   lampGlow.addColorStop(0,   'rgba(255,230,150,0.18)');
   lampGlow.addColorStop(1,   'rgba(255,230,150,0)');
   ctx.fillStyle = lampGlow;
   ctx.beginPath();
-  ctx.arc(s(pos.x), s(ty - 4), s(40), 0, Math.PI * 2);
+  ctx.arc(s(pos.x), s(topY - 18), s(40), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
