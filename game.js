@@ -223,8 +223,14 @@ function drawRoom() {
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
   ctx.stroke();
 
+  // ── Crown molding at top of walls ────────────────────────────────────────
+  drawCrownMolding();
+
   // ── Window on back wall ───────────────────────────────────────────────────
   drawWindow();
+
+  // ── Painting on back wall ──────────────────────────────────────────────
+  drawPainting();
 
   // ── Room objects ──────────────────────────────────────────────────────────
   drawRug();
@@ -373,6 +379,156 @@ function drawWallCornerShadows() {
   ctx.fill();
 }
 
+function drawCrownMolding() {
+  const { ceilTL, ceilTR, leftWallTop, rightWallTop } = ROOM;
+  const moldH = 8; // molding height in design space
+
+  // ── Back wall crown molding ────────────────────────────────────────────
+  const backMoldGrad = ctx.createLinearGradient(
+    s(ceilTL.x), s(ceilTL.y), s(ceilTL.x), s(ceilTL.y + moldH)
+  );
+  backMoldGrad.addColorStop(0, '#e8dcc8');
+  backMoldGrad.addColorStop(0.4, '#d8ccb4');
+  backMoldGrad.addColorStop(1, '#c8b89e');
+  ctx.fillStyle = backMoldGrad;
+  ctx.fillRect(s(ceilTL.x), s(ceilTL.y), s(ceilTR.x - ceilTL.x), s(moldH));
+  // highlight line at top
+  ctx.strokeStyle = '#f0e8d8';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTL.x), s(ceilTL.y + 1));
+  ctx.lineTo(s(ceilTR.x), s(ceilTR.y + 1));
+  ctx.stroke();
+  // shadow line at bottom
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTL.x), s(ceilTL.y + moldH));
+  ctx.lineTo(s(ceilTR.x), s(ceilTR.y + moldH));
+  ctx.stroke();
+
+  // ── Left wall crown molding ────────────────────────────────────────────
+  ctx.save();
+  // clip to left wall shape
+  ctx.beginPath();
+  roomPath([leftWallTop, ceilTL, ROOM.floorTL, ROOM.floorBL]);
+  ctx.clip();
+
+  const leftMoldGrad = ctx.createLinearGradient(
+    s(leftWallTop.x), s(leftWallTop.y), s(leftWallTop.x), s(leftWallTop.y + moldH + 2)
+  );
+  leftMoldGrad.addColorStop(0, '#d8cbb4');
+  leftMoldGrad.addColorStop(0.4, '#c8bca4');
+  leftMoldGrad.addColorStop(1, '#b8a890');
+  ctx.fillStyle = leftMoldGrad;
+  // draw as a quad following the top edge of left wall
+  ctx.beginPath();
+  ctx.moveTo(s(leftWallTop.x), s(leftWallTop.y));
+  ctx.lineTo(s(ceilTL.x), s(ceilTL.y));
+  ctx.lineTo(s(ceilTL.x), s(ceilTL.y + moldH));
+  ctx.lineTo(s(leftWallTop.x), s(leftWallTop.y + moldH + 2));
+  ctx.closePath();
+  ctx.fill();
+  // shadow line
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(leftWallTop.x), s(leftWallTop.y + moldH + 2));
+  ctx.lineTo(s(ceilTL.x), s(ceilTL.y + moldH));
+  ctx.stroke();
+  ctx.restore();
+
+  // ── Right wall crown molding ───────────────────────────────────────────
+  ctx.save();
+  ctx.beginPath();
+  roomPath([ceilTR, rightWallTop, ROOM.floorBR, ROOM.floorTR]);
+  ctx.clip();
+
+  const rightMoldGrad = ctx.createLinearGradient(
+    s(rightWallTop.x), s(rightWallTop.y), s(rightWallTop.x), s(rightWallTop.y + moldH + 2)
+  );
+  rightMoldGrad.addColorStop(0, '#d0c4a8');
+  rightMoldGrad.addColorStop(0.4, '#c0b498');
+  rightMoldGrad.addColorStop(1, '#b0a488');
+  ctx.fillStyle = rightMoldGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTR.x), s(ceilTR.y));
+  ctx.lineTo(s(rightWallTop.x), s(rightWallTop.y));
+  ctx.lineTo(s(rightWallTop.x), s(rightWallTop.y + moldH + 2));
+  ctx.lineTo(s(ceilTR.x), s(ceilTR.y + moldH));
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(ceilTR.x), s(ceilTR.y + moldH));
+  ctx.lineTo(s(rightWallTop.x), s(rightWallTop.y + moldH + 2));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPainting() {
+  // Framed painting on back wall, left-center area (between wardrobe and window)
+  const px = 570, py = 110;  // top-left of painting
+  const pw = 100, ph = 75;
+
+  // ── Shadow behind frame ────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(s(px + 3), s(py + 3), s(pw), s(ph));
+
+  // ── Outer frame (dark wood) ────────────────────────────────────────────
+  const frameW = 6;
+  ctx.fillStyle = '#4a3520';
+  ctx.fillRect(s(px - frameW), s(py - frameW), s(pw + frameW * 2), s(ph + frameW * 2));
+
+  // ── Inner frame highlight ─────────────────────────────────────────────
+  ctx.fillStyle = '#6a5535';
+  ctx.fillRect(s(px - 2), s(py - 2), s(pw + 4), s(ph + 4));
+
+  // ── Canvas / painting content (abstract landscape) ────────────────────
+  // Sky
+  const skyGrad = ctx.createLinearGradient(s(px), s(py), s(px), s(py + ph * 0.55));
+  skyGrad.addColorStop(0, '#4a6a8a');
+  skyGrad.addColorStop(1, '#8aaaba');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(s(px), s(py), s(pw), s(ph * 0.55));
+
+  // Hills / ground
+  const groundGrad = ctx.createLinearGradient(s(px), s(py + ph * 0.45), s(px), s(py + ph));
+  groundGrad.addColorStop(0, '#4a7a3a');
+  groundGrad.addColorStop(1, '#3a5a2a');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(s(px), s(py + ph * 0.5), s(pw), s(ph * 0.5));
+
+  // Rolling hill line
+  ctx.strokeStyle = '#5a8a4a';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(px), s(py + ph * 0.55));
+  ctx.quadraticCurveTo(s(px + pw * 0.3), s(py + ph * 0.42), s(px + pw * 0.5), s(py + ph * 0.5));
+  ctx.quadraticCurveTo(s(px + pw * 0.75), s(py + ph * 0.58), s(px + pw), s(py + ph * 0.48));
+  ctx.stroke();
+
+  // Small sun/moon circle
+  ctx.fillStyle = '#e8d890';
+  ctx.beginPath();
+  ctx.arc(s(px + pw * 0.75), s(py + ph * 0.22), s(8), 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Frame edge highlights ─────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = s(1);
+  // top highlight
+  ctx.beginPath();
+  ctx.moveTo(s(px - frameW), s(py - frameW));
+  ctx.lineTo(s(px + pw + frameW), s(py - frameW));
+  ctx.stroke();
+  // left highlight
+  ctx.beginPath();
+  ctx.moveTo(s(px - frameW), s(py - frameW));
+  ctx.lineTo(s(px - frameW), s(py + ph + frameW));
+  ctx.stroke();
+}
+
 function drawWindow() {
   // Window sits on the back wall, roughly center-right
   // back wall spans x:[260..1020], y:[60..270] (top) and [60..270] (base)
@@ -418,6 +574,82 @@ function drawWindow() {
   ctx.ellipse(s(820), s(430), s(150), s(90), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+
+  // ── Curtain drapes flanking the window ─────────────────────────────────
+  const curtainW = 28;
+  const curtainTop = wy - 18;
+  const curtainBot = wy + wh + 24;
+  const curtainH = curtainBot - curtainTop;
+
+  // Curtain rod
+  ctx.strokeStyle = '#6a5035';
+  ctx.lineWidth = s(4);
+  ctx.beginPath();
+  ctx.moveTo(s(wx - curtainW - 8), s(curtainTop));
+  ctx.lineTo(s(wx + ww + curtainW + 8), s(curtainTop));
+  ctx.stroke();
+  // rod finials
+  ctx.fillStyle = '#6a5035';
+  ctx.beginPath();
+  ctx.arc(s(wx - curtainW - 8), s(curtainTop), s(4), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(s(wx + ww + curtainW + 8), s(curtainTop), s(4), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Left curtain
+  const lcx = wx - 4;
+  const leftCurtainGrad = ctx.createLinearGradient(
+    s(lcx - curtainW), s(curtainTop), s(lcx), s(curtainTop)
+  );
+  leftCurtainGrad.addColorStop(0, '#6a2828');
+  leftCurtainGrad.addColorStop(0.4, '#8a3838');
+  leftCurtainGrad.addColorStop(0.7, '#7a3030');
+  leftCurtainGrad.addColorStop(1, '#5a2020');
+  ctx.fillStyle = leftCurtainGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(lcx - curtainW), s(curtainTop));
+  ctx.lineTo(s(lcx + 2), s(curtainTop));
+  ctx.lineTo(s(lcx + 4), s(curtainBot));
+  ctx.lineTo(s(lcx - curtainW + 4), s(curtainBot));
+  ctx.closePath();
+  ctx.fill();
+  // fold lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = s(1);
+  for (let i = 1; i <= 3; i++) {
+    const fx = lcx - curtainW + i * (curtainW / 4);
+    ctx.beginPath();
+    ctx.moveTo(s(fx), s(curtainTop + 4));
+    ctx.lineTo(s(fx + 1), s(curtainBot - 2));
+    ctx.stroke();
+  }
+
+  // Right curtain
+  const rcx = wx + ww + 4;
+  const rightCurtainGrad = ctx.createLinearGradient(
+    s(rcx), s(curtainTop), s(rcx + curtainW), s(curtainTop)
+  );
+  rightCurtainGrad.addColorStop(0, '#5a2020');
+  rightCurtainGrad.addColorStop(0.3, '#7a3030');
+  rightCurtainGrad.addColorStop(0.6, '#8a3838');
+  rightCurtainGrad.addColorStop(1, '#6a2828');
+  ctx.fillStyle = rightCurtainGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(rcx - 2), s(curtainTop));
+  ctx.lineTo(s(rcx + curtainW), s(curtainTop));
+  ctx.lineTo(s(rcx + curtainW - 4), s(curtainBot));
+  ctx.lineTo(s(rcx - 4), s(curtainBot));
+  ctx.closePath();
+  ctx.fill();
+  // fold lines
+  for (let i = 1; i <= 3; i++) {
+    const fx = rcx + i * (curtainW / 4);
+    ctx.beginPath();
+    ctx.moveTo(s(fx), s(curtainTop + 4));
+    ctx.lineTo(s(fx - 1), s(curtainBot - 2));
+    ctx.stroke();
+  }
 }
 
 function drawRug() {
