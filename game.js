@@ -425,18 +425,37 @@ function drawServerRack(box) {
   const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
   const screenW = br.x - bl.x;
   const rackH = 130;
   const bx = base.x - screenW / 2;
   const by = base.y - rackH;
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  // Ground-plane footprint shadow (shows full collision area on floor)
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.8)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  footGrad.addColorStop(0.7, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
   ctx.beginPath();
-  ctx.moveTo(s(bx), s(base.y));
-  ctx.lineTo(s(bx + screenW), s(base.y));
-  ctx.lineTo(s(bx + screenW + 10), s(base.y + 12));
-  ctx.lineTo(s(bx - 5), s(base.y + 12));
+  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 8), s(br.y + 6));
+  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow (hard edge at base)
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 2), s(base.y - 1));
+  ctx.lineTo(s(bx + screenW + 2), s(base.y - 1));
+  ctx.lineTo(s(bx + screenW + 10), s(base.y + 10));
+  ctx.lineTo(s(bx - 5), s(base.y + 10));
   ctx.closePath();
   ctx.fill();
 
@@ -601,18 +620,37 @@ function drawCrates() {
   const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
   const cw1 = br.x - bl.x;
   const ch1 = 55;
   const cx1 = base.x - cw1 / 2;
   const cy1 = base.y - ch1;
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  // Ground-plane footprint shadow (shows full collision area on floor)
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(cw1, base.y - tl.y) * 0.8)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.16)');
+  footGrad.addColorStop(0.7, 'rgba(0,0,0,0.07)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
   ctx.beginPath();
-  ctx.moveTo(s(cx1), s(base.y));
-  ctx.lineTo(s(cx1 + cw1), s(base.y));
-  ctx.lineTo(s(cx1 + cw1 + 10), s(base.y + 10));
-  ctx.lineTo(s(cx1 - 5), s(base.y + 10));
+  ctx.moveTo(s(tl.x - 3), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 3), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 6), s(br.y + 5));
+  ctx.lineTo(s(bl.x - 4), s(bl.y + 5));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow (hard edge at base)
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.beginPath();
+  ctx.moveTo(s(cx1 - 1), s(base.y - 1));
+  ctx.lineTo(s(cx1 + cw1 + 1), s(base.y - 1));
+  ctx.lineTo(s(cx1 + cw1 + 10), s(base.y + 8));
+  ctx.lineTo(s(cx1 - 5), s(base.y + 8));
   ctx.closePath();
   ctx.fill();
 
