@@ -63,10 +63,22 @@ const ROOM1_PATROL = [
 ];
 
 const ROOM2_PATROL = [
-  { u: 0.48, v: 0.18 },
-  { u: 0.48, v: 0.62 },
-  { u: 0.15, v: 0.62 },
-  { u: 0.15, v: 0.32 },
+  // Back area: in front of workbench
+  { u: 0.22, v: 0.30 },
+  // Down past barrels toward gap
+  { u: 0.24, v: 0.60 },
+  // Gap waypoint (below partition end)
+  { u: 0.43, v: 0.72 },
+  // Front area: corridor between crates and shelving
+  { u: 0.72, v: 0.72 },
+  // Up past shelving
+  { u: 0.72, v: 0.32 },
+  // Back down
+  { u: 0.72, v: 0.72 },
+  // Gap waypoint return (below partition)
+  { u: 0.43, v: 0.72 },
+  // Back into back area
+  { u: 0.24, v: 0.60 },
 ];
 
 const ROOM3_PATROL = [
@@ -107,11 +119,15 @@ const ROOM1_COLLIDERS = [
 ];
 
 const ROOM2_COLLIDERS = [
-  { id: 'cabinet',   uMin: 0.05, vMin: 0.10, uMax: 0.18, vMax: 0.32 },
-  { id: 'workbench', uMin: 0.55, vMin: 0.08, uMax: 0.90, vMax: 0.25 },
-  { id: 'shelving',  uMin: 0.25, vMin: 0.35, uMax: 0.48, vMax: 0.55 },
-  { id: 'barrels',   uMin: 0.06, vMin: 0.62, uMax: 0.22, vMax: 0.78 },
-  { id: 'crates2',   uMin: 0.56, vMin: 0.55, uMax: 0.73, vMax: 0.72 },
+  // Partition wall: runs from back wall down, gap at bottom (v > 0.62)
+  { id: 'partition', uMin: 0.40, vMin: 0.02, uMax: 0.46, vMax: 0.62 },
+  // Back area (left of partition)
+  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24 },
+  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56 },
+  // Front area (right of partition)
+  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28 },
+  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54 },
+  { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62 },
 ];
 
 const ROOM3_COLLIDERS = [
@@ -1083,8 +1099,8 @@ function drawRoom2WallDecor() {
     };
   }
 
-  // ── Pegboard (back wall, gap between cabinet and workbench) ──
-  const pg = bw(0.35, 0.25);
+  // ── Pegboard (back wall, left of partition, above workbench) ──
+  const pg = bw(0.20, 0.25);
   const pgW = 80, pgH = 60;
   // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.10)';
@@ -1144,8 +1160,8 @@ function drawRoom2WallDecor() {
   ctx.lineWidth = s(1);
   ctx.strokeRect(s(pg.x - pgW / 2), s(pg.y - pgH / 2), s(pgW), s(pgH));
 
-  // ── Safety sign (back wall, right side above workbench — weathered) ──
-  const sgn = bw(0.82, 0.18);
+  // ── Safety sign (back wall, right of partition, above cabinet — weathered) ──
+  const sgn = bw(0.75, 0.18);
   const sgnW = 32, sgnH = 24;
   // Yellow/black caution sign — faded
   ctx.fillStyle = '#2a2a2a';
@@ -1193,8 +1209,8 @@ function drawRoom2WallDecor() {
 }
 
 function drawRoom2FloorDrain() {
-  // Circular drain grate on the floor (flat detail)
-  const drainPos = floorToScreen(0.40, 0.75);
+  // Circular drain grate on the floor (in gap/chokepoint area)
+  const drainPos = floorToScreen(0.46, 0.72);
   const drainR = 12;
 
   ctx.save();
@@ -1235,8 +1251,8 @@ function drawRoom2FloorDrain() {
 }
 
 function drawRoom2FloorStains() {
-  // Oil stain near workbench area (workshop lived-in feel)
-  const oilPos = floorToScreen(0.72, 0.30);
+  // Oil stain near workbench area (back area, workshop feel)
+  const oilPos = floorToScreen(0.22, 0.30);
   const oilGrad = ctx.createRadialGradient(
     s(oilPos.x), s(oilPos.y), 0,
     s(oilPos.x), s(oilPos.y), s(18)
@@ -1250,7 +1266,7 @@ function drawRoom2FloorStains() {
   ctx.fill();
 
   // Smaller grease spot near barrels
-  const g2 = floorToScreen(0.18, 0.72);
+  const g2 = floorToScreen(0.16, 0.60);
   const g2Grad = ctx.createRadialGradient(s(g2.x), s(g2.y), 0, s(g2.x), s(g2.y), s(10));
   g2Grad.addColorStop(0, 'rgba(15,12,8,0.08)');
   g2Grad.addColorStop(1, 'rgba(15,12,8,0)');
@@ -1259,15 +1275,15 @@ function drawRoom2FloorStains() {
   ctx.ellipse(s(g2.x), s(g2.y), s(10), s(5), -0.1, 0, Math.PI * 2);
   ctx.fill();
 
-  // Scuff marks near workbench (foot traffic)
+  // Scuff marks near gap/chokepoint (foot traffic)
   ctx.strokeStyle = 'rgba(0,0,0,0.04)';
   ctx.lineWidth = s(2);
-  const sc1 = floorToScreen(0.65, 0.38);
+  const sc1 = floorToScreen(0.44, 0.68);
   ctx.beginPath();
   ctx.moveTo(s(sc1.x - 8), s(sc1.y));
   ctx.lineTo(s(sc1.x + 6), s(sc1.y + 1));
   ctx.stroke();
-  const sc2 = floorToScreen(0.60, 0.42);
+  const sc2 = floorToScreen(0.50, 0.72);
   ctx.beginPath();
   ctx.moveTo(s(sc2.x - 5), s(sc2.y - 1));
   ctx.lineTo(s(sc2.x + 8), s(sc2.y));
@@ -1321,8 +1337,8 @@ function drawRoom3FloorCables() {
 }
 
 function drawMopBucket() {
-  // Position: bottom-right area, near player start, out of stealth lanes
-  const pos = floorToScreen(0.82, 0.82);
+  // Position: back area corner, near barrels, out of stealth lanes
+  const pos = floorToScreen(0.28, 0.62);
   const bucW = 18, bucH = 20;
   const bx = pos.x - bucW / 2;
   const by = pos.y - bucH;
@@ -1893,26 +1909,6 @@ function drawDeskClutter(dx, deskW, topY) {
 }
 
 function drawBenchClutter(dx, benchW, topY) {
-  // Wire spool (left of keycard, past the vise area) — hidden when knocked off
-  if (!spoolKnocked || currentRoom !== 2) {
-    const spoolX = dx + benchW * 0.35;
-    const spoolY = topY - 6;
-    // Spool body (small cylinder on side)
-    ctx.fillStyle = '#3a3d44';
-    ctx.fillRect(s(spoolX - 6), s(spoolY - 5), s(12), s(5));
-    // Wire wound around it
-    ctx.strokeStyle = '#6a4a2a';
-    ctx.lineWidth = s(2);
-    ctx.beginPath();
-    ctx.moveTo(s(spoolX - 4), s(spoolY - 3));
-    ctx.lineTo(s(spoolX + 4), s(spoolY - 3));
-    ctx.stroke();
-    // End flanges
-    ctx.fillStyle = '#4a4d55';
-    ctx.fillRect(s(spoolX - 7), s(spoolY - 6), s(2), s(7));
-    ctx.fillRect(s(spoolX + 5), s(spoolY - 6), s(2), s(7));
-  }
-
   // Clipboard (right of keycard area, angled)
   const clipX = dx + benchW * 0.70;
   const clipY = topY - 5;
@@ -2172,6 +2168,129 @@ function drawCrates(box) {
   ctx.fillText('S-04', s(cx1 + cw1 / 2), s(cy1 + ch1 - 8));
 }
 
+// ─── Room 2: Partition wall ──────────────────────────────────────────────────
+
+function drawPartition(box) {
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+
+  const wallW = br.x - bl.x;
+  const wallDepth = bl.y - tl.y;
+  // Partition rises from floor to ~70% of room height
+  const wallH = wallDepth * 2.8;
+  const dx = bl.x;
+  const by = bl.y;
+
+  // Ground-plane footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(wallW, wallDepth) * 1.2)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  footGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(tr.x + 6), s(tr.y - 3));
+  ctx.lineTo(s(br.x + 10), s(br.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(bl.y + 8));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  const ctsGrad = ctx.createLinearGradient(0, s(by - 2), 0, s(by + 14));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.30)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.12)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
+  ctx.fillRect(s(dx - 8), s(by - 2), s(wallW + 16), s(16));
+
+  // Drop shadow behind wall body
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.fillRect(s(dx + 4), s(by - wallH + 4), s(wallW + 2), s(wallH));
+
+  // Front face — concrete/drywall
+  const frontGrad = ctx.createLinearGradient(s(dx), s(by - wallH), s(dx), s(by));
+  frontGrad.addColorStop(0, '#505560');
+  frontGrad.addColorStop(0.3, '#4a4f58');
+  frontGrad.addColorStop(0.7, '#464b54');
+  frontGrad.addColorStop(1, '#424750');
+  ctx.fillStyle = frontGrad;
+  ctx.fillRect(s(dx), s(by - wallH), s(wallW), s(wallH));
+
+  // Side face (right edge, gives 3D depth)
+  const sideW = 8;
+  const sdGrad = ctx.createLinearGradient(s(dx + wallW), 0, s(dx + wallW + sideW), 0);
+  sdGrad.addColorStop(0, '#3e434c');
+  sdGrad.addColorStop(1, '#363b44');
+  ctx.fillStyle = sdGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dx + wallW), s(by - wallH));
+  ctx.lineTo(s(dx + wallW + sideW), s(by - wallH + 4));
+  ctx.lineTo(s(dx + wallW + sideW), s(by + 4));
+  ctx.lineTo(s(dx + wallW), s(by));
+  ctx.closePath();
+  ctx.fill();
+
+  // Top edge (cap)
+  ctx.fillStyle = '#585d66';
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by - wallH));
+  ctx.lineTo(s(dx + wallW), s(by - wallH));
+  ctx.lineTo(s(dx + wallW + sideW), s(by - wallH + 4));
+  ctx.lineTo(s(dx + sideW), s(by - wallH + 4));
+  ctx.closePath();
+  ctx.fill();
+
+  // Metal cap strip on top
+  ctx.strokeStyle = '#6a6f78';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by - wallH));
+  ctx.lineTo(s(dx + wallW), s(by - wallH));
+  ctx.stroke();
+
+  // Horizontal seam lines (panel look)
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = s(0.8);
+  for (let i = 1; i <= 4; i++) {
+    const sy = by - wallH + (wallH * i / 5);
+    ctx.beginPath();
+    ctx.moveTo(s(dx + 2), s(sy));
+    ctx.lineTo(s(dx + wallW - 2), s(sy));
+    ctx.stroke();
+  }
+  // Seam highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for (let i = 1; i <= 4; i++) {
+    const sy = by - wallH + (wallH * i / 5) + 1;
+    ctx.beginPath();
+    ctx.moveTo(s(dx + 2), s(sy));
+    ctx.lineTo(s(dx + wallW - 2), s(sy));
+    ctx.stroke();
+  }
+
+  // Bottom edge shadow
+  ctx.strokeStyle = '#2a2e36';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by));
+  ctx.lineTo(s(dx + wallW), s(by));
+  ctx.stroke();
+
+  // Left edge highlight (where partition meets back wall)
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 1), s(by - wallH + 2));
+  ctx.lineTo(s(dx + 1), s(by - 2));
+  ctx.stroke();
+}
+
 // ─── Room 2 facility objects ──────────────────────────────────────────────────
 
 function drawToolCabinet(box) {
@@ -2314,6 +2433,26 @@ function drawToolCabinet(box) {
   ctx.strokeStyle = '#1e2a18';
   ctx.lineWidth = s(1.5);
   ctx.strokeRect(s(bx), s(by), s(screenW), s(cabinetH));
+
+  // Wire spool on top of cabinet (Room 2 distraction) — hidden when knocked
+  if (currentRoom === 2 && !spoolKnocked) {
+    const spoolX = bx + screenW * 0.5;
+    const spoolY = by - 10;
+    // Spool body
+    ctx.fillStyle = '#3a3d44';
+    ctx.fillRect(s(spoolX - 7), s(spoolY - 5), s(14), s(5));
+    // Wire wound around it
+    ctx.strokeStyle = '#6a4a2a';
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    ctx.moveTo(s(spoolX - 5), s(spoolY - 3));
+    ctx.lineTo(s(spoolX + 5), s(spoolY - 3));
+    ctx.stroke();
+    // End flanges
+    ctx.fillStyle = '#4a4d55';
+    ctx.fillRect(s(spoolX - 8), s(spoolY - 6), s(2), s(7));
+    ctx.fillRect(s(spoolX + 6), s(spoolY - 6), s(2), s(7));
+  }
 }
 
 function drawWorkbench(box) {
@@ -3012,7 +3151,7 @@ function drawRoom3WallDecor() {
 
 // ─── Fallen spool + noise ring (Room 2 distraction) ─────────────────────────
 
-const SPOOL_LAND = { u: 0.70, v: 0.40 };
+const SPOOL_LAND = { u: 0.68, v: 0.42 };
 
 function drawFallenSpool() {
   if (!spoolKnocked || currentRoom !== 2) return;
@@ -3739,10 +3878,10 @@ function update(dt) {
   // Spool knock interaction — Room 2 only, one-shot, not during detection
   if (currentRoom === 2 && !spoolKnocked && !detected &&
       (keys['e'] || keys['E'] || keys[' '])) {
-    // Near left side of workbench (where spool sits)
-    const bench = COLLIDERS[1];
-    const spoolU = bench.uMin + (bench.uMax - bench.uMin) * 0.35;
-    const spoolFrontV = bench.vMax + 0.06;
+    // Near tool cabinet (where spool sits in front area)
+    const cab = COLLIDERS[3];
+    const spoolU = cab.uMin + (cab.uMax - cab.uMin) * 0.5;
+    const spoolFrontV = cab.vMax + 0.06;
     if (Math.abs(player.u - spoolU) < 0.12 && Math.abs(player.v - spoolFrontV) < 0.10) {
       spoolKnocked = true;
       spoolNoiseTimer = 1.5;
@@ -3813,13 +3952,14 @@ function render() {
     sortable.push({ v: 0.36, draw: drawTrashBin });
     sortable.push({ v: 0.48, draw: drawFireExtinguisher });
   } else if (currentRoom === 2) {
-    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawToolCabinet(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawPartition(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawWorkbench(COLLIDERS[1]) });
-    sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawShelving(COLLIDERS[2]) });
-    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawBarrels(COLLIDERS[3]) });
-    sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawCrates(COLLIDERS[4]) });
+    sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawBarrels(COLLIDERS[2]) });
+    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawToolCabinet(COLLIDERS[3]) });
+    sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawShelving(COLLIDERS[4]) });
+    sortable.push({ v: COLLIDERS[5].vMax, draw: () => drawCrates(COLLIDERS[5]) });
     // Decorative floor props (no colliders)
-    sortable.push({ v: 0.82, draw: drawMopBucket });
+    sortable.push({ v: 0.62, draw: drawMopBucket });
     // Fallen spool on floor (only when knocked)
     if (spoolKnocked) {
       sortable.push({ v: SPOOL_LAND.v, draw: drawFallenSpool });
@@ -3927,13 +4067,13 @@ function render() {
 
     // Spool knock prompt (Room 2, not yet knocked)
     if (currentRoom === 2 && !spoolKnocked) {
-      const bench = COLLIDERS[1];
-      const spoolU = bench.uMin + (bench.uMax - bench.uMin) * 0.35;
-      const spoolFrontV = bench.vMax + 0.06;
+      const cab = COLLIDERS[3];
+      const spoolU = cab.uMin + (cab.uMax - cab.uMin) * 0.5;
+      const spoolFrontV = cab.vMax + 0.06;
       const nearSpool = Math.abs(player.u - spoolU) < 0.12 &&
         Math.abs(player.v - spoolFrontV) < 0.10;
       if (nearSpool) {
-        const promptPos = floorToScreen(spoolU, bench.vMax + 0.02);
+        const promptPos = floorToScreen(spoolU, cab.vMax + 0.02);
         const bob = Math.sin(gameTime * 4) * 3;
         const sy = s(promptPos.y - 18 + bob);
         ctx.textAlign = 'center';
