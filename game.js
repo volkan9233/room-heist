@@ -55,12 +55,21 @@ const player = {
 };
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
-const PATROL = [
+const ROOM1_PATROL = [
   { u: 0.60, v: 0.22 },
   { u: 0.60, v: 0.72 },
   { u: 0.22, v: 0.72 },
   { u: 0.22, v: 0.42 },
 ];
+
+const ROOM2_PATROL = [
+  { u: 0.48, v: 0.18 },
+  { u: 0.48, v: 0.62 },
+  { u: 0.15, v: 0.62 },
+  { u: 0.15, v: 0.32 },
+];
+
+let PATROL = ROOM1_PATROL;
 
 const guard = {
   u: PATROL[0].u,
@@ -73,18 +82,30 @@ const guard = {
 };
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
-const COLLIDERS = [
+const ROOM1_COLLIDERS = [
   { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38 },
   { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34 },
   { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30 },
   { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67 },
 ];
 
+const ROOM2_COLLIDERS = [
+  { id: 'cabinet',   uMin: 0.05, vMin: 0.10, uMax: 0.18, vMax: 0.32 },
+  { id: 'workbench', uMin: 0.55, vMin: 0.08, uMax: 0.90, vMax: 0.25 },
+  { id: 'shelving',  uMin: 0.25, vMin: 0.35, uMax: 0.48, vMax: 0.55 },
+  { id: 'barrels',   uMin: 0.06, vMin: 0.62, uMax: 0.22, vMax: 0.78 },
+  { id: 'crates2',   uMin: 0.56, vMin: 0.55, uMax: 0.73, vMax: 0.72 },
+];
+
+let COLLIDERS = ROOM1_COLLIDERS;
+
 // ─── Game state ──────────────────────────────────────────────────────────────
 let detected = false;
 let hasKeycard = false;
 let won = false;
 let gameTime = 0;
+let currentRoom = 1;
+let roomTransitionTimer = 0;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -272,8 +293,9 @@ function drawRoom() {
   }
   ctx.restore();
 
-  // ── Exit door on right wall ──
-  drawExitDoor();
+  // ── Exit door ──
+  if (currentRoom === 1) drawExitDoor();
+  else drawExitDoorLeft();
 
   // ── Floor ──
   const floorGrad = ctx.createLinearGradient(s(640), s(270), s(640), s(640));
@@ -620,6 +642,148 @@ function drawExitDoor() {
   // EXIT label — with backing sign
   const textPos = rightWallPoint((doorU1 + doorU2) * 0.5, doorT1 - 0.06);
   // Sign backing
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(s(textPos.x - 18), s(textPos.y - 7), s(36), s(12));
+  ctx.fillStyle = '#e04040';
+  ctx.font = `bold ${s(10)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('EXIT', s(textPos.x), s(textPos.y));
+}
+
+function drawExitDoorLeft() {
+  const { ceilTL, leftWallTop, floorTL, floorBL } = ROOM;
+
+  function leftWallPoint(u, v) {
+    const x = (1 - u) * (1 - v) * ceilTL.x + u * (1 - v) * leftWallTop.x
+            + (1 - u) * v * floorTL.x + u * v * floorBL.x;
+    const y = (1 - u) * (1 - v) * ceilTL.y + u * (1 - v) * leftWallTop.y
+            + (1 - u) * v * floorTL.y + u * v * floorBL.y;
+    return { x, y };
+  }
+
+  const doorU1 = 0.3, doorU2 = 0.55;
+  const doorT1 = 0.35, doorT2 = 0.78;
+
+  const dtl = leftWallPoint(doorU1, doorT1);
+  const dtr = leftWallPoint(doorU2, doorT1);
+  const dbr = leftWallPoint(doorU2, doorT2);
+  const dbl = leftWallPoint(doorU1, doorT2);
+
+  // Frame
+  const framePad = 4;
+  const frmGrad = ctx.createLinearGradient(s(dtl.x), 0, s(dtr.x), 0);
+  frmGrad.addColorStop(0, '#484b52');
+  frmGrad.addColorStop(0.15, '#5e6168');
+  frmGrad.addColorStop(0.85, '#5e6168');
+  frmGrad.addColorStop(1, '#484b52');
+  ctx.fillStyle = frmGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dtl.x - framePad), s(dtl.y - framePad));
+  ctx.lineTo(s(dtr.x + framePad), s(dtr.y - framePad));
+  ctx.lineTo(s(dbr.x + framePad), s(dbr.y + framePad));
+  ctx.lineTo(s(dbl.x - framePad), s(dbl.y + framePad));
+  ctx.closePath();
+  ctx.fill();
+  // Frame inner edge
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(dtl.x - 1), s(dtl.y - 1));
+  ctx.lineTo(s(dtr.x + 1), s(dtr.y - 1));
+  ctx.lineTo(s(dbr.x + 1), s(dbr.y + 1));
+  ctx.lineTo(s(dbl.x - 1), s(dbl.y + 1));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Door surface
+  const doorGrad = ctx.createLinearGradient(s(dtl.x), s(dtl.y), s(dtr.x), s(dtr.y));
+  doorGrad.addColorStop(0, '#585b62');
+  doorGrad.addColorStop(0.2, '#686b72');
+  doorGrad.addColorStop(0.5, '#727580');
+  doorGrad.addColorStop(0.8, '#686b72');
+  doorGrad.addColorStop(1, '#585b62');
+  ctx.fillStyle = doorGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dtl.x), s(dtl.y));
+  ctx.lineTo(s(dtr.x), s(dtr.y));
+  ctx.lineTo(s(dbr.x), s(dbr.y));
+  ctx.lineTo(s(dbl.x), s(dbl.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Panel inset
+  const pMid = 0.08;
+  const ptl = leftWallPoint(doorU1 + pMid, doorT1 + 0.06);
+  const ptr = leftWallPoint(doorU2 - pMid, doorT1 + 0.06);
+  const pbr = leftWallPoint(doorU2 - pMid, doorT2 - 0.06);
+  const pbl = leftWallPoint(doorU1 + pMid, doorT2 - 0.06);
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(ptl.x), s(ptl.y));
+  ctx.lineTo(s(ptr.x), s(ptr.y));
+  ctx.lineTo(s(pbr.x), s(pbr.y));
+  ctx.lineTo(s(pbl.x), s(pbl.y));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = s(0.6);
+  ctx.beginPath();
+  ctx.moveTo(s(ptl.x + 1), s(ptl.y + 1));
+  ctx.lineTo(s(ptr.x - 1), s(ptr.y + 1));
+  ctx.stroke();
+
+  // Handle — on right side of door (inner side)
+  const hBase = leftWallPoint(doorU2 - 0.05, (doorT1 + doorT2) * 0.52);
+  const hEnd  = leftWallPoint(doorU2 - 0.05, (doorT1 + doorT2) * 0.52 + 0.05);
+  ctx.fillStyle = '#8a8d95';
+  ctx.beginPath();
+  ctx.ellipse(s(hBase.x), s(hBase.y), s(6), s(8), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#6a6d75';
+  ctx.lineWidth = s(0.8);
+  ctx.stroke();
+  ctx.strokeStyle = '#a0a3aa';
+  ctx.lineWidth = s(2.5);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(s(hBase.x), s(hBase.y));
+  ctx.lineTo(s(hEnd.x), s(hEnd.y));
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // Status light
+  const lightPos = leftWallPoint(doorU2 - 0.06, doorT1 + 0.06);
+  const litColor = hasKeycard ? '#40e040' : '#e04040';
+  ctx.fillStyle = '#2a2d34';
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(5), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = litColor;
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(3), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x - 1), s(lightPos.y - 1), s(1), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  const glowC2 = hasKeycard ? 'rgba(64,224,64,' : 'rgba(224,64,64,';
+  const lightGlow2 = ctx.createRadialGradient(
+    s(lightPos.x), s(lightPos.y), 0,
+    s(lightPos.x), s(lightPos.y), s(18)
+  );
+  lightGlow2.addColorStop(0, glowC2 + '0.35)');
+  lightGlow2.addColorStop(0.5, glowC2 + '0.10)');
+  lightGlow2.addColorStop(1, glowC2 + '0)');
+  ctx.fillStyle = lightGlow2;
+  ctx.beginPath();
+  ctx.arc(s(lightPos.x), s(lightPos.y), s(18), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // EXIT label
+  const textPos = leftWallPoint((doorU1 + doorU2) * 0.5, doorT1 - 0.06);
   ctx.fillStyle = '#1a1a1a';
   ctx.fillRect(s(textPos.x - 18), s(textPos.y - 7), s(36), s(12));
   ctx.fillStyle = '#e04040';
@@ -1189,8 +1353,7 @@ function drawCrate(cx, cy, cw, ch, sideW, isTop) {
   ctx.strokeRect(s(cx), s(cy), s(cw), s(ch));
 }
 
-function drawCrates() {
-  const box = COLLIDERS[3];
+function drawCrates(box) {
   const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
@@ -1255,6 +1418,520 @@ function drawCrates() {
   ctx.font = `bold ${s(10)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText('S-04', s(cx1 + cw1 / 2), s(cy1 + ch1 - 8));
+}
+
+// ─── Room 2 facility objects ──────────────────────────────────────────────────
+
+function drawToolCabinet(box) {
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const screenW = br.x - bl.x;
+  const cabinetH = 140;
+  const bx = base.x - screenW / 2;
+  const by = base.y - cabinetH;
+  const sideW = 10;
+
+  // Footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 10), s(base.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(base.y + 8));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  const ctsGrad = ctx.createLinearGradient(0, s(base.y - 2), 0, s(base.y + 12));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.30)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.18)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
+  ctx.fillRect(s(bx - sideW - 4), s(base.y - 2), s(screenW + sideW * 2 + 8), s(14));
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - sideW), s(base.y));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y));
+  ctx.stroke();
+
+  // Left side face
+  const lsGrad = ctx.createLinearGradient(s(bx - sideW), 0, s(bx), 0);
+  lsGrad.addColorStop(0, '#1e2a18');
+  lsGrad.addColorStop(1, '#2a3a22');
+  ctx.fillStyle = lsGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx), s(by));
+  ctx.lineTo(s(bx - sideW), s(by - 8));
+  ctx.lineTo(s(bx - sideW), s(base.y - 4));
+  ctx.lineTo(s(bx), s(base.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Right side face
+  const rsGrad = ctx.createLinearGradient(s(bx + screenW), 0, s(bx + screenW + sideW), 0);
+  rsGrad.addColorStop(0, '#2a3a22');
+  rsGrad.addColorStop(1, '#1e2a18');
+  ctx.fillStyle = rsGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx + screenW), s(by));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y - 4));
+  ctx.lineTo(s(bx + screenW), s(base.y));
+  ctx.closePath();
+  ctx.fill();
+
+  // Front face — olive green
+  const bodyGrad = ctx.createLinearGradient(s(bx), 0, s(bx + screenW), 0);
+  bodyGrad.addColorStop(0, '#2e4028');
+  bodyGrad.addColorStop(0.15, '#3a5030');
+  bodyGrad.addColorStop(0.4, '#425838');
+  bodyGrad.addColorStop(0.6, '#425838');
+  bodyGrad.addColorStop(0.85, '#3a5030');
+  bodyGrad.addColorStop(1, '#2e4028');
+  ctx.fillStyle = bodyGrad;
+  ctx.fillRect(s(bx), s(by), s(screenW), s(cabinetH));
+
+  // Two door panels
+  const doorPad = 4;
+  const doorW = (screenW - doorPad * 3) / 2;
+  for (let d = 0; d < 2; d++) {
+    const ddx = bx + doorPad + d * (doorW + doorPad);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = s(1);
+    ctx.strokeRect(s(ddx), s(by + doorPad), s(doorW), s(cabinetH - doorPad * 2));
+    // Handle
+    const hx = d === 0 ? ddx + doorW - 6 : ddx + 6;
+    const hy = by + cabinetH / 2;
+    ctx.strokeStyle = '#6a7060';
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    ctx.moveTo(s(hx), s(hy - 8));
+    ctx.lineTo(s(hx), s(hy + 8));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = s(0.8);
+    ctx.beginPath();
+    ctx.moveTo(s(hx + 1), s(hy - 7));
+    ctx.lineTo(s(hx + 1), s(hy + 7));
+    ctx.stroke();
+  }
+
+  // Vent slits at top
+  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.lineWidth = s(0.7);
+  for (let i = 0; i < 4; i++) {
+    const vy = by + 8 + i * 4;
+    ctx.beginPath();
+    ctx.moveTo(s(bx + 8), s(vy));
+    ctx.lineTo(s(bx + screenW - 8), s(vy));
+    ctx.stroke();
+  }
+
+  // Top face
+  const topGrad = ctx.createLinearGradient(0, s(by - 12), 0, s(by));
+  topGrad.addColorStop(0, '#5a6a50');
+  topGrad.addColorStop(1, '#425838');
+  ctx.fillStyle = topGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx), s(by));
+  ctx.lineTo(s(bx + screenW), s(by));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 8));
+  ctx.lineTo(s(bx + screenW - 8), s(by - 12));
+  ctx.lineTo(s(bx - 8), s(by - 12));
+  ctx.lineTo(s(bx - sideW), s(by - 8));
+  ctx.closePath();
+  ctx.fill();
+
+  // Stencil label
+  ctx.fillStyle = 'rgba(200,200,180,0.15)';
+  ctx.font = `bold ${s(9)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('TOOLS', s(bx + screenW / 2), s(by + cabinetH - 10));
+
+  // Frame outline
+  ctx.strokeStyle = '#1e2a18';
+  ctx.lineWidth = s(1.5);
+  ctx.strokeRect(s(bx), s(by), s(screenW), s(cabinetH));
+}
+
+function drawWorkbench(box) {
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
+  const benchW = br.x - bl.x;
+  const legH = 55;
+  const sideW = 10;
+  const dx = base.x - benchW / 2;
+  const topY = base.y - legH;
+
+  // Footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(benchW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 8), s(br.y + 6));
+  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  const ctsGrad = ctx.createLinearGradient(0, s(base.y - 2), 0, s(base.y + 12));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.28)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.14)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
+  ctx.fillRect(s(dx - 8), s(base.y - 2), s(benchW + sideW + 16), s(14));
+
+  // Thick legs
+  const legW = 5;
+  const legs = [
+    [dx + 10, dx + 8],
+    [dx + benchW - 10, dx + benchW - 8]
+  ];
+  for (const [topX, botX] of legs) {
+    ctx.strokeStyle = '#4a4d55';
+    ctx.lineWidth = s(legW + 2);
+    ctx.beginPath(); ctx.moveTo(s(topX), s(topY + 10)); ctx.lineTo(s(botX), s(base.y)); ctx.stroke();
+    ctx.strokeStyle = '#686b72';
+    ctx.lineWidth = s(legW);
+    ctx.beginPath(); ctx.moveTo(s(topX), s(topY + 10)); ctx.lineTo(s(botX), s(base.y)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = s(1);
+    ctx.beginPath(); ctx.moveTo(s(topX - 1), s(topY + 12)); ctx.lineTo(s(botX - 1), s(base.y - 2)); ctx.stroke();
+    // Foot pad
+    ctx.fillStyle = '#3a3d44';
+    ctx.beginPath();
+    ctx.ellipse(s(botX), s(base.y), s(6), s(2.5), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Cross brace between legs
+  ctx.strokeStyle = '#5a5d65';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 10), s(base.y - legH * 0.35));
+  ctx.lineTo(s(dx + benchW - 10), s(base.y - legH * 0.35));
+  ctx.stroke();
+
+  // Side face
+  const sdGrad = ctx.createLinearGradient(s(dx + benchW), 0, s(dx + benchW + sideW), 0);
+  sdGrad.addColorStop(0, '#585b62');
+  sdGrad.addColorStop(1, '#484b52');
+  ctx.fillStyle = sdGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dx + benchW), s(topY + 2));
+  ctx.lineTo(s(dx + benchW + sideW), s(topY - 2));
+  ctx.lineTo(s(dx + benchW + sideW), s(topY + 12));
+  ctx.lineTo(s(dx + benchW), s(topY + 14));
+  ctx.closePath();
+  ctx.fill();
+
+  // Front apron (thicker than desk)
+  const apronGrad = ctx.createLinearGradient(s(dx), 0, s(dx + benchW), 0);
+  apronGrad.addColorStop(0, '#585b62');
+  apronGrad.addColorStop(0.15, '#686b72');
+  apronGrad.addColorStop(0.5, '#727580');
+  apronGrad.addColorStop(0.85, '#686b72');
+  apronGrad.addColorStop(1, '#585b62');
+  ctx.fillStyle = apronGrad;
+  ctx.fillRect(s(dx), s(topY + 2), s(benchW), s(12));
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(topY + 14));
+  ctx.lineTo(s(dx + benchW), s(topY + 14));
+  ctx.stroke();
+
+  // Top surface — darker metal
+  const topGrad = ctx.createLinearGradient(s(dx), 0, s(dx + benchW), 0);
+  topGrad.addColorStop(0, '#5a5d64');
+  topGrad.addColorStop(0.2, '#686b72');
+  topGrad.addColorStop(0.5, '#6e7178');
+  topGrad.addColorStop(0.8, '#686b72');
+  topGrad.addColorStop(1, '#5a5d64');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(s(dx), s(topY - 4), s(benchW), s(6));
+  // Top surface side
+  ctx.fillStyle = '#646770';
+  ctx.beginPath();
+  ctx.moveTo(s(dx + benchW), s(topY - 4));
+  ctx.lineTo(s(dx + benchW + sideW), s(topY - 6));
+  ctx.lineTo(s(dx + benchW + sideW), s(topY - 2));
+  ctx.lineTo(s(dx + benchW), s(topY + 2));
+  ctx.closePath();
+  ctx.fill();
+  // Front edge highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(topY - 4));
+  ctx.lineTo(s(dx + benchW), s(topY - 4));
+  ctx.stroke();
+
+  // Vise on left end
+  const vx = dx + 12;
+  const vy = topY - 8;
+  ctx.fillStyle = '#4a4d55';
+  ctx.fillRect(s(vx), s(vy), s(16), s(6));
+  ctx.fillStyle = '#5a5d65';
+  ctx.fillRect(s(vx + 2), s(vy - 4), s(5), s(4));
+  ctx.fillRect(s(vx + 11), s(vy - 4), s(5), s(4));
+  ctx.strokeStyle = '#3a3d44';
+  ctx.lineWidth = s(0.8);
+  ctx.strokeRect(s(vx), s(vy), s(16), s(6));
+
+  // Keycard on workbench
+  if (!hasKeycard) {
+    drawKeycard(dx + benchW * 0.55, topY - 8);
+  }
+}
+
+function drawShelfBox(bx, by, bw, bh, colors) {
+  const [hi, lo] = colors;
+  const grad = ctx.createLinearGradient(s(bx), 0, s(bx + bw), 0);
+  grad.addColorStop(0, lo);
+  grad.addColorStop(0.3, hi);
+  grad.addColorStop(0.7, hi);
+  grad.addColorStop(1, lo);
+  ctx.fillStyle = grad;
+  ctx.fillRect(s(bx), s(by), s(bw), s(bh));
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = s(0.8);
+  ctx.strokeRect(s(bx), s(by), s(bw), s(bh));
+}
+
+function drawShelving(box) {
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const screenW = br.x - bl.x;
+  const shelfH = 110;
+  const bx = base.x - screenW / 2;
+  const by = base.y - shelfH;
+  const sideW = 12;
+
+  // Footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 10), s(base.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(base.y + 8));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - sideW), s(base.y));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y));
+  ctx.stroke();
+
+  // Upright posts (4 vertical lines)
+  const postColor = '#5a5d65';
+  const postDark = '#3a3d44';
+  const posts = [bx, bx + screenW / 3, bx + screenW * 2 / 3, bx + screenW];
+  for (const px of posts) {
+    ctx.strokeStyle = postDark;
+    ctx.lineWidth = s(3);
+    ctx.beginPath();
+    ctx.moveTo(s(px), s(by));
+    ctx.lineTo(s(px), s(base.y));
+    ctx.stroke();
+    ctx.strokeStyle = postColor;
+    ctx.lineWidth = s(1.5);
+    ctx.beginPath();
+    ctx.moveTo(s(px - 0.5), s(by));
+    ctx.lineTo(s(px - 0.5), s(base.y));
+    ctx.stroke();
+  }
+
+  // Shelves (3 levels + top)
+  const shelfLevels = [0, 0.33, 0.66, 0.95];
+  for (const t of shelfLevels) {
+    const sy = by + shelfH * t;
+    ctx.fillStyle = '#484b52';
+    ctx.fillRect(s(bx - 2), s(sy), s(screenW + 4), s(3));
+    // Side depth
+    ctx.fillStyle = '#3a3d44';
+    ctx.beginPath();
+    ctx.moveTo(s(bx + screenW), s(sy));
+    ctx.lineTo(s(bx + screenW + sideW), s(sy - 4));
+    ctx.lineTo(s(bx + screenW + sideW), s(sy - 1));
+    ctx.lineTo(s(bx + screenW), s(sy + 3));
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = s(0.5);
+    ctx.beginPath();
+    ctx.moveTo(s(bx), s(sy));
+    ctx.lineTo(s(bx + screenW), s(sy));
+    ctx.stroke();
+  }
+
+  // Boxes on shelves
+  const boxColors = [
+    ['#8a5a3a', '#6a4228'],
+    ['#4a6a8a', '#385878'],
+    ['#8a7a3a', '#6a5a28'],
+    ['#5a7a5a', '#426842'],
+    ['#7a4a5a', '#623848'],
+  ];
+  // Shelf 1 (bottom)
+  const s1y = by + shelfH * 0.66 + 4;
+  const boxH1 = shelfH * 0.28;
+  drawShelfBox(bx + 4, s1y, screenW / 3 - 6, boxH1, boxColors[0]);
+  drawShelfBox(bx + screenW / 3 + 2, s1y, screenW / 3 - 4, boxH1, boxColors[1]);
+  // Shelf 2 (middle)
+  const s2y = by + shelfH * 0.33 + 4;
+  const boxH2 = shelfH * 0.28;
+  drawShelfBox(bx + 2, s2y, screenW / 4 - 3, boxH2, boxColors[2]);
+  drawShelfBox(bx + screenW / 4 + 1, s2y, screenW / 4 - 2, boxH2, boxColors[3]);
+  drawShelfBox(bx + screenW / 2 + 4, s2y, screenW / 3 - 6, boxH2, boxColors[4]);
+  // Shelf 3 (top)
+  const s3y = by + 4;
+  const boxH3 = shelfH * 0.28;
+  drawShelfBox(bx + screenW / 4, s3y, screenW / 3, boxH3, boxColors[0]);
+
+  // Top face
+  ctx.fillStyle = '#505358';
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 2), s(by));
+  ctx.lineTo(s(bx + screenW + 2), s(by));
+  ctx.lineTo(s(bx + screenW + sideW), s(by - 4));
+  ctx.lineTo(s(bx - sideW + 8), s(by - 4));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBarrels(box) {
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const screenW = br.x - bl.x;
+
+  // Footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 6), s(tl.y - 3));
+  ctx.lineTo(s(br.x + 10), s(base.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(base.y + 8));
+  ctx.closePath();
+  ctx.fill();
+
+  // Draw 3 barrels (back two first, front one on top for overlap)
+  const barrelR = screenW / 5;
+  const barrelH = 70;
+  const barrels = [
+    { cx: base.x - barrelR * 1.3, color: '#3a5a8a', stripe: '#2a4a7a' },
+    { cx: base.x + barrelR * 1.3, color: '#8a3a3a', stripe: '#7a2a2a' },
+    { cx: base.x, color: '#8a7a3a', stripe: '#7a6a2a' },
+  ];
+
+  for (const barrel of barrels) {
+    const bcx = barrel.cx;
+    const bby = base.y - barrelH;
+
+    // Contact shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(s(bcx), s(base.y), s(barrelR + 4), s(barrelR * 0.35 + 2), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Barrel body
+    const bodyGrad = ctx.createLinearGradient(s(bcx - barrelR), 0, s(bcx + barrelR), 0);
+    bodyGrad.addColorStop(0, '#1a1a1a');
+    bodyGrad.addColorStop(0.15, barrel.stripe);
+    bodyGrad.addColorStop(0.45, barrel.color);
+    bodyGrad.addColorStop(0.55, barrel.color);
+    bodyGrad.addColorStop(0.85, barrel.stripe);
+    bodyGrad.addColorStop(1, '#1a1a1a');
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(s(bcx - barrelR), s(bby));
+    ctx.lineTo(s(bcx + barrelR), s(bby));
+    ctx.lineTo(s(bcx + barrelR), s(base.y));
+    ctx.lineTo(s(bcx - barrelR), s(base.y));
+    ctx.closePath();
+    ctx.fill();
+
+    // Metal bands
+    ctx.strokeStyle = '#5a5d65';
+    ctx.lineWidth = s(2);
+    ctx.beginPath();
+    ctx.moveTo(s(bcx - barrelR), s(bby + 5));
+    ctx.lineTo(s(bcx + barrelR), s(bby + 5));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(s(bcx - barrelR), s(base.y - 5));
+    ctx.lineTo(s(bcx + barrelR), s(base.y - 5));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = s(0.5);
+    ctx.beginPath();
+    ctx.moveTo(s(bcx - barrelR + 2), s(bby + 4));
+    ctx.lineTo(s(bcx + barrelR - 2), s(bby + 4));
+    ctx.stroke();
+
+    // Top ellipse (lid)
+    const topGrad = ctx.createLinearGradient(s(bcx - barrelR), 0, s(bcx + barrelR), 0);
+    topGrad.addColorStop(0, barrel.stripe);
+    topGrad.addColorStop(0.3, barrel.color);
+    topGrad.addColorStop(0.7, barrel.color);
+    topGrad.addColorStop(1, barrel.stripe);
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.ellipse(s(bcx), s(bby), s(barrelR), s(barrelR * 0.3), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a3d44';
+    ctx.lineWidth = s(1);
+    ctx.beginPath();
+    ctx.ellipse(s(bcx), s(bby), s(barrelR), s(barrelR * 0.3), 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Cap/bung on top
+    ctx.fillStyle = '#4a4d55';
+    ctx.beginPath();
+    ctx.ellipse(s(bcx + 3), s(bby), s(3), s(2), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 // ─── Guard AI ────────────────────────────────────────────────────────────────
@@ -1331,10 +2008,53 @@ function drawGuardVision() {
 
 // ─── Reset helper ────────────────────────────────────────────────────────────
 
-function resetGame() {
+function resetCurrentRoom() {
   detected = false;
   hasKeycard = false;
+  if (currentRoom === 1) {
+    player.u = 0.15;
+    player.v = 0.85;
+  } else {
+    player.u = 0.85;
+    player.v = 0.85;
+  }
+  player.facing = 'up';
+  player.walkPhase = 0;
+  guard.u = PATROL[0].u;
+  guard.v = PATROL[0].v;
+  guard.waypointIdx = 0;
+  guard.waitTimer = 1.0;
+  guard.facing = 'down';
+  guard.walkPhase = 0;
+}
+
+function switchToRoom(n) {
+  currentRoom = n;
+  detected = false;
+  hasKeycard = false;
+  COLLIDERS = n === 2 ? ROOM2_COLLIDERS : ROOM1_COLLIDERS;
+  PATROL = n === 2 ? ROOM2_PATROL : ROOM1_PATROL;
+  player.u = n === 2 ? 0.85 : 0.15;
+  player.v = 0.85;
+  player.facing = 'up';
+  player.walkPhase = 0;
+  guard.u = PATROL[0].u;
+  guard.v = PATROL[0].v;
+  guard.waypointIdx = 0;
+  guard.waitTimer = 1.0;
+  guard.facing = 'down';
+  guard.walkPhase = 0;
+  roomTransitionTimer = 2.0;
+}
+
+function resetGame() {
   won = false;
+  roomTransitionTimer = 0;
+  currentRoom = 1;
+  COLLIDERS = ROOM1_COLLIDERS;
+  PATROL = ROOM1_PATROL;
+  detected = false;
+  hasKeycard = false;
   player.u = 0.15;
   player.v = 0.85;
   player.facing = 'up';
@@ -1607,9 +2327,17 @@ const V_MIN = 0.06, V_MAX = 0.96;
 function update(dt) {
   gameTime += dt;
 
+  if (roomTransitionTimer > 0) roomTransitionTimer -= dt;
+
   // Reset on R
   if (keys['r'] || keys['R']) {
-    if (detected || won) {
+    if (detected) {
+      resetCurrentRoom();
+      keys['r'] = false;
+      keys['R'] = false;
+      return;
+    }
+    if (won) {
       resetGame();
       keys['r'] = false;
       keys['R'] = false;
@@ -1667,22 +2395,32 @@ function update(dt) {
     player.walkPhase = 0;         // snap to idle
   }
 
-  // Keycard pickup — near desk front edge, press E or Space
+  // Keycard pickup — press E or Space near keycard object
   if (!hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
-    const desk = COLLIDERS[2];
-    const deskCU = (desk.uMin + desk.uMax) / 2;
-    const deskFrontV = desk.vMax + 0.06;
-    if (Math.abs(player.u - deskCU) < 0.18 && Math.abs(player.v - deskFrontV) < 0.10) {
+    const kcBox = currentRoom === 1 ? COLLIDERS[2] : COLLIDERS[1];
+    const kcCU = (kcBox.uMin + kcBox.uMax) / 2;
+    const kcFrontV = kcBox.vMax + 0.06;
+    if (Math.abs(player.u - kcCU) < 0.18 && Math.abs(player.v - kcFrontV) < 0.10) {
       hasKeycard = true;
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
   }
 
-  // Exit interaction — near right wall, press E or Space
+  // Exit interaction — press E or Space near exit door
   if (hasKeycard && (keys['e'] || keys['E'] || keys[' '])) {
-    if (player.u > 0.82 && player.v > 0.28 && player.v < 0.82) {
-      won = true;
-      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+    if (currentRoom === 1) {
+      // Right wall exit → transition to Room 2
+      if (player.u > 0.82 && player.v > 0.28 && player.v < 0.82) {
+        switchToRoom(2);
+        keys['e'] = false; keys['E'] = false; keys[' '] = false;
+        return;
+      }
+    } else {
+      // Left wall exit → mission complete
+      if (player.u < 0.14 && player.v > 0.30 && player.v < 0.70) {
+        won = true;
+        keys['e'] = false; keys['E'] = false; keys[' '] = false;
+      }
     }
   }
 
@@ -1712,10 +2450,18 @@ function render() {
   // Depth-sorted: objects + player + guard
   const sortable = [];
 
-  sortable.push({ v: COLLIDERS[2].vMax, draw: drawDesk });
-  sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawServerRack(COLLIDERS[1]) });
-  sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawServerRack(COLLIDERS[0]) });
-  sortable.push({ v: COLLIDERS[3].vMax, draw: drawCrates });
+  if (currentRoom === 1) {
+    sortable.push({ v: COLLIDERS[2].vMax, draw: drawDesk });
+    sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawServerRack(COLLIDERS[1]) });
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawServerRack(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawCrates(COLLIDERS[3]) });
+  } else {
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawToolCabinet(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawWorkbench(COLLIDERS[1]) });
+    sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawShelving(COLLIDERS[2]) });
+    sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawBarrels(COLLIDERS[3]) });
+    sortable.push({ v: COLLIDERS[4].vMax, draw: () => drawCrates(COLLIDERS[4]) });
+  }
 
   // Player
   sortable.push({
@@ -1740,17 +2486,22 @@ function render() {
 
   // Proximity prompts (world-space)
   if (!detected && !won) {
-    const desk = COLLIDERS[2];
-    const deskCU = (desk.uMin + desk.uMax) / 2;
-    const deskFrontV = desk.vMax + 0.06;
+    const kcBox = currentRoom === 1 ? COLLIDERS[2] : COLLIDERS[1];
+    const kcCU = (kcBox.uMin + kcBox.uMax) / 2;
+    const kcFrontV = kcBox.vMax + 0.06;
     const nearKeycard = !hasKeycard &&
-      Math.abs(player.u - deskCU) < 0.18 &&
-      Math.abs(player.v - deskFrontV) < 0.10;
-    const nearExit = hasKeycard &&
-      player.u > 0.82 && player.v > 0.28 && player.v < 0.82;
+      Math.abs(player.u - kcCU) < 0.18 &&
+      Math.abs(player.v - kcFrontV) < 0.10;
+
+    let nearExit;
+    if (currentRoom === 1) {
+      nearExit = hasKeycard && player.u > 0.82 && player.v > 0.28 && player.v < 0.82;
+    } else {
+      nearExit = hasKeycard && player.u < 0.14 && player.v > 0.30 && player.v < 0.70;
+    }
 
     if (nearKeycard) {
-      const promptPos = floorToScreen(deskCU, desk.vMax + 0.02);
+      const promptPos = floorToScreen(kcCU, kcBox.vMax + 0.02);
       const bob = Math.sin(gameTime * 4) * 3;
       ctx.textAlign = 'center';
       ctx.font = `bold ${s(14)}px monospace`;
@@ -1761,7 +2512,8 @@ function render() {
     }
 
     if (nearExit) {
-      const exitPromptU = 0.95, exitPromptV = 0.55;
+      const exitPromptU = currentRoom === 1 ? 0.95 : 0.05;
+      const exitPromptV = currentRoom === 1 ? 0.55 : 0.50;
       const promptPos = floorToScreen(exitPromptU, exitPromptV);
       const bob = Math.sin(gameTime * 4) * 3;
       ctx.textAlign = 'center';
@@ -1810,6 +2562,23 @@ function render() {
     ctx.fillStyle = '#ffffff';
     ctx.font = `${s(18)}px monospace`;
     ctx.fillText('Press R to play again', s(640), s(390));
+  }
+
+  // Room transition label
+  if (roomTransitionTimer > 0 && !detected && !won) {
+    const alpha = Math.min(roomTransitionTimer / 0.5, 1) * 0.9;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${s(28)}px monospace`;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillText('ROOM 2', s(641), s(61));
+    ctx.fillStyle = '#c0c0c0';
+    ctx.fillText('ROOM 2', s(640), s(60));
+    ctx.font = `${s(13)}px monospace`;
+    ctx.fillStyle = '#808080';
+    ctx.fillText('Maintenance Workshop', s(640), s(82));
+    ctx.restore();
   }
 
   ctx.restore();
