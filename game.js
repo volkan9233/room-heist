@@ -393,19 +393,31 @@ function shieldedByCover() {
   return false;
 }
 
-function guardCanSeePlayer() {
+// Proximity-based awareness: guard controls space around them
+// Wider awareness when player is mid-walk (exposed in the open)
+const AWARENESS_RADIUS = 0.25;       // at a hotspot
+const AWARENESS_RADIUS_MOVING = 0.32; // mid-walk (more exposed)
+
+function guardAwareOfPlayer() {
   if (playerHidden) return false;
+
+  const midWalk = !player.currentHotspot && player.targetHotspot;
+  const radius = midWalk ? AWARENESS_RADIUS_MOVING : AWARENESS_RADIUS;
+
   const du = player.u - guard.u;
   const dv = player.v - guard.v;
   const dist = Math.hypot(du, dv);
-  if (dist > 0.40) return false;
-  const angleToPlayer = Math.atan2(dv, du);
-  const gAngle = facingAngle(guard.facing);
-  if (angleDiff(gAngle, angleToPlayer) > Math.PI * 0.50) return false;
+  if (dist > radius) return false;
+
+  // Still need LOS — furniture blocks awareness
   if (rayBlocked(guard.u, guard.v, player.u, player.v)) return false;
+  // Cover face shielding still works
   if (shieldedByCover()) return false;
   return true;
 }
+
+// Legacy alias — keep for any remaining references
+function guardCanSeePlayer() { return guardAwareOfPlayer(); }
 
 // ─── Facility room: walls, floor, structure ──────────────────────────────────
 
@@ -3437,61 +3449,61 @@ function updateGuard(dt) {
   // Spool noise timer (visual ring)
   if (spoolNoiseTimer > 0) spoolNoiseTimer -= dt;
 
-  const canSee = guardCanSeePlayer();
+  const aware = guardAwareOfPlayer();
+  const midWalk = !player.currentHotspot && player.targetHotspot;
 
-  // ── Alert state: guard is actively pursuing, closing in ──
+  // Notice threshold: shorter when player is mid-walk (exposed, moving)
+  const NOTICE_TIME = midWalk ? 0.2 : 0.4;
+  const ALERT_CATCH_TIME = 0.6;
+
+  // ── Alert state: guard closing in — decisive, short window ──
   if (guard.state === 'alert') {
-    if (canSee) {
-      // Still has LOS — track player, advance timer, move toward
+    if (aware) {
       guard.lastSeenU = player.u;
       guard.lastSeenV = player.v;
       guard.alertTimer += dt;
-      // Caught after 1.2s accumulated alert LOS
-      if (guard.alertTimer >= 1.2) {
+      if (guard.alertTimer >= ALERT_CATCH_TIME) {
         detected = true;
         return;
       }
-      // Close distance toward player
+      // Rush toward player
       guardMoveToward(player.u, player.v, guard.alertSpeed, dt);
     } else {
-      // Lost LOS — transition to suspicious (preserve alert pressure)
+      // Player broke away — suspicious, but alert pressure preserved
       guard.state = 'suspicious';
-      guard.suspiciousTimer = 3.0;
+      guard.suspiciousTimer = 2.5;
     }
     return;
   }
 
-  // ── Notice state: guard has glimpsed player, building awareness ──
+  // ── Notice state: guard has spotted player, short reaction window ──
   if (guard.state === 'notice') {
-    if (canSee) {
+    if (aware) {
       guard.lastSeenU = player.u;
       guard.lastSeenV = player.v;
       guard.noticeTimer += dt;
-      // Guard slows and turns to face player
       guardFaceToward(player.u, player.v);
-      guardMoveToward(player.u, player.v, guard.speed * 0.4, dt);
-      // Notice complete → escalate to full alert
-      if (guard.noticeTimer >= 0.8) {
+      // Notice complete → escalate to alert immediately
+      if (guard.noticeTimer >= NOTICE_TIME) {
         guard.state = 'alert';
-        // Alert timer starts fresh (notice was the wind-up)
         return;
       }
     } else {
-      // Lost LOS during notice — brief suspicious look-around
+      // Player got away during notice — brief suspicious
       guard.state = 'suspicious';
-      guard.suspiciousTimer = 2.0;
+      guard.suspiciousTimer = 1.5;
     }
     return;
   }
 
   // ── Suspicious state: guard walks to last-seen, looks around ──
   if (guard.state === 'suspicious') {
-    // Alert pressure decays slowly (not instant reset)
+    // Alert pressure decays
     if (guard.alertTimer > 0) {
-      guard.alertTimer = Math.max(0, guard.alertTimer - 0.3 * dt);
+      guard.alertTimer = Math.max(0, guard.alertTimer - 0.5 * dt);
     }
-    if (canSee) {
-      // Re-spotted — skip notice, go straight to alert (already on edge)
+    if (aware) {
+      // Re-spotted — straight to alert (guard is already on edge)
       guard.state = 'alert';
       guard.lastSeenU = player.u;
       guard.lastSeenV = player.v;
@@ -3502,7 +3514,7 @@ function updateGuard(dt) {
       guard.suspiciousTimer -= dt;
       guard.walkPhase = 0;
       // Look around — cycle facing
-      const lookPhase = Math.floor((3.0 - guard.suspiciousTimer) * 1.8) % 4;
+      const lookPhase = Math.floor((2.5 - guard.suspiciousTimer) * 2.0) % 4;
       const lookDirs = ['down', 'left', 'up', 'right'];
       guard.facing = lookDirs[lookPhase];
       if (guard.suspiciousTimer <= 0) {
@@ -3516,13 +3528,11 @@ function updateGuard(dt) {
 
   // ── Patrol state: normal waypoint following ──
 
-  // Check for new LOS — enter notice (not instant alert)
-  if (canSee) {
+  if (aware) {
     guard.state = 'notice';
     guard.noticeTimer = 0;
     guard.lastSeenU = player.u;
     guard.lastSeenV = player.v;
-    // Cancel investigation if active
     guard.investigating = false;
     guard.investigateTarget = null;
     return;
@@ -3574,57 +3584,65 @@ function updateGuard(dt) {
   guardFaceToward(target.u, target.v);
 }
 
-// ─── Guard vision cone visual ────────────────────────────────────────────────
+// ─── Guard awareness circle visual ──────────────────────────────────────────
 
 function drawGuardVision() {
-  const ga = facingAngle(guard.facing);
-  const coneAngle = Math.PI * 0.50;
-  const coneLen = 0.32;
+  const gScreen = floorToScreen(guard.u, guard.v);
 
-  // State-based cone color
-  let coneColor, coneAlpha;
+  // State-based ring color and radius
+  let ringColor, ringAlpha, showRadius;
   if (detected) {
-    coneColor = '#e04040';
-    coneAlpha = 0.20;
+    ringColor = '#e04040';
+    ringAlpha = 0.25;
+    showRadius = AWARENESS_RADIUS;
   } else if (guard.state === 'alert') {
-    // Fast pulsing red-orange during alert — real danger
     const pulse = 0.5 + 0.5 * Math.sin(gameTime * 10);
-    coneColor = '#e04020';
-    coneAlpha = 0.16 + 0.10 * pulse;
+    ringColor = '#e03020';
+    ringAlpha = 0.18 + 0.12 * pulse;
+    showRadius = AWARENESS_RADIUS;
   } else if (guard.state === 'notice') {
-    // Brightening yellow → orange during notice wind-up
-    const t = Math.min(guard.noticeTimer / 0.8, 1);
-    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 6);
-    coneColor = t < 0.5 ? '#e0c020' : '#e09020';
-    coneAlpha = 0.12 + 0.08 * t + 0.04 * pulse;
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 8);
+    ringColor = '#e0a020';
+    ringAlpha = 0.14 + 0.06 * pulse;
+    showRadius = AWARENESS_RADIUS;
   } else if (guard.state === 'suspicious') {
-    // Fading orange during suspicious search
-    const fade = guard.suspiciousTimer / 3.0;
-    coneColor = '#e0a040';
-    coneAlpha = 0.10 * fade;
+    const fade = guard.suspiciousTimer / 2.5;
+    ringColor = '#e0a040';
+    ringAlpha = 0.08 * fade;
+    showRadius = AWARENESS_RADIUS;
   } else {
-    coneColor = '#e0e040';
-    coneAlpha = 0.10;
+    // Patrol: subtle awareness zone hint
+    ringColor = '#c0c060';
+    ringAlpha = 0.06;
+    showRadius = AWARENESS_RADIUS;
   }
 
+  // Draw awareness as a perspective-correct ellipse on the floor
+  // Sample points around the circle in UV space, project to screen
   ctx.save();
-  ctx.globalAlpha = coneAlpha;
-  ctx.fillStyle = coneColor;
+  ctx.globalAlpha = ringAlpha;
 
-  const gScreen = floorToScreen(guard.u, guard.v);
+  // Filled area
+  ctx.fillStyle = ringColor;
   ctx.beginPath();
-  ctx.moveTo(s(gScreen.x), s(gScreen.y));
-
-  const steps = 16;
-  for (let i = 0; i <= steps; i++) {
-    const a = ga - coneAngle + (2 * coneAngle * i / steps);
-    const pu = Math.max(0, Math.min(1, guard.u + Math.cos(a) * coneLen));
-    const pv = Math.max(0, Math.min(1, guard.v + Math.sin(a) * coneLen));
+  const circleSteps = 24;
+  for (let i = 0; i <= circleSteps; i++) {
+    const a = (Math.PI * 2 * i) / circleSteps;
+    const pu = Math.max(0, Math.min(1, guard.u + Math.cos(a) * showRadius));
+    const pv = Math.max(0, Math.min(1, guard.v + Math.sin(a) * showRadius));
     const ps = floorToScreen(pu, pv);
-    ctx.lineTo(s(ps.x), s(ps.y));
+    if (i === 0) ctx.moveTo(s(ps.x), s(ps.y));
+    else ctx.lineTo(s(ps.x), s(ps.y));
   }
   ctx.closePath();
   ctx.fill();
+
+  // Edge ring (slightly brighter)
+  ctx.globalAlpha = ringAlpha * 1.5;
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = s(1.5);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -3634,62 +3652,49 @@ function drawGuardIndicator() {
   if (detected || guard.state === 'patrol') return;
 
   const gs = floorToScreen(guard.u, guard.v);
-  // Character is about 80-90 design-pixels tall; indicator floats above head
-  const depthScale = 0.5 + 0.5 * guard.v;  // smaller when far away
+  const depthScale = 0.5 + 0.5 * guard.v;
   const iconY = gs.y - 95 * depthScale;
 
   if (guard.state === 'notice') {
-    // "?" building to "!" — yellow pulsing icon
-    const t = Math.min(guard.noticeTimer / 0.8, 1);
-    const bob = Math.sin(gameTime * 8) * 2;
-    const icon = t < 0.5 ? '?' : '!';
-    const iconSize = 16 + 4 * t;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold ${s(iconSize)}px monospace`;
-    // Background pill
-    const px = s(gs.x);
-    const py = s(iconY + bob);
-    ctx.fillStyle = `rgba(180,140,20,${0.5 + 0.3 * t})`;
-    ctx.beginPath();
-    ctx.arc(px, py, s(10 + 2 * t), 0, Math.PI * 2);
-    ctx.fill();
-    // Icon text
-    ctx.fillStyle = '#fff';
-    ctx.fillText(icon, px, py);
-    ctx.restore();
-  } else if (guard.state === 'alert') {
-    // "!" with filling red bar — catch pressure indicator
-    const t = Math.min(guard.alertTimer / 1.2, 1);
-    const bob = Math.sin(gameTime * 12) * 1.5;
+    // Quick "!" flash — short notice window
+    const t = Math.min(guard.noticeTimer / 0.4, 1);
+    const bob = Math.sin(gameTime * 12) * 2;
     ctx.save();
     const px = s(gs.x);
     const py = s(iconY + bob);
-    // Red background circle — grows with pressure
-    ctx.fillStyle = `rgba(200,30,20,${0.6 + 0.3 * t})`;
+    // Yellow-orange circle, rapidly appearing
+    ctx.fillStyle = `rgba(220,160,20,${0.5 + 0.4 * t})`;
     ctx.beginPath();
-    ctx.arc(px, py, s(11 + 3 * t), 0, Math.PI * 2);
+    ctx.arc(px, py, s(10 + 4 * t), 0, Math.PI * 2);
     ctx.fill();
-    // "!" icon
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${s(18 + 2 * t)}px monospace`;
+    ctx.font = `bold ${s(18)}px monospace`;
     ctx.fillStyle = '#fff';
     ctx.fillText('!', px, py);
-    // Pressure bar below icon
-    const barW = 24;
-    const barH = 3;
-    const barX = px - s(barW / 2);
-    const barY = py + s(14);
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(barX, barY, s(barW), s(barH));
-    ctx.fillStyle = `rgb(${Math.floor(200 + 55 * t)},${Math.floor(60 * (1 - t))},20)`;
-    ctx.fillRect(barX, barY, s(barW * t), s(barH));
+    ctx.restore();
+  } else if (guard.state === 'alert') {
+    // Urgent "!!" — catch is imminent
+    const t = Math.min(guard.alertTimer / 0.6, 1);
+    const bob = Math.sin(gameTime * 16) * 1;
+    ctx.save();
+    const px = s(gs.x);
+    const py = s(iconY + bob);
+    // Red circle, pulsing urgently
+    const pulse = 0.5 + 0.5 * Math.sin(gameTime * 14);
+    ctx.fillStyle = `rgba(220,30,20,${0.7 + 0.25 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(px, py, s(12 + 4 * t), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${s(20 + 2 * t)}px monospace`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('!!', px, py);
     ctx.restore();
   } else if (guard.state === 'suspicious') {
-    // Fading "?" — guard searching
-    const fade = Math.min(guard.suspiciousTimer / 3.0, 1);
+    // Fading "?" — searching
+    const fade = Math.min(guard.suspiciousTimer / 2.5, 1);
     const bob = Math.sin(gameTime * 4) * 2;
     ctx.save();
     const px = s(gs.x);
