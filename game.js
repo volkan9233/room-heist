@@ -53,7 +53,7 @@ const player = {
   facing: 'up',
 };
 
-// ─── Guard (defined here, AI activated in Part 2) ────────────────────────────
+// ─── Guard ───────────────────────────────────────────────────────────────────
 const PATROL = [
   { u: 0.60, v: 0.22 },
   { u: 0.60, v: 0.72 },
@@ -110,7 +110,7 @@ function collidesWithAny(u, v) {
   return false;
 }
 
-// ─── LOS helpers (used by guard AI in Part 2) ────────────────────────────────
+// ─── LOS helpers ─────────────────────────────────────────────────────────────
 function facingAngle(facing) {
   switch (facing) {
     case 'right': return 0;
@@ -417,84 +417,342 @@ function drawExitDoor() {
   ctx.fillText('EXIT', s(textPos.x), s(textPos.y));
 }
 
-// ─── Placeholder objects (will become detailed art in Part 2) ────────────────
+// ─── Facility objects ─────────────────────────────────────────────────────────
 
-function drawPlaceholderBox(box, label, color, height) {
-  // Draw a simple 3D box at the collider position
+function drawServerRack(box) {
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
-  const tl = floorToScreen(box.uMin, box.vMin);
-  const tr = floorToScreen(box.uMax, box.vMin);
+  const screenW = br.x - bl.x;
+  const rackH = 130;
+  const bx = base.x - screenW / 2;
+  const by = base.y - rackH;
 
   // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.moveTo(s(bl.x), s(bl.y));
-  ctx.lineTo(s(br.x), s(br.y));
-  ctx.lineTo(s(br.x + 8), s(br.y + 10));
-  ctx.lineTo(s(bl.x - 4), s(bl.y + 10));
+  ctx.moveTo(s(bx), s(base.y));
+  ctx.lineTo(s(bx + screenW), s(base.y));
+  ctx.lineTo(s(bx + screenW + 10), s(base.y + 12));
+  ctx.lineTo(s(bx - 5), s(base.y + 12));
   ctx.closePath();
   ctx.fill();
 
   // Front face
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(s(bl.x), s(bl.y - height));
-  ctx.lineTo(s(br.x), s(br.y - height));
-  ctx.lineTo(s(br.x), s(br.y));
-  ctx.lineTo(s(bl.x), s(bl.y));
-  ctx.closePath();
-  ctx.fill();
+  const bodyGrad = ctx.createLinearGradient(s(bx), s(by), s(bx + screenW), s(by));
+  bodyGrad.addColorStop(0, '#2a2d35');
+  bodyGrad.addColorStop(0.5, '#353840');
+  bodyGrad.addColorStop(1, '#2a2d35');
+  ctx.fillStyle = bodyGrad;
+  ctx.fillRect(s(bx), s(by), s(screenW), s(rackH));
 
   // Top face
-  const topColor = color.replace(')', ',0.7)').replace('rgb', 'rgba');
-  // just lighten by drawing a lighter rect
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillStyle = '#404550';
   ctx.beginPath();
-  ctx.moveTo(s(bl.x), s(bl.y - height));
-  ctx.lineTo(s(br.x), s(br.y - height));
-  ctx.lineTo(s(tr.x), s(tr.y - height));
-  ctx.lineTo(s(tl.x), s(tl.y - height));
+  ctx.moveTo(s(bx), s(by));
+  ctx.lineTo(s(bx + screenW), s(by));
+  ctx.lineTo(s(bx + screenW - 8), s(by - 12));
+  ctx.lineTo(s(bx - 8), s(by - 12));
   ctx.closePath();
   ctx.fill();
 
-  // Outline
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = s(1.5);
-  ctx.beginPath();
-  ctx.moveTo(s(bl.x), s(bl.y));
-  ctx.lineTo(s(bl.x), s(bl.y - height));
-  ctx.lineTo(s(br.x), s(br.y - height));
-  ctx.lineTo(s(br.x), s(br.y));
-  ctx.closePath();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(s(bl.x), s(bl.y - height));
-  ctx.lineTo(s(tl.x), s(tl.y - height));
-  ctx.lineTo(s(tr.x), s(tr.y - height));
-  ctx.lineTo(s(br.x), s(br.y - height));
-  ctx.stroke();
+  // Vent slits
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = s(1);
+  for (let i = 0; i < 8; i++) {
+    const vy = by + 15 + i * 13;
+    ctx.beginPath();
+    ctx.moveTo(s(bx + 6), s(vy));
+    ctx.lineTo(s(bx + screenW - 6), s(vy));
+    ctx.stroke();
+  }
 
-  // Label
-  const cx = (bl.x + br.x) / 2;
-  const cy = (bl.y + bl.y - height) / 2;
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.font = `${s(10)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(label, s(cx), s(cy));
+  // LED indicators
+  const ledColors = ['#40e040', '#40e040', '#e0a020', '#40e040', '#e04040', '#40e040'];
+  for (let i = 0; i < ledColors.length; i++) {
+    ctx.fillStyle = ledColors[i];
+    ctx.beginPath();
+    ctx.arc(s(bx + 10), s(by + 20 + i * 13), s(2), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Frame outline
+  ctx.strokeStyle = '#1a1d25';
+  ctx.lineWidth = s(1.5);
+  ctx.strokeRect(s(bx), s(by), s(screenW), s(rackH));
 }
 
-function drawAllObjects() {
-  // Draw placeholder objects sorted back-to-front by vMax
-  const objects = [
-    { box: COLLIDERS[2], label: 'DESK', color: '#5a5d65', height: 55 },
-    { box: COLLIDERS[1], label: 'SERVER', color: '#2a2d35', height: 120 },
-    { box: COLLIDERS[0], label: 'SERVER', color: '#2a2d35', height: 120 },
-    { box: COLLIDERS[3], label: 'CRATES', color: '#6a5530', height: 80 },
-  ];
-  objects.sort((a, b) => a.box.vMax - b.box.vMax);
+function drawDesk() {
+  const box = COLLIDERS[2]; // desk collider
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const deskW = br.x - bl.x;
+  const legH = 50;
+  const dx = base.x - deskW / 2;
+  const topY = base.y - legH;
 
-  return objects;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(base.y));
+  ctx.lineTo(s(dx + deskW), s(base.y));
+  ctx.lineTo(s(dx + deskW + 12), s(base.y + 10));
+  ctx.lineTo(s(dx - 6), s(base.y + 10));
+  ctx.closePath();
+  ctx.fill();
+
+  // Legs
+  ctx.strokeStyle = '#5a5d65';
+  ctx.lineWidth = s(4);
+  ctx.beginPath(); ctx.moveTo(s(dx + 8), s(topY + 8)); ctx.lineTo(s(dx + 6), s(base.y)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s(dx + deskW - 8), s(topY + 8)); ctx.lineTo(s(dx + deskW - 6), s(base.y)); ctx.stroke();
+
+  // Front face
+  ctx.fillStyle = '#5a5d65';
+  ctx.fillRect(s(dx), s(topY + 4), s(deskW), s(8));
+
+  // Top surface
+  const topGrad = ctx.createLinearGradient(s(dx), s(topY), s(dx + deskW), s(topY));
+  topGrad.addColorStop(0, '#6a6d75');
+  topGrad.addColorStop(0.5, '#757880');
+  topGrad.addColorStop(1, '#6a6d75');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(s(dx), s(topY - 2), s(deskW), s(6));
+  ctx.strokeStyle = '#808590';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(topY - 2));
+  ctx.lineTo(s(dx + deskW), s(topY - 2));
+  ctx.stroke();
+
+  // Monitor 1
+  drawMonitor(dx + deskW * 0.3, topY - 4);
+  // Monitor 2
+  drawMonitor(dx + deskW * 0.7, topY - 4);
+
+  // Keycard on desk
+  if (!hasKeycard) {
+    drawKeycard(dx + deskW * 0.5, topY - 8);
+  }
+}
+
+function drawMonitor(cx, baseY) {
+  const mw = 44, mh = 30;
+  // Stand
+  ctx.fillStyle = '#3a3d45';
+  ctx.fillRect(s(cx - 4), s(baseY - 6), s(8), s(6));
+  ctx.fillRect(s(cx - 10), s(baseY - 2), s(20), s(3));
+  // Screen frame
+  ctx.fillStyle = '#2a2d35';
+  ctx.fillRect(s(cx - mw / 2 - 2), s(baseY - 6 - mh - 2), s(mw + 4), s(mh + 4));
+  // Screen
+  const scrGrad = ctx.createLinearGradient(s(cx - mw / 2), s(baseY - 6 - mh), s(cx - mw / 2), s(baseY - 6));
+  scrGrad.addColorStop(0, '#1a3a4a');
+  scrGrad.addColorStop(1, '#0a2030');
+  ctx.fillStyle = scrGrad;
+  ctx.fillRect(s(cx - mw / 2), s(baseY - 6 - mh), s(mw), s(mh));
+  // Text lines on screen
+  ctx.fillStyle = 'rgba(80,200,120,0.5)';
+  const widths = [18, 26, 12, 22, 15];
+  for (let i = 0; i < 5; i++) {
+    ctx.fillRect(s(cx - mw / 2 + 4), s(baseY - 6 - mh + 5 + i * 5), s(widths[i]), s(2));
+  }
+}
+
+function drawKeycard(cx, baseY) {
+  const kw = 20, kh = 12;
+  // Glow
+  const glow = ctx.createRadialGradient(s(cx), s(baseY - kh / 2), 0, s(cx), s(baseY - kh / 2), s(25));
+  glow.addColorStop(0, 'rgba(80,200,255,0.2)');
+  glow.addColorStop(1, 'rgba(80,200,255,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(s(cx), s(baseY - kh / 2), s(25), 0, Math.PI * 2);
+  ctx.fill();
+  // Card body
+  ctx.fillStyle = '#40a0e0';
+  ctx.beginPath();
+  ctx.roundRect(s(cx - kw / 2), s(baseY - kh), s(kw), s(kh), s(2));
+  ctx.fill();
+  // Stripe
+  ctx.fillStyle = '#60c0ff';
+  ctx.fillRect(s(cx - kw / 2 + 3), s(baseY - kh + 3), s(kw - 6), s(3));
+  // Chip
+  ctx.fillStyle = '#e0c060';
+  ctx.fillRect(s(cx - 3), s(baseY - kh + 7), s(6), s(3));
+}
+
+function drawCrates() {
+  const box = COLLIDERS[3];
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const cw1 = br.x - bl.x;
+  const ch1 = 55;
+  const cx1 = base.x - cw1 / 2;
+  const cy1 = base.y - ch1;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.moveTo(s(cx1), s(base.y));
+  ctx.lineTo(s(cx1 + cw1), s(base.y));
+  ctx.lineTo(s(cx1 + cw1 + 10), s(base.y + 10));
+  ctx.lineTo(s(cx1 - 5), s(base.y + 10));
+  ctx.closePath();
+  ctx.fill();
+
+  // Bottom crate front face
+  const crateGrad = ctx.createLinearGradient(s(cx1), s(cy1), s(cx1 + cw1), s(cy1));
+  crateGrad.addColorStop(0, '#6a5530');
+  crateGrad.addColorStop(0.5, '#7a6540');
+  crateGrad.addColorStop(1, '#6a5530');
+  ctx.fillStyle = crateGrad;
+  ctx.fillRect(s(cx1), s(cy1), s(cw1), s(ch1));
+
+  // Bottom crate top face
+  ctx.fillStyle = '#8a7550';
+  ctx.beginPath();
+  ctx.moveTo(s(cx1), s(cy1));
+  ctx.lineTo(s(cx1 + cw1), s(cy1));
+  ctx.lineTo(s(cx1 + cw1 - 8), s(cy1 - 10));
+  ctx.lineTo(s(cx1 - 8), s(cy1 - 10));
+  ctx.closePath();
+  ctx.fill();
+
+  // Cross bracing
+  ctx.strokeStyle = '#5a4520';
+  ctx.lineWidth = s(2);
+  ctx.beginPath();
+  ctx.moveTo(s(cx1 + 4), s(cy1 + 4));
+  ctx.lineTo(s(cx1 + cw1 - 4), s(cy1 + ch1 - 4));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(cx1 + cw1 - 4), s(cy1 + 4));
+  ctx.lineTo(s(cx1 + 4), s(cy1 + ch1 - 4));
+  ctx.stroke();
+
+  // Edge
+  ctx.strokeStyle = '#4a3518';
+  ctx.lineWidth = s(1.5);
+  ctx.strokeRect(s(cx1), s(cy1), s(cw1), s(ch1));
+
+  // Top crate (smaller, offset)
+  const cw2 = cw1 * 0.75;
+  const ch2 = 40;
+  const cx2 = base.x - cw2 / 2 + 5;
+  const cy2 = cy1 - ch2 + 5;
+
+  ctx.fillStyle = '#5a4828';
+  ctx.fillRect(s(cx2), s(cy2), s(cw2), s(ch2));
+  // Top face
+  ctx.fillStyle = '#7a6840';
+  ctx.beginPath();
+  ctx.moveTo(s(cx2), s(cy2));
+  ctx.lineTo(s(cx2 + cw2), s(cy2));
+  ctx.lineTo(s(cx2 + cw2 - 6), s(cy2 - 8));
+  ctx.lineTo(s(cx2 - 6), s(cy2 - 8));
+  ctx.closePath();
+  ctx.fill();
+  // Cross bracing
+  ctx.strokeStyle = '#4a3818';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(cx2 + 3), s(cy2 + 3));
+  ctx.lineTo(s(cx2 + cw2 - 3), s(cy2 + ch2 - 3));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s(cx2 + cw2 - 3), s(cy2 + 3));
+  ctx.lineTo(s(cx2 + 3), s(cy2 + ch2 - 3));
+  ctx.stroke();
+  ctx.strokeStyle = '#3a2510';
+  ctx.strokeRect(s(cx2), s(cy2), s(cw2), s(ch2));
+}
+
+// ─── Guard AI ────────────────────────────────────────────────────────────────
+
+function updateGuard(dt) {
+  if (detected) return;
+
+  if (guard.waitTimer > 0) {
+    guard.waitTimer -= dt;
+    return;
+  }
+
+  const target = PATROL[guard.waypointIdx];
+  const du = target.u - guard.u;
+  const dv = target.v - guard.v;
+  const dist = Math.hypot(du, dv);
+
+  if (dist < 0.02) {
+    guard.waypointIdx = (guard.waypointIdx + 1) % PATROL.length;
+    guard.waitTimer = 0.8;
+    // Face toward next waypoint
+    const next = PATROL[guard.waypointIdx];
+    const ndu = next.u - guard.u;
+    const ndv = next.v - guard.v;
+    if (Math.abs(ndu) > Math.abs(ndv)) {
+      guard.facing = ndu > 0 ? 'right' : 'left';
+    } else {
+      guard.facing = ndv > 0 ? 'down' : 'up';
+    }
+    return;
+  }
+
+  const step = guard.speed * dt;
+  const ratio = Math.min(step / dist, 1);
+  guard.u += du * ratio;
+  guard.v += dv * ratio;
+
+  if (Math.abs(du) > Math.abs(dv)) {
+    guard.facing = du > 0 ? 'right' : 'left';
+  } else {
+    guard.facing = dv > 0 ? 'down' : 'up';
+  }
+}
+
+// ─── Guard vision cone visual ────────────────────────────────────────────────
+
+function drawGuardVision() {
+  const ga = facingAngle(guard.facing);
+  const coneAngle = Math.PI * 0.42;
+  const coneLen = 0.28;
+
+  ctx.save();
+  ctx.globalAlpha = detected ? 0.18 : 0.10;
+  ctx.fillStyle = detected ? '#e04040' : '#e0e040';
+
+  const gScreen = floorToScreen(guard.u, guard.v);
+  ctx.beginPath();
+  ctx.moveTo(s(gScreen.x), s(gScreen.y));
+
+  const steps = 16;
+  for (let i = 0; i <= steps; i++) {
+    const a = ga - coneAngle + (2 * coneAngle * i / steps);
+    const pu = Math.max(0, Math.min(1, guard.u + Math.cos(a) * coneLen));
+    const pv = Math.max(0, Math.min(1, guard.v + Math.sin(a) * coneLen));
+    const ps = floorToScreen(pu, pv);
+    ctx.lineTo(s(ps.x), s(ps.y));
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ─── Reset helper ────────────────────────────────────────────────────────────
+
+function resetGame() {
+  detected = false;
+  hasKeycard = false;
+  player.u = 0.15;
+  player.v = 0.85;
+  player.facing = 'up';
+  guard.u = PATROL[0].u;
+  guard.v = PATROL[0].v;
+  guard.waypointIdx = 0;
+  guard.waitTimer = 1.0;
+  guard.facing = 'down';
 }
 
 // ─── Character draw ──────────────────────────────────────────────────────────
@@ -648,6 +906,16 @@ const U_MIN = 0.06, U_MAX = 0.94;
 const V_MIN = 0.06, V_MAX = 0.96;
 
 function update(dt) {
+  // Reset on R
+  if (keys['r'] || keys['R']) {
+    if (detected) {
+      resetGame();
+      keys['r'] = false;
+      keys['R'] = false;
+      return;
+    }
+  }
+
   if (detected) return;
 
   const spd = player.speed * dt;
@@ -677,6 +945,14 @@ function update(dt) {
       }
     }
   }
+
+  // Guard AI
+  updateGuard(dt);
+
+  // LOS detection
+  if (guardCanSeePlayer()) {
+    detected = true;
+  }
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
@@ -690,19 +966,16 @@ function render() {
   // Room structure
   drawRoom();
 
-  // Depth-sorted: objects + player
+  // Guard vision cone (on floor, below sprites)
+  drawGuardVision();
+
+  // Depth-sorted: objects + player + guard
   const sortable = [];
 
-  // Objects
-  const objs = [
-    { box: COLLIDERS[2], label: 'DESK', color: '#5a5d65', height: 55 },
-    { box: COLLIDERS[1], label: 'SERVER', color: '#2a2d35', height: 120 },
-    { box: COLLIDERS[0], label: 'SERVER', color: '#2a2d35', height: 120 },
-    { box: COLLIDERS[3], label: 'CRATES', color: '#6a5530', height: 80 },
-  ];
-  for (const o of objs) {
-    sortable.push({ v: o.box.vMax, draw: () => drawPlaceholderBox(o.box, o.label, o.color, o.height) });
-  }
+  sortable.push({ v: COLLIDERS[2].vMax, draw: drawDesk });
+  sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawServerRack(COLLIDERS[1]) });
+  sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawServerRack(COLLIDERS[0]) });
+  sortable.push({ v: COLLIDERS[3].vMax, draw: drawCrates });
 
   // Player
   sortable.push({
@@ -713,8 +986,30 @@ function render() {
     }
   });
 
+  // Guard
+  sortable.push({
+    v: guard.v,
+    draw: () => {
+      const gs = floorToScreen(guard.u, guard.v);
+      drawCharacter(gs, guard.facing, 'guard');
+    }
+  });
+
   sortable.sort((a, b) => a.v - b.v);
   sortable.forEach(spr => spr.draw());
+
+  // Detection overlay
+  if (detected) {
+    ctx.fillStyle = 'rgba(180,0,0,0.3)';
+    ctx.fillRect(0, 0, s(1280), s(720));
+    ctx.fillStyle = '#ff2020';
+    ctx.font = `bold ${s(48)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('DETECTED', s(640), s(340));
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${s(18)}px monospace`;
+    ctx.fillText('Press R to retry', s(640), s(390));
+  }
 
   ctx.restore();
 }
