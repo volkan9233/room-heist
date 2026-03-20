@@ -293,6 +293,9 @@ function drawRoom() {
   }
   ctx.restore();
 
+  // ── Wall-mounted decorative props ──
+  if (currentRoom === 1) drawRoom1WallDecor();
+
   // ── Exit door ──
   if (currentRoom === 1) drawExitDoor();
   else drawExitDoorLeft();
@@ -790,6 +793,234 @@ function drawExitDoorLeft() {
   ctx.font = `bold ${s(10)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText('EXIT', s(textPos.x), s(textPos.y));
+}
+
+// ─── Room 1 decorative props (draw-only, no colliders) ───────────────────────
+
+function drawRoom1WallDecor() {
+  const { ceilTL, ceilTR, floorTL } = ROOM;
+
+  // Helper: back wall position (u: 0=left, 1=right; v: 0=top, 1=bottom)
+  function bw(u, v) {
+    return {
+      x: ceilTL.x + u * (ceilTR.x - ceilTL.x),
+      y: ceilTL.y + v * (floorTL.y - ceilTL.y)
+    };
+  }
+
+  // ── Cable conduit (horizontal trunking along back wall base) ──
+  const condY = floorTL.y - 14;
+  const condX1 = ceilTL.x + 30;
+  const condX2 = ceilTR.x - 60;
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(condX1), s(condY), s(condX2 - condX1), s(8));
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = s(0.6);
+  ctx.beginPath();
+  ctx.moveTo(s(condX1), s(condY));
+  ctx.lineTo(s(condX2), s(condY));
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(condX1), s(condY + 8));
+  ctx.lineTo(s(condX2), s(condY + 8));
+  ctx.stroke();
+  // Mounting clips
+  ctx.fillStyle = '#4a4d55';
+  for (let cx = condX1 + 40; cx < condX2 - 20; cx += 80) {
+    ctx.fillRect(s(cx - 3), s(condY - 2), s(6), s(12));
+  }
+
+  // ── Whiteboard (between rack2 and desk on back wall) ──
+  const wb = bw(0.57, 0.30);
+  const wbW = 90, wbH = 55;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(s(wb.x - wbW / 2 + 3), s(wb.y - wbH / 2 + 3), s(wbW), s(wbH));
+  // Frame
+  ctx.fillStyle = '#5a5d65';
+  ctx.fillRect(s(wb.x - wbW / 2 - 3), s(wb.y - wbH / 2 - 3), s(wbW + 6), s(wbH + 6));
+  // Board surface
+  const wbGrad = ctx.createLinearGradient(0, s(wb.y - wbH / 2), 0, s(wb.y + wbH / 2));
+  wbGrad.addColorStop(0, '#d8dae0');
+  wbGrad.addColorStop(0.5, '#ccced5');
+  wbGrad.addColorStop(1, '#c0c2ca');
+  ctx.fillStyle = wbGrad;
+  ctx.fillRect(s(wb.x - wbW / 2), s(wb.y - wbH / 2), s(wbW), s(wbH));
+  // Faint marker residue lines
+  ctx.strokeStyle = 'rgba(60,80,120,0.08)';
+  ctx.lineWidth = s(1);
+  const lineWidths = [30, 48, 22, 40];
+  for (let i = 0; i < 4; i++) {
+    const ly = wb.y - wbH / 2 + 12 + i * 11;
+    ctx.beginPath();
+    ctx.moveTo(s(wb.x - wbW / 2 + 10), s(ly));
+    ctx.lineTo(s(wb.x - wbW / 2 + 10 + lineWidths[i]), s(ly));
+    ctx.stroke();
+  }
+  // Sticky notes
+  ctx.fillStyle = 'rgba(220,180,60,0.35)';
+  ctx.fillRect(s(wb.x + wbW / 2 - 22), s(wb.y - wbH / 2 + 6), s(14), s(14));
+  ctx.fillStyle = 'rgba(80,180,120,0.30)';
+  ctx.fillRect(s(wb.x + wbW / 2 - 22), s(wb.y - wbH / 2 + 24), s(14), s(12));
+  // Marker tray
+  ctx.fillStyle = '#4a4d55';
+  ctx.fillRect(s(wb.x - 20), s(wb.y + wbH / 2 + 1), s(40), s(4));
+
+  // ── Wall clock (above rack1 area) ──
+  const clk = bw(0.14, 0.22);
+  const clkR = 14;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  ctx.beginPath();
+  ctx.arc(s(clk.x + 2), s(clk.y + 2), s(clkR + 1), 0, Math.PI * 2);
+  ctx.fill();
+  // Housing
+  ctx.fillStyle = '#2a2d34';
+  ctx.beginPath();
+  ctx.arc(s(clk.x), s(clk.y), s(clkR + 2), 0, Math.PI * 2);
+  ctx.fill();
+  // Face
+  const faceGrad = ctx.createRadialGradient(s(clk.x - 2), s(clk.y - 2), 0, s(clk.x), s(clk.y), s(clkR));
+  faceGrad.addColorStop(0, '#e8eae8');
+  faceGrad.addColorStop(1, '#c8cac8');
+  ctx.fillStyle = faceGrad;
+  ctx.beginPath();
+  ctx.arc(s(clk.x), s(clk.y), s(clkR), 0, Math.PI * 2);
+  ctx.fill();
+  // Hour marks
+  ctx.strokeStyle = '#3a3d44';
+  ctx.lineWidth = s(1.2);
+  for (let h = 0; h < 12; h++) {
+    const a = (h / 12) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(s(clk.x + Math.cos(a) * (clkR - 3)), s(clk.y + Math.sin(a) * (clkR - 3)));
+    ctx.lineTo(s(clk.x + Math.cos(a) * (clkR - 1)), s(clk.y + Math.sin(a) * (clkR - 1)));
+    ctx.stroke();
+  }
+  // Hour hand (~10 o'clock)
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(1.2);
+  const ha = (-60 / 360) * Math.PI * 2 - Math.PI / 2;
+  ctx.beginPath();
+  ctx.moveTo(s(clk.x), s(clk.y));
+  ctx.lineTo(s(clk.x + Math.cos(ha) * clkR * 0.5), s(clk.y + Math.sin(ha) * clkR * 0.5));
+  ctx.stroke();
+  // Minute hand (~2 o'clock)
+  ctx.lineWidth = s(0.8);
+  const ma = (60 / 360) * Math.PI * 2 - Math.PI / 2;
+  ctx.beginPath();
+  ctx.moveTo(s(clk.x), s(clk.y));
+  ctx.lineTo(s(clk.x + Math.cos(ma) * clkR * 0.7), s(clk.y + Math.sin(ma) * clkR * 0.7));
+  ctx.stroke();
+  // Center pin
+  ctx.fillStyle = '#2a2d34';
+  ctx.beginPath();
+  ctx.arc(s(clk.x), s(clk.y), s(1.5), 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTrashBin() {
+  const pos = floorToScreen(0.62, 0.36);
+  const binW = 16, binH = 22;
+  const bx = pos.x - binW / 2;
+  const by = pos.y - binH;
+
+  // Contact shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x), s(pos.y), s(12), s(5), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tapered bin body
+  const bodyGrad = ctx.createLinearGradient(s(bx - 1), 0, s(bx + binW + 1), 0);
+  bodyGrad.addColorStop(0, '#3a3d44');
+  bodyGrad.addColorStop(0.3, '#4a4d55');
+  bodyGrad.addColorStop(0.7, '#4a4d55');
+  bodyGrad.addColorStop(1, '#3a3d44');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 2), s(pos.y));
+  ctx.lineTo(s(bx + binW - 2), s(pos.y));
+  ctx.lineTo(s(bx + binW), s(by));
+  ctx.lineTo(s(bx), s(by));
+  ctx.closePath();
+  ctx.fill();
+
+  // Rim
+  ctx.strokeStyle = '#5a5d65';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - 1), s(by));
+  ctx.lineTo(s(bx + binW + 1), s(by));
+  ctx.stroke();
+
+  // Outline
+  ctx.strokeStyle = '#2a2d34';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 2), s(pos.y));
+  ctx.lineTo(s(bx + binW - 2), s(pos.y));
+  ctx.lineTo(s(bx + binW), s(by));
+  ctx.lineTo(s(bx), s(by));
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawFireExtinguisher() {
+  const pos = floorToScreen(0.03, 0.48);
+  const extW = 10, extH = 32;
+  const bx = pos.x - extW / 2;
+  const by = pos.y - extH;
+
+  // Contact shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.beginPath();
+  ctx.ellipse(s(pos.x), s(pos.y), s(8), s(3.5), 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Red cylinder
+  const bodyGrad = ctx.createLinearGradient(s(bx), 0, s(bx + extW), 0);
+  bodyGrad.addColorStop(0, '#6a1a1a');
+  bodyGrad.addColorStop(0.3, '#c03030');
+  bodyGrad.addColorStop(0.5, '#d84040');
+  bodyGrad.addColorStop(0.7, '#c03030');
+  bodyGrad.addColorStop(1, '#6a1a1a');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(s(bx), s(by + 4), s(extW), s(extH - 4), s(2));
+  ctx.fill();
+
+  // Top valve cap
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(s(bx + 2), s(by), s(extW - 4), s(6));
+
+  // Handle/nozzle
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(pos.x + 2), s(by + 2));
+  ctx.lineTo(s(pos.x + 6), s(by - 2));
+  ctx.stroke();
+
+  // Label band
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(s(bx + 1), s(by + extH * 0.35), s(extW - 2), s(8));
+
+  // Pressure gauge
+  ctx.fillStyle = '#2a4a2a';
+  ctx.beginPath();
+  ctx.arc(s(pos.x), s(by + 10), s(2.5), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = s(0.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx + 2), s(by + 6));
+  ctx.lineTo(s(bx + 2), s(pos.y - 3));
+  ctx.stroke();
 }
 
 // ─── Facility objects ─────────────────────────────────────────────────────────
@@ -2455,6 +2686,9 @@ function render() {
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawServerRack(COLLIDERS[1]) });
     sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawServerRack(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawCrates(COLLIDERS[3]) });
+    // Decorative floor props (no colliders)
+    sortable.push({ v: 0.36, draw: drawTrashBin });
+    sortable.push({ v: 0.48, draw: drawFireExtinguisher });
   } else {
     sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawToolCabinet(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawWorkbench(COLLIDERS[1]) });
