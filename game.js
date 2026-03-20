@@ -407,19 +407,34 @@ function drawFloorAO() {
   ctx.fill();
 
   // Corner AO puddles (where walls meet floor)
-  const cornerR = 40;
+  const cornerR = 50;
   // Back-left corner
   const blcGrad = ctx.createRadialGradient(s(floorTL.x), s(floorTL.y), 0, s(floorTL.x), s(floorTL.y), s(cornerR));
-  blcGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  blcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  blcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
   blcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = blcGrad;
   ctx.fillRect(s(floorTL.x), s(floorTL.y), s(cornerR), s(cornerR));
   // Back-right corner
   const brcGrad = ctx.createRadialGradient(s(floorTR.x), s(floorTR.y), 0, s(floorTR.x), s(floorTR.y), s(cornerR));
-  brcGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  brcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  brcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
   brcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = brcGrad;
   ctx.fillRect(s(floorTR.x - cornerR), s(floorTR.y), s(cornerR), s(cornerR));
+  // Front-left corner
+  const flcR = 35;
+  const flcGrad = ctx.createRadialGradient(s(floorBL.x), s(floorBL.y), 0, s(floorBL.x), s(floorBL.y), s(flcR));
+  flcGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  flcGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = flcGrad;
+  ctx.fillRect(s(floorBL.x), s(floorBL.y - flcR), s(flcR), s(flcR));
+  // Front-right corner
+  const frcGrad = ctx.createRadialGradient(s(floorBR.x), s(floorBR.y), 0, s(floorBR.x), s(floorBR.y), s(flcR));
+  frcGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  frcGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = frcGrad;
+  ctx.fillRect(s(floorBR.x - flcR), s(floorBR.y - flcR), s(flcR), s(flcR));
 
   ctx.restore();
 }
@@ -628,29 +643,40 @@ function drawServerRack(box) {
   // Ground-plane footprint shadow — full collider area
   const footGrad = ctx.createRadialGradient(
     s(base.x), s((tl.y + base.y) / 2), 0,
-    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.8)
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(screenW, base.y - tl.y) * 0.85)
   );
-  footGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
-  footGrad.addColorStop(0.7, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
   footGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = footGrad;
   ctx.beginPath();
-  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
-  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
-  ctx.lineTo(s(br.x + 8), s(br.y + 6));
-  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(tr.x + 6), s(tr.y - 3));
+  ctx.lineTo(s(br.x + 10), s(br.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(bl.y + 8));
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow — wraps full base perimeter
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  // Contact shadow — spread layer
+  const ctsGrad = ctx.createLinearGradient(0, s(base.y - 2), 0, s(base.y + 12));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.30)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.18)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
   ctx.beginPath();
-  ctx.moveTo(s(bx - 5), s(base.y - 1));
-  ctx.lineTo(s(bx + screenW + 2), s(base.y - 1));
-  ctx.lineTo(s(bx + screenW + 10), s(base.y + 10));
-  ctx.lineTo(s(bx - 8), s(base.y + 10));
+  ctx.moveTo(s(bx - sideW), s(base.y - 2));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y - 2));
+  ctx.lineTo(s(bx + screenW + sideW + 4), s(base.y + 12));
+  ctx.lineTo(s(bx - sideW - 4), s(base.y + 12));
   ctx.closePath();
   ctx.fill();
+  // Base occlusion strip — tight dark line right at ground contact
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(bx - sideW), s(base.y));
+  ctx.lineTo(s(bx + screenW + sideW), s(base.y));
+  ctx.stroke();
 
   // Left side face — shows depth on left edge
   const lsGrad = ctx.createLinearGradient(s(bx - sideW), 0, s(bx), 0);
@@ -784,19 +810,42 @@ function drawDesk() {
   const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
   const bl = floorToScreen(box.uMin, box.vMax);
   const br = floorToScreen(box.uMax, box.vMax);
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
   const deskW = br.x - bl.x;
   const legH = 50;
   const sideW = 10;
   const dx = base.x - deskW / 2;
   const topY = base.y - legH;
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  // Ground-plane footprint shadow (matches rack/crate pattern)
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(deskW, base.y - tl.y) * 0.85)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.08)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
   ctx.beginPath();
-  ctx.moveTo(s(dx - 2), s(base.y));
-  ctx.lineTo(s(dx + deskW + 2), s(base.y));
-  ctx.lineTo(s(dx + deskW + 14), s(base.y + 12));
-  ctx.lineTo(s(dx - 6), s(base.y + 12));
+  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 8), s(br.y + 6));
+  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow — gradient spread
+  const dcsGrad = ctx.createLinearGradient(0, s(base.y - 2), 0, s(base.y + 12));
+  dcsGrad.addColorStop(0, 'rgba(0,0,0,0.28)');
+  dcsGrad.addColorStop(0.4, 'rgba(0,0,0,0.14)');
+  dcsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = dcsGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dx - 6), s(base.y - 2));
+  ctx.lineTo(s(dx + deskW + sideW + 2), s(base.y - 2));
+  ctx.lineTo(s(dx + deskW + sideW + 6), s(base.y + 12));
+  ctx.lineTo(s(dx - 8), s(base.y + 12));
   ctx.closePath();
   ctx.fill();
 
@@ -819,6 +868,14 @@ function drawDesk() {
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = s(1);
     ctx.beginPath(); ctx.moveTo(s(topX - 1), s(topY + 12)); ctx.lineTo(s(botX - 1), s(base.y - 2)); ctx.stroke();
+    // Foot pad AO ring
+    const fpGrad = ctx.createRadialGradient(s(botX), s(base.y), 0, s(botX), s(base.y), s(8));
+    fpGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
+    fpGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fpGrad;
+    ctx.beginPath();
+    ctx.ellipse(s(botX), s(base.y), s(8), s(3.5), 0, 0, Math.PI * 2);
+    ctx.fill();
     // Foot pad
     ctx.fillStyle = '#3a3d44';
     ctx.beginPath();
@@ -1146,29 +1203,40 @@ function drawCrates() {
   // Ground-plane footprint shadow
   const footGrad = ctx.createRadialGradient(
     s(base.x), s((tl.y + base.y) / 2), 0,
-    s(base.x), s((tl.y + base.y) / 2), s(Math.max(cw1, base.y - tl.y) * 0.8)
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(cw1, base.y - tl.y) * 0.85)
   );
-  footGrad.addColorStop(0, 'rgba(0,0,0,0.16)');
-  footGrad.addColorStop(0.7, 'rgba(0,0,0,0.07)');
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  footGrad.addColorStop(0.6, 'rgba(0,0,0,0.10)');
   footGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = footGrad;
   ctx.beginPath();
-  ctx.moveTo(s(tl.x - 3), s(tl.y - 2));
-  ctx.lineTo(s(tr.x + 3), s(tr.y - 2));
-  ctx.lineTo(s(br.x + 6), s(br.y + 5));
-  ctx.lineTo(s(bl.x - 4), s(bl.y + 5));
+  ctx.moveTo(s(tl.x - 6), s(tl.y - 3));
+  ctx.lineTo(s(tr.x + 6), s(tr.y - 3));
+  ctx.lineTo(s(br.x + 10), s(br.y + 8));
+  ctx.lineTo(s(bl.x - 8), s(bl.y + 8));
   ctx.closePath();
   ctx.fill();
 
-  // Contact shadow — wraps full base
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  // Contact shadow — gradient spread
+  const ccsGrad = ctx.createLinearGradient(0, s(base.y - 2), 0, s(base.y + 12));
+  ccsGrad.addColorStop(0, 'rgba(0,0,0,0.30)');
+  ccsGrad.addColorStop(0.4, 'rgba(0,0,0,0.18)');
+  ccsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ccsGrad;
   ctx.beginPath();
-  ctx.moveTo(s(cx1 - 8), s(base.y - 1));
-  ctx.lineTo(s(cx1 + cw1 + 2), s(base.y - 1));
-  ctx.lineTo(s(cx1 + cw1 + 10), s(base.y + 8));
-  ctx.lineTo(s(cx1 - 10), s(base.y + 8));
+  ctx.moveTo(s(cx1 - sideW - 2), s(base.y - 2));
+  ctx.lineTo(s(cx1 + cw1 + sideW + 2), s(base.y - 2));
+  ctx.lineTo(s(cx1 + cw1 + sideW + 6), s(base.y + 12));
+  ctx.lineTo(s(cx1 - sideW - 6), s(base.y + 12));
   ctx.closePath();
   ctx.fill();
+  // Base occlusion strip
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = s(1.5);
+  ctx.beginPath();
+  ctx.moveTo(s(cx1 - sideW), s(base.y));
+  ctx.lineTo(s(cx1 + cw1 + sideW), s(base.y));
+  ctx.stroke();
 
   // Bottom crate
   drawCrate(cx1, cy1, cw1, ch1, sideW, false);
@@ -1293,11 +1361,20 @@ function drawCharacter(pos, facing, type) {
   const skinHi   = '#dca070';
   const skinLo   = '#c08858';
 
-  // Ground shadow
+  // Ground shadow — outer soft spread
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  const shGrad = ctx.createRadialGradient(cx, cy + sc * 2, 0, cx, cy + sc * 2, sc * 14);
+  shGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+  shGrad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
+  shGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = shGrad;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + sc * 2, sc * 12, sc * 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + sc * 2, sc * 14, sc * 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Contact ring — tight dark core at feet
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + sc * 2, sc * 7, sc * 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
