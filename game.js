@@ -2636,18 +2636,23 @@ function drawToolCabinet(box) {
   if (currentRoom === 2 && !spoolKnocked) {
     const spoolX = bx + screenW * 0.5;
     const spoolY = by - 10;
-    // Spool body
-    ctx.fillStyle = '#3a3d44';
+    // Subtle glow to draw player's eye
+    ctx.fillStyle = 'rgba(200,140,50,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(s(spoolX), s(spoolY - 3), s(14), s(10), 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Spool body (lighter to stand out against dark cabinet)
+    ctx.fillStyle = '#4a4e58';
     ctx.fillRect(s(spoolX - 7), s(spoolY - 5), s(14), s(5));
-    // Wire wound around it
-    ctx.strokeStyle = '#6a4a2a';
-    ctx.lineWidth = s(2);
+    // Wire wound around it — copper tone for visibility
+    ctx.strokeStyle = '#b87830';
+    ctx.lineWidth = s(2.5);
     ctx.beginPath();
     ctx.moveTo(s(spoolX - 5), s(spoolY - 3));
     ctx.lineTo(s(spoolX + 5), s(spoolY - 3));
     ctx.stroke();
     // End flanges
-    ctx.fillStyle = '#4a4d55';
+    ctx.fillStyle = '#5a5e68';
     ctx.fillRect(s(spoolX - 8), s(spoolY - 6), s(2), s(7));
     ctx.fillRect(s(spoolX + 6), s(spoolY - 6), s(2), s(7));
   }
@@ -3170,6 +3175,233 @@ function drawLocker(box) {
   ctx.stroke();
 }
 
+// ─── Room 3: Equipment counter (network/utility bench replacing drywall partition) ─
+
+function drawEquipmentCounter(box) {
+  const tl = floorToScreen(box.uMin, box.vMin);
+  const tr = floorToScreen(box.uMax, box.vMin);
+  const bl = floorToScreen(box.uMin, box.vMax);
+  const br = floorToScreen(box.uMax, box.vMax);
+  const base = floorToScreen((box.uMin + box.uMax) / 2, box.vMax);
+
+  const counterW = br.x - bl.x;
+  const counterD = bl.y - tl.y;
+  const dx = bl.x;
+  const by = bl.y;
+  // Counter is waist-high — shorter than the old partition wall
+  const counterH = counterD * 1.6;
+  const sideW = 6;
+
+  // Ground-plane footprint shadow
+  const footGrad = ctx.createRadialGradient(
+    s(base.x), s((tl.y + base.y) / 2), 0,
+    s(base.x), s((tl.y + base.y) / 2), s(Math.max(counterW, counterD) * 1.1)
+  );
+  footGrad.addColorStop(0, 'rgba(0,0,0,0.20)');
+  footGrad.addColorStop(0.5, 'rgba(0,0,0,0.07)');
+  footGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = footGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(tl.x - 4), s(tl.y - 2));
+  ctx.lineTo(s(tr.x + 4), s(tr.y - 2));
+  ctx.lineTo(s(br.x + 8), s(br.y + 6));
+  ctx.lineTo(s(bl.x - 6), s(bl.y + 6));
+  ctx.closePath();
+  ctx.fill();
+
+  // Contact shadow
+  const ctsGrad = ctx.createLinearGradient(0, s(by - 2), 0, s(by + 12));
+  ctsGrad.addColorStop(0, 'rgba(0,0,0,0.28)');
+  ctsGrad.addColorStop(0.4, 'rgba(0,0,0,0.10)');
+  ctsGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ctsGrad;
+  ctx.fillRect(s(dx - 6), s(by - 2), s(counterW + 12), s(14));
+
+  // Drop shadow behind body
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(s(dx + 3), s(by - counterH + 3), s(counterW + 2), s(counterH));
+
+  // ── Cabinet body (front face) — dark metal housing ──
+  const bodyGrad = ctx.createLinearGradient(s(dx), s(by - counterH), s(dx), s(by));
+  bodyGrad.addColorStop(0, '#3e434c');
+  bodyGrad.addColorStop(0.3, '#383d46');
+  bodyGrad.addColorStop(0.7, '#343940');
+  bodyGrad.addColorStop(1, '#30353c');
+  ctx.fillStyle = bodyGrad;
+  ctx.fillRect(s(dx), s(by - counterH), s(counterW), s(counterH));
+
+  // ── Side face (right edge, 3D depth) ──
+  const sdGrad = ctx.createLinearGradient(s(dx + counterW), 0, s(dx + counterW + sideW), 0);
+  sdGrad.addColorStop(0, '#2e333a');
+  sdGrad.addColorStop(1, '#282d34');
+  ctx.fillStyle = sdGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(dx + counterW), s(by - counterH));
+  ctx.lineTo(s(dx + counterW + sideW), s(by - counterH + 3));
+  ctx.lineTo(s(dx + counterW + sideW), s(by + 3));
+  ctx.lineTo(s(dx + counterW), s(by));
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Countertop surface ──
+  const topThick = 5;
+  const topGrad = ctx.createLinearGradient(0, s(by - counterH - topThick), 0, s(by - counterH));
+  topGrad.addColorStop(0, '#5a5f68');
+  topGrad.addColorStop(1, '#4e535c');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(s(dx - 2), s(by - counterH - topThick), s(counterW + 4), s(topThick));
+
+  // Top surface (perspective top plane)
+  ctx.fillStyle = '#626770';
+  ctx.beginPath();
+  ctx.moveTo(s(dx - 2), s(by - counterH - topThick));
+  ctx.lineTo(s(dx + counterW + 2), s(by - counterH - topThick));
+  ctx.lineTo(s(dx + counterW + sideW + 2), s(by - counterH - topThick + 3));
+  ctx.lineTo(s(dx + sideW - 2), s(by - counterH - topThick + 3));
+  ctx.closePath();
+  ctx.fill();
+
+  // Top edge highlight
+  ctx.strokeStyle = '#6e737c';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.moveTo(s(dx - 2), s(by - counterH - topThick));
+  ctx.lineTo(s(dx + counterW + 2), s(by - counterH - topThick));
+  ctx.stroke();
+
+  // ── Rack-mount equipment panels (3 bays across the front face) ──
+  const panelCount = Math.max(3, Math.floor(counterW / 50));
+  const panelGap = 4;
+  const panelMarginX = 6;
+  const panelMarginTop = 5;
+  const panelTotalW = counterW - panelMarginX * 2;
+  const panelW = (panelTotalW - panelGap * (panelCount - 1)) / panelCount;
+  const panelH = counterH * 0.65;
+  const panelTopY = by - counterH + panelMarginTop;
+
+  for (let i = 0; i < panelCount; i++) {
+    const px = dx + panelMarginX + i * (panelW + panelGap);
+
+    // Panel recess (darker)
+    ctx.fillStyle = '#22262c';
+    ctx.fillRect(s(px), s(panelTopY), s(panelW), s(panelH));
+
+    // Panel inset border
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = s(0.5);
+    ctx.strokeRect(s(px + 0.5), s(panelTopY + 0.5), s(panelW - 1), s(panelH - 1));
+
+    // Equipment face — each panel is a different unit
+    if (i === 0) {
+      // Patch panel — rows of small port rectangles
+      const portRows = 2;
+      const portCols = Math.max(4, Math.floor(panelW / 8));
+      const portW = 3, portH = 2.5;
+      const portStartX = px + 3;
+      const portStartY = panelTopY + 6;
+      const portSpacingX = (panelW - 6) / portCols;
+      const portSpacingY = panelH * 0.25;
+      for (let r = 0; r < portRows; r++) {
+        for (let c = 0; c < portCols; c++) {
+          ctx.fillStyle = '#1a1e24';
+          ctx.fillRect(s(portStartX + c * portSpacingX), s(portStartY + r * portSpacingY), s(portW), s(portH));
+        }
+      }
+      // Label "PATCH" (tiny)
+      ctx.fillStyle = 'rgba(180,185,195,0.35)';
+      ctx.font = s(5) + 'px monospace';
+      ctx.fillText('PATCH', s(px + 3), s(panelTopY + panelH - 4));
+    } else if (i === panelCount - 1) {
+      // UPS unit — large block with battery indicator
+      const upsBodyY = panelTopY + 4;
+      const upsBodyH = panelH - 8;
+      ctx.fillStyle = '#2a2e34';
+      ctx.fillRect(s(px + 3), s(upsBodyY), s(panelW - 6), s(upsBodyH));
+
+      // Battery level bars
+      const barCount = 4;
+      const barW = 3, barH = 6;
+      const barStartX = px + panelW / 2 - (barCount * (barW + 2)) / 2;
+      const barY = upsBodyY + upsBodyH / 2 - barH / 2;
+      for (let b = 0; b < barCount; b++) {
+        ctx.fillStyle = b < 3 ? 'rgba(80,200,80,0.6)' : 'rgba(80,200,80,0.2)';
+        ctx.fillRect(s(barStartX + b * (barW + 2)), s(barY), s(barW), s(barH));
+      }
+      // Label "UPS"
+      ctx.fillStyle = 'rgba(180,185,195,0.35)';
+      ctx.font = s(5) + 'px monospace';
+      ctx.fillText('UPS', s(px + panelW / 2 - 6), s(panelTopY + panelH - 4));
+    } else {
+      // Switch/router unit — horizontal line slots with LED row
+      const slotCount = 3;
+      const slotH = 1.5;
+      const slotStartY = panelTopY + 8;
+      const slotSpacing = (panelH - 16) / (slotCount + 1);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = s(slotH);
+      for (let sl = 0; sl < slotCount; sl++) {
+        const sly = slotStartY + sl * slotSpacing;
+        ctx.beginPath();
+        ctx.moveTo(s(px + 4), s(sly));
+        ctx.lineTo(s(px + panelW - 4), s(sly));
+        ctx.stroke();
+      }
+
+      // LED row along top
+      const ledCount = Math.max(3, Math.floor(panelW / 10));
+      const ledStartX = px + 5;
+      const ledSpacing = (panelW - 10) / ledCount;
+      const ledY = panelTopY + 4;
+      for (let l = 0; l < ledCount; l++) {
+        const ledOn = (l + i) % 3 !== 0;
+        ctx.fillStyle = ledOn ? 'rgba(60,200,100,0.7)' : 'rgba(200,60,40,0.4)';
+        ctx.beginPath();
+        ctx.arc(s(ledStartX + l * ledSpacing), s(ledY), s(1.2), 0, Math.PI * 2);
+        ctx.fill();
+        // LED glow
+        if (ledOn) {
+          ctx.fillStyle = 'rgba(60,200,100,0.15)';
+          ctx.beginPath();
+          ctx.arc(s(ledStartX + l * ledSpacing), s(ledY), s(3), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  // ── Cable runs below counter (visible under countertop) ──
+  ctx.strokeStyle = 'rgba(40,80,180,0.3)';
+  ctx.lineWidth = s(1.2);
+  // Horizontal cable bundle along bottom
+  const cableY = by - 4;
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 8), s(cableY));
+  ctx.lineTo(s(dx + counterW - 8), s(cableY));
+  ctx.stroke();
+  // Second cable (red)
+  ctx.strokeStyle = 'rgba(180,50,40,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 12), s(cableY + 2));
+  ctx.lineTo(s(dx + counterW - 12), s(cableY + 2));
+  ctx.stroke();
+
+  // ── Bottom edge shadow ──
+  ctx.strokeStyle = '#1e222a';
+  ctx.lineWidth = s(1.2);
+  ctx.beginPath();
+  ctx.moveTo(s(dx), s(by));
+  ctx.lineTo(s(dx + counterW), s(by));
+  ctx.stroke();
+
+  // Left edge highlight (where counter meets back wall)
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = s(0.8);
+  ctx.beginPath();
+  ctx.moveTo(s(dx + 1), s(by - counterH - topThick + 2));
+  ctx.lineTo(s(dx + 1), s(by - 2));
+  ctx.stroke();
+}
+
 // ─── Room 3: Utility table (small desk with keycard) ────────────────────────
 
 function drawUtilTable(box) {
@@ -3360,21 +3592,21 @@ function drawFallenSpool() {
   ctx.translate(s(px), s(py));
   ctx.rotate(0.3);
   // Body
-  ctx.fillStyle = '#3a3d44';
+  ctx.fillStyle = '#4a4e58';
   ctx.fillRect(s(-5), s(-3), s(10), s(4));
-  // Wire
-  ctx.strokeStyle = '#6a4a2a';
-  ctx.lineWidth = s(1.5);
+  // Wire — copper tone matching spool on cabinet
+  ctx.strokeStyle = '#b87830';
+  ctx.lineWidth = s(1.8);
   ctx.beginPath();
   ctx.moveTo(s(-3), s(-1.5));
   ctx.lineTo(s(3), s(-1.5));
   ctx.stroke();
   // Flanges
-  ctx.fillStyle = '#4a4d55';
+  ctx.fillStyle = '#5a5e68';
   ctx.fillRect(s(-6), s(-4), s(2), s(6));
   ctx.fillRect(s(4), s(-4), s(2), s(6));
   // Trailing wire on floor
-  ctx.strokeStyle = '#6a4a2a';
+  ctx.strokeStyle = '#b87830';
   ctx.lineWidth = s(0.8);
   ctx.beginPath();
   ctx.moveTo(s(5), s(0));
@@ -4329,7 +4561,7 @@ function render() {
       sortable.push({ v: SPOOL_LAND.v, draw: drawFallenSpool });
     }
   } else if (currentRoom === 3) {
-    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawPartition(COLLIDERS[0]) });
+    sortable.push({ v: COLLIDERS[0].vMax, draw: () => drawEquipmentCounter(COLLIDERS[0]) });
     sortable.push({ v: COLLIDERS[1].vMax, draw: () => drawUtilTable(COLLIDERS[1]) });
     sortable.push({ v: COLLIDERS[2].vMax, draw: () => drawServerRack(COLLIDERS[2]) });
     sortable.push({ v: COLLIDERS[3].vMax, draw: () => drawLocker(COLLIDERS[3]) });
