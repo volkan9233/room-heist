@@ -136,21 +136,21 @@ const guard = {
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
 const ROOM1_COLLIDERS = [
-  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38 },  // obstruction only — corner position, guard never north/west enough for cover
-  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34, cover: ['west'] },  // guard approaches from east (u=0.60)
-  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30 },  // obstruction only — back wall, guard never north enough
-  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67, cover: ['north', 'south', 'west'] },  // guard approaches from all sides except east wall
+  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38, cover: ['south'] },  // cover from guard when north
+  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34, cover: ['south', 'west'] },  // guard approaches from east/south
+  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30, cover: ['south'] },  // cover from guard when north
+  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67, cover: ['north', 'south', 'west', 'east'] },  // all sides
 ];
 
 const ROOM2_COLLIDERS = [
   // Partition wall: runs from back wall down, gap at bottom (v > 0.62)
   { id: 'partition', uMin: 0.40, vMin: 0.02, uMax: 0.46, vMax: 0.62 },
   // Back area (left of partition)
-  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24 },  // obstruction only — back wall
-  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56, cover: ['south', 'north'] },  // guard from north (v=0.30) and south (v=0.60+)
+  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24, cover: ['south'] },  // cover from guard when north
+  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56, cover: ['south', 'north', 'east'] },  // all accessible sides
   // Front area (right of partition)
-  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28 },  // obstruction only — back wall
-  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54, cover: ['south'] },  // guard from north (v=0.32)
+  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28, cover: ['south'] },  // cover from guard when north
+  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54, cover: ['south', 'west'] },  // guard from north/east
   { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62, cover: ['north', 'south', 'west'] },  // guard from all patrol directions
 ];
 
@@ -158,11 +158,11 @@ const ROOM3_COLLIDERS = [
   // Horizontal partition: gap on right (u > 0.64), attached to left wall
   { id: 'partitionR3', uMin: 0.02, vMin: 0.40, uMax: 0.64, vMax: 0.46 },
   // North corridor (above partition)
-  { id: 'utilTable',   uMin: 0.08, vMin: 0.08, uMax: 0.32, vMax: 0.22 },  // obstruction only — back wall
-  { id: 'rackR3',     uMin: 0.44, vMin: 0.08, uMax: 0.60, vMax: 0.28, cover: ['west'] },  // guard approaches from east (u=0.70)
+  { id: 'utilTable',   uMin: 0.08, vMin: 0.08, uMax: 0.32, vMax: 0.22, cover: ['south'] },  // cover from guard
+  { id: 'rackR3',     uMin: 0.44, vMin: 0.08, uMax: 0.60, vMax: 0.28, cover: ['south', 'west'] },  // guard from east/south
   // South corridor (below partition)
-  { id: 'locker',     uMin: 0.76, vMin: 0.54, uMax: 0.90, vMax: 0.72 },  // obstruction + playerHidden mechanic
-  { id: 'cratesR3',   uMin: 0.20, vMin: 0.58, uMax: 0.38, vMax: 0.72, cover: ['west'] },  // guard approaches from east (u=0.70)
+  { id: 'locker',     uMin: 0.76, vMin: 0.54, uMax: 0.90, vMax: 0.72, cover: ['west'] },  // cover + playerHidden mechanic
+  { id: 'cratesR3',   uMin: 0.20, vMin: 0.58, uMax: 0.38, vMax: 0.72, cover: ['west', 'east'] },  // guard from both sides
 ];
 
 let COLLIDERS = ROOM1_COLLIDERS;
@@ -222,7 +222,7 @@ const ROOM1_HOTSPOTS = [
   { id: 'r1_southCrates', u: 0.35, v: 0.46, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
   { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates', 'r1_exitDoor'] },
   { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates', 'r1_midFloor', 'r1_frontDesk'] },
-  { id: 'r1_eastOfCrates',u: 0.58, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2'] },
+  { id: 'r1_eastOfCrates',u: 0.58, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2', 'r1_eastCratesCover'] },
   // Cover position south of crates — cover from guard when guard is north (v < 0.50)
   { id: 'r1_southOfCrates',u: 0.35, v: 0.70, edges: ['r1_behindCrates'] },
   // Upper row — approach positions south of props with comfortable margin
@@ -233,6 +233,7 @@ const ROOM1_HOTSPOTS = [
   // Cover positions for rack2 west face and crates west face
   { id: 'r1_westRack2',   u: 0.37, v: 0.22, edges: ['r1_frontRack2', 'r1_midUpper'] },
   { id: 'r1_westCratesCover', u: 0.23, v: 0.58, edges: ['r1_westCrates', 'r1_blCorner'] },
+  { id: 'r1_eastCratesCover', u: 0.46, v: 0.58, edges: ['r1_eastOfCrates', 'r1_midFloor'] },
 ];
 
 const ROOM2_HOTSPOTS = [
@@ -971,7 +972,7 @@ function rayBlocked(fromU, fromV, toU, toV) {
 // Cover proximity: check if player is tucked behind a cover face
 // Returns true if any cover object shields the player from the guard
 function shieldedByCover() {
-  const COVER_DIST = 0.06;  // how close to the face the player must be
+  const COVER_DIST = 0.10;  // how close to the face the player must be
   const COVER_PAD = 0.04;   // how much the collider expands for the LOS check
   for (const b of COLLIDERS) {
     if (!b.cover) continue;
