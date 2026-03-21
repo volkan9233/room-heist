@@ -5825,57 +5825,83 @@ function drawCraftingPanel() {
 // ─── Render ──────────────────────────────────────────────────────────────────
 // ─── Atmospheric post-processing ────────────────────────────────────────────
 function drawAtmosphere() {
-  // Light pools from ceiling fixtures onto floor
   const { floorTL, floorTR, floorBL, floorBR, ceilTL, ceilTR } = ROOM;
   const lt = LIGHT_TINTS[currentRoom] || LIGHT_TINTS[1];
 
-  // Two ceiling lights cast elliptical pools on the floor
+  // ── Dramatic light cones from ceiling onto floor ──
   for (const t of [0.3, 0.7]) {
-    const lightU = t;
-    const lightV = 0.15; // near the back wall (light hits upper-mid floor)
-    const poolPos = floorToScreen(lightU, lightV);
+    const poolPos = floorToScreen(t, 0.25);
+    // Main light pool — large, visible
     const poolGrad = ctx.createRadialGradient(
       s(poolPos.x), s(poolPos.y), 0,
-      s(poolPos.x), s(poolPos.y), s(140)
+      s(poolPos.x), s(poolPos.y), s(200)
     );
-    poolGrad.addColorStop(0, `rgba(${lt.glow},0.07)`);
-    poolGrad.addColorStop(0.4, `rgba(${lt.glow},0.03)`);
+    poolGrad.addColorStop(0, `rgba(${lt.glow},0.18)`);
+    poolGrad.addColorStop(0.3, `rgba(${lt.glow},0.10)`);
+    poolGrad.addColorStop(0.6, `rgba(${lt.glow},0.04)`);
     poolGrad.addColorStop(1, `rgba(${lt.glow},0)`);
     ctx.fillStyle = poolGrad;
     ctx.beginPath();
-    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(140), s(80), 0, 0, Math.PI * 2);
+    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(200), s(120), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bright center spot
+    const spotGrad = ctx.createRadialGradient(
+      s(poolPos.x), s(poolPos.y), 0,
+      s(poolPos.x), s(poolPos.y), s(50)
+    );
+    spotGrad.addColorStop(0, `rgba(${lt.glow},0.12)`);
+    spotGrad.addColorStop(1, `rgba(${lt.glow},0)`);
+    ctx.fillStyle = spotGrad;
+    ctx.beginPath();
+    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(50), s(30), 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Proximity danger tint — red haze when guard is close
+  // ── Overall darkness overlay — makes room feel dimmer ──
+  ctx.fillStyle = 'rgba(0,0,10,0.15)';
+  ctx.fillRect(0, 0, s(1280), s(720));
+
+  // ── Proximity danger tint — red haze when guard is close ──
   const du = player.u - guard.u;
   const dv = player.v - guard.v;
   const dist = Math.hypot(du, dv);
   if (dist < 0.35 && !detected && !won && !playerHidden) {
-    const intensity = Math.max(0, 1 - dist / 0.35) * 0.15;
-    ctx.fillStyle = `rgba(200,0,0,${intensity.toFixed(3)})`;
+    const intensity = Math.max(0, 1 - dist / 0.35) * 0.25;
+    ctx.fillStyle = `rgba(180,0,0,${intensity.toFixed(3)})`;
+    ctx.fillRect(0, 0, s(1280), s(720));
+    // Pulsing edge glow
+    const pulse = 0.5 + Math.sin(gameTime * 6) * 0.5;
+    const edgeGrad = ctx.createRadialGradient(
+      s(640), s(360), s(200),
+      s(640), s(360), s(600)
+    );
+    edgeGrad.addColorStop(0, 'rgba(180,0,0,0)');
+    edgeGrad.addColorStop(1, `rgba(180,0,0,${(intensity * pulse * 0.4).toFixed(3)})`);
+    ctx.fillStyle = edgeGrad;
     ctx.fillRect(0, 0, s(1280), s(720));
   }
 
-  // Vignette overlay (darkens edges for cinematic feel)
+  // ── Heavy vignette — strong cinematic darkness at edges ──
   const vigW = s(1280), vigH = s(720);
   const vigGrad = ctx.createRadialGradient(
-    vigW / 2, vigH / 2, Math.min(vigW, vigH) * 0.3,
-    vigW / 2, vigH / 2, Math.max(vigW, vigH) * 0.7
+    vigW / 2, vigH / 2, Math.min(vigW, vigH) * 0.25,
+    vigW / 2, vigH / 2, Math.max(vigW, vigH) * 0.65
   );
   vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  vigGrad.addColorStop(0.6, 'rgba(0,0,0,0.05)');
-  vigGrad.addColorStop(1, 'rgba(0,0,0,0.35)');
+  vigGrad.addColorStop(0.5, 'rgba(0,0,0,0.12)');
+  vigGrad.addColorStop(0.8, 'rgba(0,0,0,0.30)');
+  vigGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vigGrad;
   ctx.fillRect(0, 0, vigW, vigH);
 
-  // Subtle film grain (noise texture — changes each frame for life)
+  // ── Film grain — subtle noise for gritty realism ──
   ctx.save();
-  ctx.globalAlpha = 0.025;
-  for (let i = 0; i < 60; i++) {
+  ctx.globalAlpha = 0.04;
+  for (let i = 0; i < 100; i++) {
     const gx = Math.random() * 1280;
     const gy = Math.random() * 720;
-    const gs = 2 + Math.random() * 4;
+    const gs = 1 + Math.random() * 3;
     ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
     ctx.fillRect(s(gx), s(gy), s(gs), s(gs));
   }
