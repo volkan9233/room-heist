@@ -136,33 +136,33 @@ const guard = {
 
 // ─── Collision boxes (UV floor space) ────────────────────────────────────────
 const ROOM1_COLLIDERS = [
-  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38, cover: ['south', 'east'] },
-  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34, cover: ['south', 'west'] },
-  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30, cover: ['south'] },
-  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67, cover: ['north', 'south', 'east', 'west'] },
+  { id: 'rack1',  uMin: 0.06, vMin: 0.15, uMax: 0.21, vMax: 0.38 },  // obstruction only — corner position, guard never north/west enough for cover
+  { id: 'rack2',  uMin: 0.41, vMin: 0.10, uMax: 0.55, vMax: 0.34, cover: ['west'] },  // guard approaches from east (u=0.60)
+  { id: 'desk',   uMin: 0.66, vMin: 0.08, uMax: 0.92, vMax: 0.30 },  // obstruction only — back wall, guard never north enough
+  { id: 'crates', uMin: 0.27, vMin: 0.50, uMax: 0.42, vMax: 0.67, cover: ['north', 'south', 'west'] },  // guard approaches from all sides except east wall
 ];
 
 const ROOM2_COLLIDERS = [
   // Partition wall: runs from back wall down, gap at bottom (v > 0.62)
   { id: 'partition', uMin: 0.40, vMin: 0.02, uMax: 0.46, vMax: 0.62 },
   // Back area (left of partition)
-  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24, cover: ['south'] },
-  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56, cover: ['south', 'east'] },
+  { id: 'workbench', uMin: 0.05, vMin: 0.08, uMax: 0.36, vMax: 0.24 },  // obstruction only — back wall
+  { id: 'barrels',   uMin: 0.06, vMin: 0.42, uMax: 0.20, vMax: 0.56, cover: ['south', 'north'] },  // guard from north (v=0.30) and south (v=0.60+)
   // Front area (right of partition)
-  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28, cover: ['south', 'west'] },
-  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54, cover: ['west', 'south'] },
-  { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62, cover: ['north', 'south', 'west'] },
+  { id: 'cabinet',   uMin: 0.56, vMin: 0.08, uMax: 0.68, vMax: 0.28 },  // obstruction only — back wall
+  { id: 'shelving',  uMin: 0.74, vMin: 0.36, uMax: 0.90, vMax: 0.54, cover: ['south'] },  // guard from north (v=0.32)
+  { id: 'crates2',   uMin: 0.56, vMin: 0.50, uMax: 0.70, vMax: 0.62, cover: ['north', 'south', 'west'] },  // guard from all patrol directions
 ];
 
 const ROOM3_COLLIDERS = [
   // Horizontal partition: gap on right (u > 0.64), attached to left wall
   { id: 'partitionR3', uMin: 0.02, vMin: 0.40, uMax: 0.64, vMax: 0.46 },
   // North corridor (above partition)
-  { id: 'utilTable',   uMin: 0.08, vMin: 0.08, uMax: 0.32, vMax: 0.22, cover: ['south', 'east'] },
-  { id: 'rackR3',     uMin: 0.44, vMin: 0.08, uMax: 0.60, vMax: 0.28, cover: ['south', 'west'] },
+  { id: 'utilTable',   uMin: 0.08, vMin: 0.08, uMax: 0.32, vMax: 0.22 },  // obstruction only — back wall
+  { id: 'rackR3',     uMin: 0.44, vMin: 0.08, uMax: 0.60, vMax: 0.28, cover: ['west'] },  // guard approaches from east (u=0.70)
   // South corridor (below partition)
-  { id: 'locker',     uMin: 0.76, vMin: 0.54, uMax: 0.90, vMax: 0.72, cover: ['west', 'north'] },
-  { id: 'cratesR3',   uMin: 0.20, vMin: 0.58, uMax: 0.38, vMax: 0.72, cover: ['north', 'east', 'west'] },
+  { id: 'locker',     uMin: 0.76, vMin: 0.54, uMax: 0.90, vMax: 0.72 },  // obstruction + playerHidden mechanic
+  { id: 'cratesR3',   uMin: 0.20, vMin: 0.58, uMax: 0.38, vMax: 0.72, cover: ['west'] },  // guard approaches from east (u=0.70)
 ];
 
 let COLLIDERS = ROOM1_COLLIDERS;
@@ -214,18 +214,20 @@ const ROOM1_HOTSPOTS = [
   // Bottom row (player entry area)
   { id: 'r1_start',       u: 0.15, v: 0.85, edges: ['r1_blCorner', 'r1_behindCrates'] },
   { id: 'r1_blCorner',    u: 0.10, v: 0.75, edges: ['r1_start', 'r1_leftOfRack1', 'r1_behindCrates', 'r1_westCrates'] },
-  { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_midFloor'] },
+  { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_midFloor', 'r1_southOfCrates'] },
   { id: 'r1_brCorner',    u: 0.80, v: 0.80, edges: ['r1_midFloor', 'r1_exitDoor'] },
   // Mid row — westCrates routes west of crate box (u < 0.27)
   { id: 'r1_westCrates',  u: 0.22, v: 0.45, edges: ['r1_blCorner', 'r1_southCrates', 'r1_leftOfRack1'] },
   { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1', 'r1_westCrates'] },
   { id: 'r1_southCrates', u: 0.35, v: 0.46, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
-  { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates'] },
-  { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates'] },
+  { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates', 'r1_exitDoor'] },
+  { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates', 'r1_midFloor'] },
   { id: 'r1_eastOfCrates',u: 0.58, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2'] },
+  // Cover position south of crates — cover from guard when guard is north (v < 0.50)
+  { id: 'r1_southOfCrates',u: 0.35, v: 0.70, edges: ['r1_behindCrates'] },
   // Upper row — approach positions south of props with comfortable margin
   { id: 'r1_frontRack1',  u: 0.14, v: 0.43, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
-  { id: 'r1_midUpper',    u: 0.32, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
+  { id: 'r1_midUpper',    u: 0.36, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
   { id: 'r1_frontRack2',  u: 0.48, v: 0.38, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
   { id: 'r1_frontDesk',   u: 0.78, v: 0.36, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
 ];
@@ -237,16 +239,18 @@ const ROOM2_HOTSPOTS = [
   { id: 'r2_frontBench',   u: 0.22, v: 0.28, edges: ['r2_backCenter'] },
   { id: 'r2_behindBarrels',u: 0.24, v: 0.59, edges: ['r2_backCenter', 'r2_backStart'] },
   // Gap corridor — comfortable margin below partition (vMax=0.62)
-  { id: 'r2_gapSouth',     u: 0.43, v: 0.75, edges: ['r2_backStart', 'r2_gapNorth', 'r2_frontStart'] },
+  { id: 'r2_gapSouth',     u: 0.43, v: 0.75, edges: ['r2_backStart', 'r2_gapNorth', 'r2_frontStart', 'r2_exitArea'] },
   { id: 'r2_gapNorth',     u: 0.43, v: 0.66, edges: ['r2_gapSouth'] },
   // Front area (right of partition)
   { id: 'r2_frontStart',   u: 0.85, v: 0.85, edges: ['r2_gapSouth', 'r2_frontLower', 'r2_exitArea'] },
-  { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates'] },
-  { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool'] },
+  { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates', 'r2_southShelving'] },
+  { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool', 'r2_exitArea'] },
   { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet', 'r2_frontShelving'] },
   { id: 'r2_frontCabinet', u: 0.62, v: 0.33, edges: ['r2_frontSpool'] },
   { id: 'r2_frontShelving',u: 0.72, v: 0.45, edges: ['r2_frontLower', 'r2_frontSpool'] },
-  { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart', 'r2_frontStart'] },
+  // Cover position south of shelving — cover from guard when guard goes north (v < 0.36)
+  { id: 'r2_southShelving',u: 0.80, v: 0.58, edges: ['r2_frontLower'] },
+  { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart', 'r2_frontStart', 'r2_gapSouth', 'r2_westCrates'] },
 ];
 
 const ROOM3_HOTSPOTS = [
@@ -256,14 +260,16 @@ const ROOM3_HOTSPOTS = [
   { id: 'r3_westLocker',  u: 0.70, v: 0.76, edges: ['r3_nearLocker', 'r3_southCenter', 'r3_gapSouth'] },
   { id: 'r3_southCenter', u: 0.50, v: 0.78, edges: ['r3_start', 'r3_nearLocker', 'r3_westLocker', 'r3_nearCrates', 'r3_exitDoor'] },
   { id: 'r3_nearCrates',  u: 0.30, v: 0.78, edges: ['r3_southCenter', 'r3_exitDoor'] },
-  { id: 'r3_exitDoor',    u: 0.08, v: 0.76, edges: ['r3_southCenter', 'r3_nearCrates'] },
+  { id: 'r3_exitDoor',    u: 0.08, v: 0.76, edges: ['r3_southCenter', 'r3_nearCrates', 'r3_westOfCrates'] },
+  // Cover position west of crates — cover from guard when guard is east (u > 0.38)
+  { id: 'r3_westOfCrates',u: 0.16, v: 0.65, edges: ['r3_exitDoor'] },
   // Gap passage (right side, between corridors)
-  { id: 'r3_gapSouth',    u: 0.70, v: 0.50, edges: ['r3_westLocker', 'r3_gapNorth'] },
+  { id: 'r3_gapSouth',    u: 0.72, v: 0.50, edges: ['r3_westLocker', 'r3_gapNorth'] },
   { id: 'r3_gapNorth',    u: 0.70, v: 0.36, edges: ['r3_gapSouth', 'r3_northEast'] },
   // North corridor — approach positions south of props with comfortable margin
   { id: 'r3_northEast',   u: 0.62, v: 0.32, edges: ['r3_gapNorth', 'r3_frontRack'] },
   { id: 'r3_frontRack',   u: 0.52, v: 0.34, edges: ['r3_northEast', 'r3_northCenter'] },
-  { id: 'r3_northCenter', u: 0.36, v: 0.32, edges: ['r3_frontRack', 'r3_frontTable'] },
+  { id: 'r3_northCenter', u: 0.39, v: 0.30, edges: ['r3_frontRack', 'r3_frontTable'] },
   { id: 'r3_frontTable',  u: 0.20, v: 0.28, edges: ['r3_northCenter'] },
 ];
 
@@ -278,36 +284,50 @@ function getHotspot(id) {
 
 // ─── Pathfinding & destination movement ──────────────────────────────────────
 
-// BFS from startId to goalId along hotspot edges. Returns array of hotspot IDs
-// (excluding startId, including goalId), or null if unreachable.
+// Dijkstra from startId to goalId along hotspot edges, weighted by Euclidean distance.
+// Returns array of hotspot IDs (excluding startId, including goalId), or null if unreachable.
+// For ~15-node graphs this is trivial cost and produces the physically shortest path.
 function findPath(startId, goalId) {
   if (startId === goalId) return [];
-  const visited = new Set([startId]);
+  const dist = {};
   const parent = {};
-  const queue = [startId];
-  while (queue.length > 0) {
-    const current = queue.shift();
+  const visited = new Set();
+  dist[startId] = 0;
+  while (true) {
+    // Find unvisited node with smallest distance
+    let current = null, minDist = Infinity;
+    for (const id in dist) {
+      if (!visited.has(id) && dist[id] < minDist) {
+        minDist = dist[id];
+        current = id;
+      }
+    }
+    if (current === null) return null; // unreachable
+    if (current === goalId) {
+      const path = [];
+      let id = goalId;
+      while (id !== startId) {
+        path.push(id);
+        id = parent[id];
+      }
+      path.reverse();
+      return path;
+    }
+    visited.add(current);
     const node = getHotspot(current);
     if (!node) continue;
     for (const neighborId of node.edges) {
       if (visited.has(neighborId)) continue;
-      visited.add(neighborId);
-      parent[neighborId] = current;
-      if (neighborId === goalId) {
-        // Reconstruct path
-        const path = [];
-        let id = goalId;
-        while (id !== startId) {
-          path.push(id);
-          id = parent[id];
-        }
-        path.reverse();
-        return path;
+      const neighbor = getHotspot(neighborId);
+      if (!neighbor) continue;
+      const edgeDist = Math.hypot(neighbor.u - node.u, neighbor.v - node.v);
+      const newDist = dist[current] + edgeDist;
+      if (!(neighborId in dist) || newDist < dist[neighborId]) {
+        dist[neighborId] = newDist;
+        parent[neighborId] = current;
       }
-      queue.push(neighborId);
     }
   }
-  return null; // unreachable
 }
 
 // Start walking to a destination hotspot. Returns true if path found.
@@ -496,21 +516,23 @@ function shieldedByCover() {
     for (const face of b.cover) {
       let nearFace = false;
       let guardOnOppositeSide = false;
+      // Lateral tolerance matches COVER_DIST so cover works at natural approach margins
+      const COVER_LAT = COVER_DIST;
       if (face === 'south') {
         nearFace = player.v > b.vMax && player.v < b.vMax + COVER_DIST &&
-                   player.u > b.uMin - 0.02 && player.u < b.uMax + 0.02;
+                   player.u > b.uMin - COVER_LAT && player.u < b.uMax + COVER_LAT;
         guardOnOppositeSide = guard.v < b.vMin;
       } else if (face === 'north') {
         nearFace = player.v < b.vMin && player.v > b.vMin - COVER_DIST &&
-                   player.u > b.uMin - 0.02 && player.u < b.uMax + 0.02;
+                   player.u > b.uMin - COVER_LAT && player.u < b.uMax + COVER_LAT;
         guardOnOppositeSide = guard.v > b.vMax;
       } else if (face === 'east') {
         nearFace = player.u > b.uMax && player.u < b.uMax + COVER_DIST &&
-                   player.v > b.vMin - 0.02 && player.v < b.vMax + 0.02;
+                   player.v > b.vMin - COVER_LAT && player.v < b.vMax + COVER_LAT;
         guardOnOppositeSide = guard.u < b.uMin;
       } else if (face === 'west') {
         nearFace = player.u < b.uMin && player.u > b.uMin - COVER_DIST &&
-                   player.v > b.vMin - 0.02 && player.v < b.vMax + 0.02;
+                   player.v > b.vMin - COVER_LAT && player.v < b.vMax + COVER_LAT;
         guardOnOppositeSide = guard.u > b.uMax;
       }
       if (nearFace && guardOnOppositeSide) {
