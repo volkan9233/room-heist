@@ -486,7 +486,27 @@ canvas.addEventListener('pointerdown', function(e) {
   }
   const reachable = fromId ? getReachableSet(fromId) : null;
 
-  const clickedId = findClickedHotspot(clickX, clickY, hitRadius, reachable);
+  // Exit door click area — the door is on the wall but the floor hotspot is far away,
+  // so we need a special check for clicks on the exit door surface
+  let clickedId = findClickedHotspot(clickX, clickY, hitRadius, reachable);
+  if (!clickedId) {
+    const exitIds = { 1: 'r1_exitDoor', 2: 'r2_exitArea', 3: 'r3_exitDoor' };
+    const exitId = exitIds[currentRoom];
+    if (exitId && (!reachable || reachable.has(exitId))) {
+      // Check if click is near the exit door on the wall (larger radius for wall doors)
+      const wallHitRadius = 220 * scale;
+      const doorHs = getHotspot(exitId);
+      if (doorHs) {
+        const doorScreenPos = floorToScreen(doorHs.u, doorHs.v);
+        const drawX = doorScreenPos.x * scale + (W - 1280 * scale) / 2;
+        const drawY = doorScreenPos.y * scale + (H - 720 * scale) / 2;
+        // For wall-mounted doors, extend the hit area upward (wall is above floor)
+        const adjustedClickY = clickY + 80 * scale;
+        const d = Math.hypot(clickX - drawX, adjustedClickY - drawY);
+        if (d <= wallHitRadius) clickedId = exitId;
+      }
+    }
+  }
   if (!clickedId) return;
 
   if (player.currentHotspot) {
@@ -511,44 +531,40 @@ let playerHidden = false;
 
 // ─── Inventory & Crafting System ─────────────────────────────────────────────
 const ITEMS = {
-  tape:      { name: 'Tape',       icon: '🔗', desc: 'Adhesive tape' },
-  can:       { name: 'Tin Can',    icon: '🥫', desc: 'Empty tin can' },
-  stone:     { name: 'Stone',      icon: '🪨', desc: 'Small stone' },
-  wire:      { name: 'Wire',       icon: '🔌', desc: 'Piece of wire' },
-  phone:     { name: 'Phone',      icon: '📱', desc: 'Old phone' },
-  chip:      { name: 'Chip',       icon: '💾', desc: 'Hacking chip' },
-  battery:   { name: 'Battery',    icon: '🔋', desc: 'Small battery' },
-  cloth:     { name: 'Cloth',      icon: '🧶', desc: 'Torn cloth' },
-  lockpick:  { name: 'Lockpick',   icon: '🔑', desc: 'Crude lockpick' },
-  noisemaker:{ name: 'Noisemaker', icon: '📢', desc: 'Distracts guards' },
-  jammer:    { name: 'Jammer',     icon: '📡', desc: 'Disables cameras' },
-  trap:      { name: 'Trap',       icon: '🪤', desc: 'Slows guard 5s' },
+  test_tube: { name: 'Test Tube',     icon: '🧪', desc: 'Glass vial — can be thrown to create noise' },
+  cable:     { name: 'Cable',         icon: '🔌', desc: 'Insulated cable from the workbench' },
+  cloth:     { name: 'Cloth',         icon: '🧶', desc: 'Torn lab cloth — useful for traps' },
+  battery:   { name: 'Battery',       icon: '🔋', desc: 'Small rechargeable cell' },
+  circuit:   { name: 'Circuit Board', icon: '💾', desc: 'Salvaged from facility hardware' },
+  chemical:  { name: 'Chemical',      icon: '⚗️', desc: 'Unknown reactive compound' },
+  // Crafted items
+  trap:      { name: 'Trap',          icon: '🪤', desc: 'Slows guard for 5s' },
+  jammer:    { name: 'Jammer',        icon: '📡', desc: 'Disables detection for 10s' },
+  smoke:     { name: 'Smoke Bomb',    icon: '💨', desc: 'Creates a smoke cloud — distracts guard' },
 };
 
 // Crafting recipes: [item1, item2] → result
 const RECIPES = [
-  { ingredients: ['can', 'stone'],   result: 'noisemaker' },
-  { ingredients: ['wire', 'stone'],  result: 'lockpick' },
-  { ingredients: ['phone', 'chip'],  result: 'jammer' },
-  { ingredients: ['tape', 'wire'],   result: 'trap' },
+  { ingredients: ['cable', 'cloth'],     result: 'trap' },       // slows guard 5s
+  { ingredients: ['battery', 'circuit'], result: 'jammer' },     // disables detection 10s
+  { ingredients: ['test_tube', 'chemical'], result: 'smoke' },   // smoke cloud distraction
 ];
 
 // Items placed in each room — { itemId, hotspot, picked }
+// Room 1: no items (tutorial — learn movement, stealth, keycard)
+// Room 2: learn distraction — test tube can be thrown for noise, cable+cloth carry over
+// Room 3: advanced crafting — battery+circuit=jammer, chemical+test_tube(carried)=smoke
 const ROOM_ITEMS = {
-  1: [
-    { itemId: 'can',   hotspot: 'r1_frontRack1', picked: false },
-    { itemId: 'stone', hotspot: 'r1_brCorner',   picked: false },
-    { itemId: 'wire',  hotspot: 'r1_midUpper',   picked: false },
-  ],
+  1: [],
   2: [
-    { itemId: 'tape',  hotspot: 'r2_frontCabinet', picked: false },
-    { itemId: 'phone', hotspot: 'r2_westCrates',   picked: false },
-    { itemId: 'chip',  hotspot: 'r2_frontBench',   picked: false },
+    { itemId: 'test_tube', hotspot: 'r2_backCenter',    picked: false },  // on workbench edge — throwable distraction
+    { itemId: 'cable',     hotspot: 'r2_frontCabinet',  picked: false },  // in cabinet area — for trap crafting
+    { itemId: 'cloth',     hotspot: 'r2_westCrates',    picked: false },  // in crates — cable+cloth=trap
   ],
   3: [
-    { itemId: 'battery', hotspot: 'r3_northEast',   picked: false },
-    { itemId: 'cloth',   hotspot: 'r3_frontRack',   picked: false },
-    { itemId: 'wire',    hotspot: 'r3_northCenter',  picked: false },
+    { itemId: 'battery',  hotspot: 'r3_northEast',    picked: false },  // on equipment — for jammer
+    { itemId: 'circuit',  hotspot: 'r3_frontRack',    picked: false },  // in server rack — battery+circuit=jammer
+    { itemId: 'chemical', hotspot: 'r3_northCenter',  picked: false },  // on lab table — test_tube+chemical=smoke
   ],
 };
 
@@ -608,8 +624,8 @@ function useItem(itemId) {
   const idx = inventory.indexOf(itemId);
   if (idx < 0) return false;
 
-  if (itemId === 'noisemaker' && player.currentHotspot) {
-    // Create noise at player's position to lure guard
+  if (itemId === 'test_tube' && player.currentHotspot) {
+    // Throw test tube — shatters and creates noise to lure guard
     const hs = getHotspot(player.currentHotspot);
     if (hs) {
       inventory.splice(idx, 1);
@@ -617,6 +633,19 @@ function useItem(itemId) {
       guard.investigateTarget = { u: hs.u, v: hs.v };
       guard.investigateWaitTimer = 4;
       spoolNoiseTimer = 2.0;
+      return true;
+    }
+  }
+
+  if (itemId === 'smoke' && player.currentHotspot) {
+    // Smoke bomb — creates a cloud that distracts guard (same as noise but longer)
+    const hs = getHotspot(player.currentHotspot);
+    if (hs) {
+      inventory.splice(idx, 1);
+      guard.investigating = true;
+      guard.investigateTarget = { u: hs.u, v: hs.v };
+      guard.investigateWaitTimer = 6;
+      spoolNoiseTimer = 3.0;
       return true;
     }
   }
@@ -632,7 +661,7 @@ function useItem(itemId) {
   }
 
   if (itemId === 'jammer') {
-    // Disable cameras for 10 seconds (future mechanic, for now: prevent detection for 10s)
+    // Disable detection for 10 seconds
     inventory.splice(idx, 1);
     jammerActiveTimer = 10;
     return true;
@@ -5813,7 +5842,7 @@ function drawCraftingPanel() {
   // "Use" hint for usable items
   if (selectedForCraft.length === 1) {
     const selItem = inventory[selectedForCraft[0]];
-    if (selItem === 'noisemaker' || selItem === 'trap' || selItem === 'jammer') {
+    if (selItem === 'test_tube' || selItem === 'smoke' || selItem === 'trap' || selItem === 'jammer') {
       ctx.font = `${s(10)}px monospace`;
       ctx.fillStyle = '#80e0ff';
       ctx.textAlign = 'center';
@@ -6048,9 +6077,9 @@ function render() {
       drawPrompt('[E] Use exit', '#60ff60', player.u, player.v - 0.06);
     }
 
-    // Spool knock prompt (Room 2)
+    // Spool knock prompt (Room 2) — use smaller v offset to avoid prompt clipping into wall
     if (currentRoom === 2 && !spoolKnocked && hs === 'r2_frontSpool') {
-      drawPrompt('[E] Knock spool', '#ffc040', player.u, player.v - 0.06);
+      drawPrompt('[E] Knock spool', '#ffc040', player.u, player.v - 0.02);
     }
 
     // Locker hide prompt (Room 3)
