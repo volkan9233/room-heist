@@ -2310,43 +2310,37 @@ function loadGLBModels() {
   if (glbModelsLoaded) return;
   glbModelsLoaded = true;
 
-  // Load scientist model (player character)
-  gltfLoader.load('scp_scientist_male_1_-_fix_rigger.glb', (gltf) => {
+  // Helper to compute GLB model data with a target height
+  function processGLB(gltf, targetHeight) {
     const scene = gltf.scene;
+    // Reset any existing transforms before measuring
+    scene.scale.setScalar(1);
+    scene.position.set(0, 0, 0);
+    scene.rotation.set(0, 0, 0);
+    scene.updateMatrixWorld(true);
+
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const targetHeight = 1.1; // Match procedural model height
     const sf = targetHeight / size.y;
-    console.log('Scientist GLB size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), 'scale:', sf.toFixed(4));
+    console.log('GLB raw size:', size.x.toFixed(4), size.y.toFixed(4), size.z.toFixed(4), '→ scale:', sf.toFixed(6));
 
-    glbPlayerData = {
+    return {
       scene, animations: gltf.animations || [],
       sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf,
-      rotationOffset: Math.PI // Model faces -Z by default, rotate 180° to face +Z (game "down")
+      rotationOffset: Math.PI
     };
+  }
 
-    // Immediately replace the procedural player
+  // Load scientist model (player character)
+  gltfLoader.load('scp_scientist_male_1_-_fix_rigger.glb', (gltf) => {
+    glbPlayerData = processGLB(gltf, 1.1);
     replaceWithGLB('player');
   }, undefined, (err) => console.warn('Could not load scientist GLB:', err));
 
   // Load demon creature model (guard character)
   gltfLoader.load('demon_creature.glb', (gltf) => {
-    const scene = gltf.scene;
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const targetHeight = 1.2; // Slightly taller than player
-    const sf = targetHeight / size.y;
-    console.log('Demon GLB size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), 'scale:', sf.toFixed(4));
-
-    glbGuardData = {
-      scene, animations: gltf.animations || [],
-      sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf,
-      rotationOffset: Math.PI // Model faces -Z by default, rotate 180° to face +Z (game "down")
-    };
-
-    // Immediately replace the procedural guard
+    glbGuardData = processGLB(gltf, 1.2);
     replaceWithGLB('guard');
   }, undefined, (err) => console.warn('Could not load demon GLB:', err));
 }
@@ -2375,10 +2369,10 @@ function replaceWithGLB(who) {
   });
   wrapper.add(inner);
 
-  // Copy position from old model
+  // Copy position from old model, always start visible
   wrapper.position.copy(oldModel.position);
   wrapper.rotation.y = oldModel.rotation.y;
-  wrapper.visible = oldModel.visible;
+  wrapper.visible = true;
 
   // Store rotation offset on wrapper for updateCharacterModel to use
   wrapper.userData.rotationOffset = data.rotationOffset || 0;
@@ -2565,11 +2559,10 @@ function initThreeJS() {
   scene3D.background = new THREE.Color(0x0a0c12);
   scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
 
-  // Camera — premium fixed-camera 3/4 stealth room shot
-  // LookAt shifted forward so player occupies lower-mid foreground
-  camera3D = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
-  camera3D.position.set(0.5, 5.5, 12.5);
-  camera3D.lookAt(0, 0.3, -0.5);
+  // Camera — elevated diorama view looking down at the room
+  camera3D = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
+  camera3D.position.set(0, 14, 12);
+  camera3D.lookAt(0, 0, -1);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
@@ -2630,9 +2623,11 @@ function initThreeJS() {
   fxaaPass.uniforms['resolution'].value.set(1 / W, 1 / H);
   composer.addPass(fxaaPass);
 
-  // Characters — start with procedural, GLB will replace when loaded
+  // Characters — create procedural as fallback but hide until GLB replaces them
   playerModel = createCharacterModel('player');
   guardModel = createCharacterModel('guard');
+  playerModel.visible = false;
+  guardModel.visible = false;
   scene3D.add(playerModel);
   scene3D.add(guardModel);
 
