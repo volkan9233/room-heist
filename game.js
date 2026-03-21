@@ -217,7 +217,7 @@ const ROOM1_HOTSPOTS = [
   { id: 'r1_behindCrates',u: 0.35, v: 0.78, edges: ['r1_start', 'r1_blCorner', 'r1_midFloor', 'r1_southOfCrates'] },
   { id: 'r1_brCorner',    u: 0.80, v: 0.80, edges: ['r1_midFloor', 'r1_exitDoor'] },
   // Mid row — westCrates routes west of crate box (u < 0.27)
-  { id: 'r1_westCrates',  u: 0.22, v: 0.45, edges: ['r1_blCorner', 'r1_southCrates', 'r1_leftOfRack1'] },
+  { id: 'r1_westCrates',  u: 0.22, v: 0.45, edges: ['r1_blCorner', 'r1_southCrates', 'r1_leftOfRack1', 'r1_westCratesCover'] },
   { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1', 'r1_westCrates'] },
   { id: 'r1_southCrates', u: 0.35, v: 0.46, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
   { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates', 'r1_exitDoor'] },
@@ -228,8 +228,11 @@ const ROOM1_HOTSPOTS = [
   // Upper row — approach positions south of props with comfortable margin
   { id: 'r1_frontRack1',  u: 0.14, v: 0.43, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
   { id: 'r1_midUpper',    u: 0.36, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
-  { id: 'r1_frontRack2',  u: 0.48, v: 0.38, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
+  { id: 'r1_frontRack2',  u: 0.48, v: 0.38, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk', 'r1_westRack2'] },
   { id: 'r1_frontDesk',   u: 0.78, v: 0.36, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
+  // Cover positions for rack2 west face and crates west face
+  { id: 'r1_westRack2',   u: 0.37, v: 0.22, edges: ['r1_frontRack2', 'r1_midUpper'] },
+  { id: 'r1_westCratesCover', u: 0.23, v: 0.58, edges: ['r1_westCrates', 'r1_blCorner'] },
 ];
 
 const ROOM2_HOTSPOTS = [
@@ -245,7 +248,9 @@ const ROOM2_HOTSPOTS = [
   { id: 'r2_frontStart',   u: 0.85, v: 0.85, edges: ['r2_gapSouth', 'r2_frontLower', 'r2_exitArea'] },
   { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates', 'r2_southShelving'] },
   { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool', 'r2_exitArea'] },
-  { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet', 'r2_frontShelving'] },
+  { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet', 'r2_frontShelving', 'r2_northCrates2'] },
+  // Cover position north of crates2
+  { id: 'r2_northCrates2', u: 0.62, v: 0.46, edges: ['r2_frontSpool', 'r2_frontShelving'] },
   { id: 'r2_frontCabinet', u: 0.62, v: 0.33, edges: ['r2_frontSpool'] },
   { id: 'r2_frontShelving',u: 0.72, v: 0.45, edges: ['r2_frontLower', 'r2_frontSpool'] },
   // Cover position south of shelving — cover from guard when guard goes north (v < 0.36)
