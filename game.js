@@ -95,21 +95,54 @@ function floorToScreen(u, v) {
 
 function createFloorTexture(palIdx) {
   const tc = document.createElement('canvas');
-  tc.width = 1024; tc.height = 768;
+  tc.width = 1024; tc.height = 1024;
   const t = tc.getContext('2d');
-  const baseColors = { 1: '#3a4250', 2: '#443c34', 3: '#344050' };
-  const grooveColors = { 1: 'rgba(0,0,40,0.3)', 2: 'rgba(50,25,0,0.3)', 3: 'rgba(0,15,60,0.3)' };
-  t.fillStyle = baseColors[palIdx] || baseColors[1];
-  t.fillRect(0, 0, 1024, 768);
-  t.strokeStyle = grooveColors[palIdx] || grooveColors[1];
+  // Base concrete color with subtle variation
+  const bases = { 1: [58,66,80], 2: [68,60,52], 3: [52,64,80] };
+  const b = bases[palIdx] || bases[1];
+  t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
+  t.fillRect(0, 0, 1024, 1024);
+  // Noise/grain for concrete texture
+  for (let i = 0; i < 8000; i++) {
+    const nx = Math.random() * 1024, ny = Math.random() * 1024;
+    const v = Math.random() * 30 - 15;
+    t.fillStyle = `rgba(${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${Math.abs(v) / 255})`;
+    t.fillRect(nx, ny, 1 + Math.random() * 3, 1 + Math.random() * 3);
+  }
+  // Tile grid
+  const tileSize = 1024 / 8;
+  t.strokeStyle = `rgba(0,0,0,0.35)`;
   t.lineWidth = 2;
-  const tw = 1024 / 16, th = 768 / 12;
-  for (let i = 0; i <= 16; i++) { t.beginPath(); t.moveTo(i * tw, 0); t.lineTo(i * tw, 768); t.stroke(); }
-  for (let i = 0; i <= 12; i++) { t.beginPath(); t.moveTo(0, i * th); t.lineTo(1024, i * th); t.stroke(); }
-  // Highlight
-  t.strokeStyle = 'rgba(180,190,220,0.06)';
+  for (let i = 0; i <= 8; i++) {
+    t.beginPath(); t.moveTo(i * tileSize, 0); t.lineTo(i * tileSize, 1024); t.stroke();
+    t.beginPath(); t.moveTo(0, i * tileSize); t.lineTo(1024, i * tileSize); t.stroke();
+  }
+  // Tile highlight edges
+  t.strokeStyle = `rgba(200,210,230,0.08)`;
   t.lineWidth = 1;
-  for (let i = 0; i <= 12; i++) { t.beginPath(); t.moveTo(0, i * th + 2); t.lineTo(1024, i * th + 2); t.stroke(); }
+  for (let i = 0; i <= 8; i++) {
+    t.beginPath(); t.moveTo(i * tileSize + 2, 0); t.lineTo(i * tileSize + 2, 1024); t.stroke();
+    t.beginPath(); t.moveTo(0, i * tileSize + 2); t.lineTo(1024, i * tileSize + 2); t.stroke();
+  }
+  // Subtle stains/wear marks
+  for (let s = 0; s < 6; s++) {
+    const sx = Math.random() * 1024, sy = Math.random() * 1024, sr = 40 + Math.random() * 80;
+    const sg = t.createRadialGradient(sx, sy, 0, sx, sy, sr);
+    sg.addColorStop(0, `rgba(${b[0]-15},${b[1]-12},${b[2]-10},0.3)`);
+    sg.addColorStop(1, 'rgba(0,0,0,0)');
+    t.fillStyle = sg;
+    t.beginPath(); t.ellipse(sx, sy, sr, sr * 0.7, Math.random() * Math.PI, 0, Math.PI * 2); t.fill();
+  }
+  // Scuff marks
+  for (let s = 0; s < 12; s++) {
+    const sx = Math.random() * 1024, sy = Math.random() * 1024;
+    t.strokeStyle = `rgba(0,0,0,${0.03 + Math.random() * 0.06})`;
+    t.lineWidth = 1 + Math.random() * 2;
+    t.beginPath();
+    t.moveTo(sx, sy);
+    t.lineTo(sx + (Math.random() - 0.5) * 60, sy + (Math.random() - 0.5) * 60);
+    t.stroke();
+  }
   return new THREE.CanvasTexture(tc);
 }
 
@@ -117,37 +150,78 @@ function createWallTexture(palIdx, w, h) {
   const tc = document.createElement('canvas');
   tc.width = w || 1024; tc.height = h || 512;
   const t = tc.getContext('2d');
-  const baseColors = { 1: '#384450', 2: '#48403a', 3: '#303c50' };
-  t.fillStyle = baseColors[palIdx] || baseColors[1];
-  t.fillRect(0, 0, tc.width, tc.height);
-  // Horizontal panel seams
-  t.strokeStyle = 'rgba(0,0,0,0.2)';
-  t.lineWidth = 1.5;
-  const panelH = tc.height / 8;
-  for (let i = 1; i < 8; i++) {
-    t.beginPath(); t.moveTo(0, i * panelH); t.lineTo(tc.width, i * panelH); t.stroke();
-    t.strokeStyle = 'rgba(180,190,220,0.04)';
-    t.beginPath(); t.moveTo(0, i * panelH + 2); t.lineTo(tc.width, i * panelH + 2); t.stroke();
-    t.strokeStyle = 'rgba(0,0,0,0.2)';
+  const cw = tc.width, ch = tc.height;
+  const bases = { 1: [56,68,80], 2: [72,64,58], 3: [48,60,80] };
+  const b = bases[palIdx] || bases[1];
+  // Base color
+  t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
+  t.fillRect(0, 0, cw, ch);
+  // Subtle vertical gradient (darker at bottom)
+  const vg = t.createLinearGradient(0, 0, 0, ch);
+  vg.addColorStop(0, 'rgba(180,190,210,0.06)');
+  vg.addColorStop(0.5, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.15)');
+  t.fillStyle = vg;
+  t.fillRect(0, 0, cw, ch);
+  // Concrete noise
+  for (let i = 0; i < 5000; i++) {
+    const nx = Math.random() * cw, ny = Math.random() * ch;
+    const v = Math.random() * 20 - 10;
+    t.fillStyle = `rgba(${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${Math.abs(v) / 300})`;
+    t.fillRect(nx, ny, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  // Horizontal panel seams (industrial panels)
+  const panelH = ch / 4;
+  for (let i = 1; i < 4; i++) {
+    const y = i * panelH;
+    // Dark seam line
+    t.strokeStyle = 'rgba(0,0,0,0.35)';
+    t.lineWidth = 2;
+    t.beginPath(); t.moveTo(0, y); t.lineTo(cw, y); t.stroke();
+    // Light highlight below
+    t.strokeStyle = 'rgba(200,210,230,0.08)';
+    t.lineWidth = 1;
+    t.beginPath(); t.moveTo(0, y + 2); t.lineTo(cw, y + 2); t.stroke();
   }
   // Vertical seams
-  const panelW = tc.width / 6;
-  for (let i = 1; i < 6; i++) {
-    t.beginPath(); t.moveTo(i * panelW, 0); t.lineTo(i * panelW, tc.height); t.stroke();
+  const panelW = cw / 4;
+  for (let i = 1; i < 4; i++) {
+    t.strokeStyle = 'rgba(0,0,0,0.25)';
+    t.lineWidth = 1.5;
+    t.beginPath(); t.moveTo(i * panelW, 0); t.lineTo(i * panelW, ch); t.stroke();
   }
-  // Rivet dots at intersections
-  t.fillStyle = 'rgba(140,150,170,0.12)';
-  for (let r = 1; r < 8; r++) {
-    for (let c = 1; c < 6; c++) {
-      t.beginPath(); t.arc(c * panelW, r * panelH, 2, 0, Math.PI * 2); t.fill();
+  // Rivets/bolts at seam intersections
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const rx = c * panelW + panelW / 2, ry = r * panelH + panelH / 2;
+      // Bolt pairs at top-left of each panel
+      for (const [ox, oy] of [[8, 8], [panelW - 8, 8], [8, panelH - 8], [panelW - 8, panelH - 8]]) {
+        const bx = c * panelW + ox, by = r * panelH + oy;
+        if (bx < cw && by < ch) {
+          t.fillStyle = 'rgba(100,110,130,0.2)';
+          t.beginPath(); t.arc(bx, by, 2.5, 0, Math.PI * 2); t.fill();
+          t.fillStyle = 'rgba(200,210,230,0.08)';
+          t.beginPath(); t.arc(bx, by - 0.5, 1, 0, Math.PI * 2); t.fill();
+        }
+      }
     }
   }
-  // Subtle stain
-  const sg = t.createRadialGradient(tc.width * 0.6, tc.height * 0.4, 0, tc.width * 0.6, tc.height * 0.4, 100);
-  sg.addColorStop(0, 'rgba(40,30,10,0.08)');
-  sg.addColorStop(1, 'rgba(0,0,0,0)');
-  t.fillStyle = sg;
-  t.fillRect(0, 0, tc.width, tc.height);
+  // Water stain drip from top
+  for (let s = 0; s < 3; s++) {
+    const sx = Math.random() * cw;
+    const sg = t.createLinearGradient(sx, 0, sx, ch * 0.5);
+    sg.addColorStop(0, 'rgba(30,40,30,0.12)');
+    sg.addColorStop(0.5, 'rgba(30,40,30,0.04)');
+    sg.addColorStop(1, 'rgba(0,0,0,0)');
+    t.fillStyle = sg;
+    t.fillRect(sx - 8, 0, 16 + Math.random() * 10, ch * 0.5);
+  }
+  // Grime at bottom
+  const gg = t.createLinearGradient(0, ch - 60, 0, ch);
+  gg.addColorStop(0, 'rgba(0,0,0,0)');
+  gg.addColorStop(1, 'rgba(20,15,10,0.2)');
+  t.fillStyle = gg;
+  t.fillRect(0, ch - 60, cw, 60);
   return new THREE.CanvasTexture(tc);
 }
 
@@ -168,7 +242,7 @@ function createRoom3D(roomNum) {
 
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide });
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -205,9 +279,30 @@ function createRoom3D(roomNum) {
   currentRoomMeshes.push(rightWall);
 
   // Ceiling — visible from both sides (camera is above it)
+  const ceilTc = document.createElement('canvas');
+  ceilTc.width = 512; ceilTc.height = 512;
+  const ceilCtx = ceilTc.getContext('2d');
+  ceilCtx.fillStyle = '#1a2030';
+  ceilCtx.fillRect(0, 0, 512, 512);
+  // Ceiling panel grid
+  const cpSize = 512 / 4;
+  ceilCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ceilCtx.lineWidth = 2;
+  for (let i = 1; i < 4; i++) {
+    ceilCtx.beginPath(); ceilCtx.moveTo(i * cpSize, 0); ceilCtx.lineTo(i * cpSize, 512); ceilCtx.stroke();
+    ceilCtx.beginPath(); ceilCtx.moveTo(0, i * cpSize); ceilCtx.lineTo(512, i * cpSize); ceilCtx.stroke();
+  }
+  // Vent grate in one panel
+  ceilCtx.fillStyle = 'rgba(0,0,0,0.4)';
+  ceilCtx.fillRect(cpSize + 20, cpSize + 20, cpSize - 40, cpSize - 40);
+  for (let sl = 0; sl < 6; sl++) {
+    ceilCtx.fillStyle = 'rgba(40,50,60,0.8)';
+    ceilCtx.fillRect(cpSize + 25, cpSize + 25 + sl * 18, cpSize - 50, 8);
+  }
+  const ceilTex = new THREE.CanvasTexture(ceilTc);
   const ceilGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
   const ceilMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2030, roughness: 0.95, metalness: 0.0, side: THREE.DoubleSide
+    map: ceilTex, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide
   });
   const ceiling = new THREE.Mesh(ceilGeom, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
@@ -471,11 +566,16 @@ function createExitDoor3D(roomNum) {
 
 function addBox(x, y, z, w, h, d, color, opts) {
   const geom = new THREE.BoxGeometry(w, h, d);
-  const mat = new THREE.MeshStandardMaterial({
-    color, roughness: opts?.roughness ?? 0.7, metalness: opts?.metalness ?? 0.1
-  });
+  const matOpts = {
+    color,
+    roughness: opts?.roughness ?? 0.7,
+    metalness: opts?.metalness ?? 0.1,
+  };
+  if (opts?.emissive) { matOpts.emissive = opts.emissive; matOpts.emissiveIntensity = opts.emissiveIntensity ?? 0.3; }
+  const mat = new THREE.MeshStandardMaterial(matOpts);
   const mesh = new THREE.Mesh(geom, mat);
   mesh.position.set(x, y, z);
+  if (opts?.rotY) mesh.rotation.y = opts.rotY;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene3D.add(mesh);
@@ -485,28 +585,46 @@ function addBox(x, y, z, w, h, d, color, opts) {
 
 function createFurniture3D(roomNum) {
   if (roomNum === 1) {
-    // Desk
-    addBox(5.5, 0.9, -4, 5, 0.12, 1.8, 0x8a9ab0, { metalness: 0.3 });
-    addBox(3.5, 0.45, -4, 0.15, 0.9, 1.5, 0x6a7a90);
-    addBox(7.5, 0.45, -4, 0.15, 0.9, 1.5, 0x6a7a90);
-    // Monitor on desk
-    addBox(7.0, 1.4, -4, 1.0, 0.7, 0.08, 0x1a1a2a);
-    addBox(7.0, 1.0, -4, 0.15, 0.15, 0.4, 0x3a3a4a);
-    // Server rack 1
-    addBox(-2, 1.5, -6.5, 2.0, 3.0, 1.0, 0x3a3e48, { metalness: 0.4, roughness: 0.5 });
-    // Server rack 2
-    addBox(1.5, 1.5, -6.5, 2.0, 3.0, 1.0, 0x3a3e48, { metalness: 0.4, roughness: 0.5 });
-    // Crates
-    addBox(-4.5, 0.5, 3.5, 2.0, 1.0, 1.5, 0x8a7040);
-    addBox(-4.5, 1.2, 3.5, 1.5, 0.7, 1.2, 0x7a6030);
-    // Fire extinguisher
-    const feGeom = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8);
-    const feMat = new THREE.MeshStandardMaterial({ color: 0xcc2020, roughness: 0.4, metalness: 0.3 });
+    // Desk — metal surface with legs
+    addBox(5.5, 0.9, -4, 5, 0.12, 1.8, 0x7a8a9a, { metalness: 0.5, roughness: 0.4 });
+    addBox(3.5, 0.45, -4, 0.12, 0.9, 1.5, 0x5a6a7a, { metalness: 0.4 });
+    addBox(7.5, 0.45, -4, 0.12, 0.9, 1.5, 0x5a6a7a, { metalness: 0.4 });
+    // Desk drawer unit
+    addBox(4.2, 0.45, -4, 1.0, 0.8, 1.4, 0x4a5a6a, { metalness: 0.3 });
+    // Monitor on desk — screen with blue glow
+    addBox(7.0, 1.4, -4.1, 1.0, 0.7, 0.06, 0x0a0a15);
+    addBox(7.0, 1.42, -4.07, 0.88, 0.55, 0.02, 0x102040, { emissive: 0x1030a0, emissiveIntensity: 0.5 });
+    addBox(7.0, 1.0, -4, 0.12, 0.12, 0.35, 0x3a3a4a, { metalness: 0.5 });
+    // Keyboard
+    addBox(6.5, 0.98, -3.5, 0.6, 0.03, 0.2, 0x2a2a35);
+    // Server rack 1 — with LED strips
+    addBox(-2, 1.5, -6.8, 2.0, 3.0, 0.8, 0x2a2e38, { metalness: 0.5, roughness: 0.4 });
+    addBox(-2, 2.8, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
+    addBox(-2, 2.2, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.5 });
+    addBox(-2, 1.6, -6.35, 1.8, 0.03, 0.05, 0xff4000, { emissive: 0xff4000, emissiveIntensity: 0.4 });
+    // Server rack 2 — with LED strips
+    addBox(1.5, 1.5, -6.8, 2.0, 3.0, 0.8, 0x2a2e38, { metalness: 0.5, roughness: 0.4 });
+    addBox(1.5, 2.8, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
+    addBox(1.5, 2.0, -6.35, 1.8, 0.03, 0.05, 0x40a0ff, { emissive: 0x40a0ff, emissiveIntensity: 0.6 });
+    // Crates — wooden with darker bands
+    addBox(-4.5, 0.5, 3.5, 2.0, 1.0, 1.5, 0x8a7040, { roughness: 0.85 });
+    addBox(-4.5, 0.5, 3.5, 2.1, 0.08, 1.55, 0x6a5030, { roughness: 0.9 }); // band
+    addBox(-4.5, 1.2, 3.5, 1.5, 0.7, 1.2, 0x7a6030, { roughness: 0.85 });
+    // Fire extinguisher — red with details
+    const feGeom = new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12);
+    const feMat = new THREE.MeshStandardMaterial({ color: 0xcc2020, roughness: 0.35, metalness: 0.3 });
     const fe = new THREE.Mesh(feGeom, feMat);
     fe.position.set(-9, 0.3, 3);
     fe.castShadow = true;
     scene3D.add(fe);
     currentRoomMeshes.push(fe);
+    // Fire extinguisher nozzle
+    const fnGeom = new THREE.CylinderGeometry(0.02, 0.04, 0.12, 6);
+    const fnMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 });
+    const fn = new THREE.Mesh(fnGeom, fnMat);
+    fn.position.set(-9, 0.65, 3);
+    scene3D.add(fn);
+    currentRoomMeshes.push(fn);
   } else if (roomNum === 2) {
     // Partition wall
     addBox(-0.8, 1.8, -3.8, 1.2, 3.6, 0.15, 0x4a505a, { metalness: 0.2 });
@@ -700,17 +818,18 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 1.8;
+  renderer3D.toneMappingExposure = 1.5;
 
   // Scene
   scene3D = new THREE.Scene();
-  scene3D.background = new THREE.Color(0x060810);
+  scene3D.background = new THREE.Color(0x080c14);
+  scene3D.fog = new THREE.FogExp2(0x080c14, 0.02);
 
-  // Camera — front-elevated view looking into the room (like original 2D perspective)
+  // Camera — front-elevated view looking into the room
   // Room: 20w x 15d x 6h, centered at origin, floor at y=0
-  camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
-  camera3D.position.set(0, 8, 14);
-  camera3D.lookAt(0, 1.5, -2);
+  camera3D = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
+  camera3D.position.set(0, 7, 11);
+  camera3D.lookAt(0, 2, -1);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
@@ -6808,11 +6927,6 @@ function render() {
 
   // ─── 2D UI overlay on uiCanvas ──────────────────────────────────────────────
   ctx.clearRect(0, 0, W, H);
-
-  // Debug status (temporary)
-  ctx.fillStyle = '#00ff00';
-  ctx.font = '12px monospace';
-  ctx.fillText('Loop OK | 3D: ' + (renderer3D ? 'YES' : 'NO') + ' | Scene children: ' + (scene3D ? scene3D.children.length : 0), 10, H - 10);
 
   ctx.save();
   ctx.translate((W - 1280 * scale) / 2, (H - 720 * scale) / 2);
