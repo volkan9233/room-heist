@@ -168,8 +168,8 @@ function createFloorTexture(palIdx) {
   tc.width = sz; tc.height = sz;
   const t = tc.getContext('2d');
 
-  // Room 1: polished industrial concrete; Room 2: stained concrete; Room 3: lab tile
-  const bases = { 1: [95, 100, 108], 2: [52, 46, 40], 3: [70, 78, 88] };
+  // Room 1: polished industrial concrete; Room 2: stained concrete; Room 3: dark sci-fi lab floor
+  const bases = { 1: [95, 100, 108], 2: [52, 46, 40], 3: [22, 26, 35] };
   const b = bases[palIdx] || bases[1];
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
   t.fillRect(0, 0, sz, sz);
@@ -254,7 +254,7 @@ function createWallTexture(palIdx, tw, th) {
 
   // Room 1: industrial painted concrete upper + metal kick plate lower
   // Rooms 2/3: original industrial panels
-  const bases = { 1: [68, 72, 82], 2: [55, 48, 42], 3: [50, 58, 72] };
+  const bases = { 1: [68, 72, 82], 2: [55, 48, 42], 3: [18, 22, 32] };
   const b = bases[palIdx] || bases[1];
 
   // Base color with vertical gradient (lighter at top from overhead lights)
@@ -438,8 +438,8 @@ function createRoom3D(roomNum) {
     normalMap: floorNormal,
     normalScale: new THREE.Vector2(0.8, 0.8),
     roughnessMap: floorRough,
-    roughness: 1.0,
-    metalness: rn === 1 ? 0.03 : 0.02,
+    roughness: rn === 3 ? 0.6 : 1.0,
+    metalness: rn === 3 ? 0.15 : (rn === 1 ? 0.03 : 0.02),
     side: THREE.DoubleSide
   });
   const floor = new THREE.Mesh(floorGeom, floorMat);
@@ -456,8 +456,8 @@ function createRoom3D(roomNum) {
     normalMap: wallNormal,
     normalScale: new THREE.Vector2(1.0, 1.0),
     roughnessMap: wallRough,
-    roughness: 1.0,
-    metalness: 0.02,
+    roughness: rn === 3 ? 0.4 : 1.0,
+    metalness: rn === 3 ? 0.4 : 0.02,
     side: THREE.DoubleSide
   });
   const backWall = new THREE.Mesh(bwGeom, bwMat);
@@ -473,8 +473,8 @@ function createRoom3D(roomNum) {
     normalMap: sideWallNormal,
     normalScale: new THREE.Vector2(1.0, 1.0),
     roughnessMap: sideWallRough,
-    roughness: 1.0,
-    metalness: 0.02,
+    roughness: rn === 3 ? 0.4 : 1.0,
+    metalness: rn === 3 ? 0.4 : 0.02,
     side: THREE.DoubleSide
   });
   const leftWall = new THREE.Mesh(lwGeom, lwMat);
@@ -491,8 +491,8 @@ function createRoom3D(roomNum) {
     normalMap: sideWallNormal,
     normalScale: new THREE.Vector2(1.0, 1.0),
     roughnessMap: sideWallRough,
-    roughness: 1.0,
-    metalness: 0.02,
+    roughness: rn === 3 ? 0.4 : 1.0,
+    metalness: rn === 3 ? 0.4 : 0.02,
     side: THREE.DoubleSide
   });
   const rightWall = new THREE.Mesh(rwGeom, rwMat);
@@ -1579,17 +1579,389 @@ function createFurniture3D(roomNum) {
     scene3D.add(mb);
     currentRoomMeshes.push(mb);
   } else if (roomNum === 3) {
-    // Horizontal partition
-    addBox(-1, 1.5, -0.5, 12, 3.0, 0.15, 0x4a505a, { metalness: 0.2 });
-    // Utility table (north)
-    addBox(-5.5, 0.7, -5, 4.5, 0.1, 1.5, 0x7a8a9a, { metalness: 0.3 });
-    addBox(-5.5, 0.35, -5, 0.1, 0.7, 1.3, 0x5a6a7a);
-    // Server rack (north)
-    addBox(2, 1.5, -5.5, 3.0, 3.0, 1.2, 0x3a3e48, { metalness: 0.4, roughness: 0.5 });
-    // Locker (south)
-    addBox(7, 1.0, 3, 2.5, 2.0, 1.5, 0x5a6a7a, { metalness: 0.3 });
-    // Crates (south)
-    addBox(-3, 0.5, 3, 3.0, 1.0, 1.8, 0x7a6a50);
+    // ═══════════════════════════════════════════════════════════════════
+    // SCI-FI LABORATORY — Inspired by futuristic containment lab
+    // Dark metallic walls + cyan/turquoise neon accents
+    // ═══════════════════════════════════════════════════════════════════
+
+    const cyanGlow = 0x00e5ff;
+    const cyanDark = 0x006688;
+    const cyanMid = 0x00aacc;
+    const darkMetal = 0x1a1e28;
+    const midMetal = 0x252a35;
+    const lightMetal = 0x353a48;
+
+    // ─── WALL PANELS — Modular metal panels with recessed lines ─────
+    // Back wall panel sections (large metal plates with seams)
+    for (let px = -8; px < 9; px += 4) {
+      // Main panel
+      addBox(px, 1.5, -WORLD_D/2 + 0.12, 3.8, 2.8, 0.08, midMetal, { metalness: 0.6, roughness: 0.3 });
+      // Panel border frame
+      addBox(px, 1.5, -WORLD_D/2 + 0.18, 3.9, 0.06, 0.02, lightMetal, { metalness: 0.7, roughness: 0.2 }); // top
+      addBox(px, 1.5, -WORLD_D/2 + 0.18, 0.06, 2.8, 0.02, lightMetal, { metalness: 0.7, roughness: 0.2 }); // center vertical
+    }
+
+    // Left wall panel sections
+    for (let pz = -5; pz < 7; pz += 4) {
+      addBox(-WORLD_W/2 + 0.12, 1.5, pz, 0.08, 2.8, 3.8, midMetal, { metalness: 0.6, roughness: 0.3 });
+    }
+
+    // Right wall panel sections
+    for (let pz = -5; pz < 7; pz += 4) {
+      addBox(WORLD_W/2 - 0.12, 1.5, pz, 0.08, 2.8, 3.8, midMetal, { metalness: 0.6, roughness: 0.3 });
+    }
+
+    // ─── NEON TRIM LINES — Cyan glowing strips along walls ──────────
+    // Back wall horizontal neon strips
+    for (const ny of [0.15, 2.85]) {
+      addBox(0, ny, -WORLD_D/2 + 0.22, WORLD_W - 1, 0.04, 0.02, cyanGlow,
+        { emissive: cyanGlow, emissiveIntensity: 1.5, metalness: 0.0, roughness: 0.1 });
+    }
+    // Back wall vertical neon accents (between panels)
+    for (const nx of [-6, -2, 2, 6]) {
+      addBox(nx, 1.5, -WORLD_D/2 + 0.22, 0.04, 2.6, 0.02, cyanGlow,
+        { emissive: cyanGlow, emissiveIntensity: 1.2, metalness: 0.0, roughness: 0.1 });
+    }
+
+    // Left wall horizontal neon
+    for (const ny of [0.15, 2.85]) {
+      addBox(-WORLD_W/2 + 0.22, ny, 0, 0.02, 0.04, WORLD_D - 1, cyanGlow,
+        { emissive: cyanGlow, emissiveIntensity: 1.2, metalness: 0.0, roughness: 0.1 });
+    }
+
+    // Right wall horizontal neon
+    for (const ny of [0.15, 2.85]) {
+      addBox(WORLD_W/2 - 0.22, ny, 0, 0.02, 0.04, WORLD_D - 1, cyanGlow,
+        { emissive: cyanGlow, emissiveIntensity: 1.2, metalness: 0.0, roughness: 0.1 });
+    }
+
+    // ─── FLOOR NEON GRID — Glowing lines embedded in floor ──────────
+    // Main grid lines
+    for (const fx of [-6, -2, 2, 6]) {
+      addBox(fx, 0.01, 0, 0.03, 0.01, WORLD_D - 1, cyanDark,
+        { emissive: cyanMid, emissiveIntensity: 0.6, metalness: 0.0, roughness: 0.1 });
+    }
+    for (const fz of [-5, -1, 3]) {
+      addBox(0, 0.01, fz, WORLD_W - 1, 0.01, 0.03, cyanDark,
+        { emissive: cyanMid, emissiveIntensity: 0.6, metalness: 0.0, roughness: 0.1 });
+    }
+    // Brighter central circle on floor
+    const floorRingGeom = new THREE.RingGeometry(2.2, 2.35, 32);
+    const floorRingMat = new THREE.MeshStandardMaterial({
+      color: cyanGlow, emissive: cyanGlow, emissiveIntensity: 1.0,
+      roughness: 0.1, metalness: 0.0, side: THREE.DoubleSide
+    });
+    const floorRing = new THREE.Mesh(floorRingGeom, floorRingMat);
+    floorRing.rotation.x = -Math.PI / 2;
+    floorRing.position.set(0, 0.015, -2);
+    scene3D.add(floorRing); currentRoomMeshes.push(floorRing);
+
+    // Inner floor ring
+    const floorRing2Geom = new THREE.RingGeometry(1.5, 1.58, 32);
+    const floorRing2 = new THREE.Mesh(floorRing2Geom, floorRingMat.clone());
+    floorRing2.material.emissiveIntensity = 0.7;
+    floorRing2.rotation.x = -Math.PI / 2;
+    floorRing2.position.set(0, 0.016, -2);
+    scene3D.add(floorRing2); currentRoomMeshes.push(floorRing2);
+
+    // ─── CENTRAL CONTAINMENT CHAMBER — Glowing cryo pod ─────────────
+    // Base platform (octagonal-ish, dark metal)
+    const podBaseGeom = new THREE.CylinderGeometry(1.8, 2.0, 0.25, 8);
+    const podBaseMat = new THREE.MeshStandardMaterial({
+      color: darkMetal, roughness: 0.3, metalness: 0.7
+    });
+    const podBase = new THREE.Mesh(podBaseGeom, podBaseMat);
+    podBase.position.set(0, 0.125, -2);
+    podBase.castShadow = true;
+    scene3D.add(podBase); currentRoomMeshes.push(podBase);
+
+    // Step ring
+    const stepGeom = new THREE.CylinderGeometry(1.5, 1.6, 0.1, 8);
+    const step = new THREE.Mesh(stepGeom, new THREE.MeshStandardMaterial({
+      color: lightMetal, roughness: 0.3, metalness: 0.6
+    }));
+    step.position.set(0, 0.30, -2);
+    scene3D.add(step); currentRoomMeshes.push(step);
+
+    // Glass cylinder (transparent cyan)
+    const glassGeom = new THREE.CylinderGeometry(1.0, 1.0, 2.2, 24, 1, true);
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x00ccee, transparent: true, opacity: 0.15,
+      roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide,
+      emissive: cyanGlow, emissiveIntensity: 0.15
+    });
+    const glassCylinder = new THREE.Mesh(glassGeom, glassMat);
+    glassCylinder.position.set(0, 1.45, -2);
+    scene3D.add(glassCylinder); currentRoomMeshes.push(glassCylinder);
+
+    // Inner glow column (solid cyan light core)
+    const glowCoreGeom = new THREE.CylinderGeometry(0.4, 0.4, 2.0, 16);
+    const glowCoreMat = new THREE.MeshStandardMaterial({
+      color: cyanGlow, transparent: true, opacity: 0.25,
+      emissive: cyanGlow, emissiveIntensity: 2.0,
+      roughness: 0.0, metalness: 0.0
+    });
+    const glowCore = new THREE.Mesh(glowCoreGeom, glowCoreMat);
+    glowCore.position.set(0, 1.45, -2);
+    scene3D.add(glowCore); currentRoomMeshes.push(glowCore);
+
+    // Swirling energy rings inside pod
+    for (let ri = 0; ri < 3; ri++) {
+      const ringGeom = new THREE.TorusGeometry(0.6 + ri * 0.12, 0.03, 8, 24);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: cyanGlow, emissive: cyanGlow, emissiveIntensity: 1.5,
+        transparent: true, opacity: 0.4 - ri * 0.1, roughness: 0.0
+      });
+      const ring = new THREE.Mesh(ringGeom, ringMat);
+      ring.position.set(0, 0.8 + ri * 0.7, -2);
+      ring.rotation.x = Math.PI / 2 + ri * 0.3;
+      ring.rotation.z = ri * 0.5;
+      scene3D.add(ring); currentRoomMeshes.push(ring);
+    }
+
+    // Top cap of containment chamber
+    const topCapGeom = new THREE.CylinderGeometry(1.2, 1.0, 0.2, 8);
+    const topCap = new THREE.Mesh(topCapGeom, new THREE.MeshStandardMaterial({
+      color: lightMetal, roughness: 0.25, metalness: 0.7
+    }));
+    topCap.position.set(0, 2.55, -2);
+    topCap.castShadow = true;
+    scene3D.add(topCap); currentRoomMeshes.push(topCap);
+
+    // Pipes connecting chamber to ceiling
+    for (const px of [-0.5, 0.5]) {
+      const pipeGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.0, 8);
+      const pipe = new THREE.Mesh(pipeGeom, new THREE.MeshStandardMaterial({
+        color: lightMetal, roughness: 0.3, metalness: 0.65
+      }));
+      pipe.position.set(px, WALL_H - 0.5, -2);
+      scene3D.add(pipe); currentRoomMeshes.push(pipe);
+    }
+
+    // Pod point light (bright cyan glow emanating from chamber)
+    const podLight = new THREE.PointLight(cyanGlow, 15, 10);
+    podLight.position.set(0, 1.5, -2);
+    scene3D.add(podLight); currentRoomMeshes.push(podLight);
+
+    // ─── GATE 07 — Circular door mechanism on back wall ─────────────
+    // Door frame (back wall, right-center)
+    const gateX = 6, gateZ = -WORLD_D/2 + 0.3;
+
+    // Circular door frame
+    const gateFrameGeom = new THREE.TorusGeometry(1.3, 0.15, 8, 24);
+    const gateFrameMat = new THREE.MeshStandardMaterial({
+      color: lightMetal, roughness: 0.25, metalness: 0.7
+    });
+    const gateFrame = new THREE.Mesh(gateFrameGeom, gateFrameMat);
+    gateFrame.position.set(gateX, 1.5, gateZ);
+    gateFrame.castShadow = true;
+    scene3D.add(gateFrame); currentRoomMeshes.push(gateFrame);
+
+    // Inner ring (glowing cyan)
+    const gateInnerGeom = new THREE.TorusGeometry(1.15, 0.04, 8, 32);
+    const gateInnerMat = new THREE.MeshStandardMaterial({
+      color: cyanGlow, emissive: cyanGlow, emissiveIntensity: 1.5,
+      roughness: 0.0, metalness: 0.0
+    });
+    const gateInner = new THREE.Mesh(gateInnerGeom, gateInnerMat);
+    gateInner.position.set(gateX, 1.5, gateZ + 0.05);
+    scene3D.add(gateInner); currentRoomMeshes.push(gateInner);
+
+    // Door surface (dark metal with subtle markings)
+    const gateDoorGeom = new THREE.CircleGeometry(1.1, 24);
+    const gateDoorMat = new THREE.MeshStandardMaterial({
+      color: 0x1e2230, roughness: 0.4, metalness: 0.5
+    });
+    const gateDoor = new THREE.Mesh(gateDoorGeom, gateDoorMat);
+    gateDoor.position.set(gateX, 1.5, gateZ + 0.02);
+    scene3D.add(gateDoor); currentRoomMeshes.push(gateDoor);
+
+    // Center lock mechanism
+    const gateLockGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.08, 16);
+    const gateLockMat = new THREE.MeshStandardMaterial({
+      color: lightMetal, roughness: 0.2, metalness: 0.8
+    });
+    const gateLock = new THREE.Mesh(gateLockGeom, gateLockMat);
+    gateLock.position.set(gateX, 1.5, gateZ + 0.08);
+    gateLock.rotation.x = Math.PI / 2;
+    scene3D.add(gateLock); currentRoomMeshes.push(gateLock);
+
+    // GATE 07 label (canvas texture)
+    const gateLabelCanvas = document.createElement('canvas');
+    gateLabelCanvas.width = 256; gateLabelCanvas.height = 64;
+    const glc = gateLabelCanvas.getContext('2d');
+    glc.fillStyle = '#0a0e18';
+    glc.fillRect(0, 0, 256, 64);
+    glc.fillStyle = '#00e5ff';
+    glc.font = 'bold 36px monospace';
+    glc.textAlign = 'center';
+    glc.fillText('GATE 07', 128, 44);
+    const gateLabelTex = new THREE.CanvasTexture(gateLabelCanvas);
+    const gateLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.6, 0.4),
+      new THREE.MeshStandardMaterial({
+        map: gateLabelTex, emissive: cyanMid, emissiveIntensity: 0.6, transparent: true
+      })
+    );
+    gateLabel.position.set(gateX, 2.9, gateZ + 0.05);
+    scene3D.add(gateLabel); currentRoomMeshes.push(gateLabel);
+
+    // Gate glow light
+    const gateLight = new THREE.PointLight(cyanGlow, 5, 6);
+    gateLight.position.set(gateX, 1.5, gateZ + 1);
+    scene3D.add(gateLight); currentRoomMeshes.push(gateLight);
+
+    // ─── CONTROL CONSOLE — Left side, angled desk with screens ──────
+    // Console base (angled front)
+    addBox(-7, 0.55, -4.5, 4, 1.1, 2.5, darkMetal, { metalness: 0.6, roughness: 0.3 });
+    // Console top surface
+    addBox(-7, 1.12, -4.5, 4.2, 0.06, 2.6, lightMetal, { metalness: 0.5, roughness: 0.25 });
+    // Front angled panel (darker)
+    addBox(-7, 0.55, -3.2, 4, 1.0, 0.08, 0x151a25, { metalness: 0.5, roughness: 0.3 });
+
+    // Console screens (3 monitors)
+    for (let mi = 0; mi < 3; mi++) {
+      const mx = -8.5 + mi * 1.5;
+      // Screen body
+      addBox(mx, 1.7, -5.2, 1.3, 0.9, 0.06, 0x101018, { metalness: 0.3, roughness: 0.2 });
+      // Screen display (glowing cyan data)
+      addBox(mx, 1.7, -5.15, 1.15, 0.75, 0.01, 0x001a30,
+        { emissive: cyanDark, emissiveIntensity: 0.8 });
+      // Scan lines on screen
+      for (let sl = 0; sl < 4; sl++) {
+        addBox(mx, 1.42 + sl * 0.18, -5.13, 1.0, 0.008, 0.005, cyanMid,
+          { emissive: cyanMid, emissiveIntensity: 0.5 });
+      }
+      // Screen stand
+      addBox(mx, 1.18, -5.0, 0.1, 0.12, 0.3, lightMetal, { metalness: 0.6, roughness: 0.25 });
+    }
+
+    // Console buttons/controls
+    for (let bi = 0; bi < 6; bi++) {
+      const bx = -8.5 + bi * 0.6;
+      addBox(bx, 1.14, -4.0, 0.15, 0.03, 0.15, 0x0a0e15,
+        { emissive: bi % 2 === 0 ? cyanGlow : 0x00ff88, emissiveIntensity: 0.5 });
+    }
+
+    // ─── HOLOGRAPHIC DISPLAY — Floating transparent screen ──────────
+    // Holo projector base (right side of room, near wall)
+    addBox(7, 0.3, 2, 1.0, 0.6, 1.0, darkMetal, { metalness: 0.6, roughness: 0.3 });
+
+    // Holographic screen (transparent, floating)
+    const holoScreenGeom = new THREE.PlaneGeometry(2.5, 1.8);
+    const holoScreenMat = new THREE.MeshStandardMaterial({
+      color: cyanGlow, transparent: true, opacity: 0.12,
+      emissive: cyanGlow, emissiveIntensity: 0.8,
+      roughness: 0.0, metalness: 0.0, side: THREE.DoubleSide
+    });
+    const holoScreen = new THREE.Mesh(holoScreenGeom, holoScreenMat);
+    holoScreen.position.set(7, 1.8, 2);
+    holoScreen.rotation.y = -Math.PI / 4;
+    scene3D.add(holoScreen); currentRoomMeshes.push(holoScreen);
+
+    // Holo data lines
+    for (let hl = 0; hl < 5; hl++) {
+      const hLineGeom = new THREE.PlaneGeometry(2.0, 0.02);
+      const hLineMat = new THREE.MeshStandardMaterial({
+        color: cyanGlow, transparent: true, opacity: 0.3,
+        emissive: cyanGlow, emissiveIntensity: 1.5,
+        side: THREE.DoubleSide
+      });
+      const hLine = new THREE.Mesh(hLineGeom, hLineMat);
+      hLine.position.set(7, 1.2 + hl * 0.3, 2);
+      hLine.rotation.y = -Math.PI / 4;
+      scene3D.add(hLine); currentRoomMeshes.push(hLine);
+    }
+
+    // Holo projector light
+    const holoLight = new THREE.PointLight(cyanGlow, 4, 5);
+    holoLight.position.set(7, 1.5, 2);
+    scene3D.add(holoLight); currentRoomMeshes.push(holoLight);
+
+    // ─── EQUIPMENT PODS — Side structures ───────────────────────────
+    // Left equipment pod (cylindrical tech unit)
+    const eqPodGeom = new THREE.CylinderGeometry(0.6, 0.7, 2.0, 8);
+    const eqPodMat = new THREE.MeshStandardMaterial({
+      color: midMetal, roughness: 0.3, metalness: 0.6
+    });
+    const eqPod1 = new THREE.Mesh(eqPodGeom, eqPodMat);
+    eqPod1.position.set(-8, 1.0, 0);
+    eqPod1.castShadow = true;
+    scene3D.add(eqPod1); currentRoomMeshes.push(eqPod1);
+
+    // Pod ring details
+    for (const ry of [0.4, 1.0, 1.6]) {
+      const podRingGeom = new THREE.TorusGeometry(0.65, 0.03, 8, 16);
+      const podRing = new THREE.Mesh(podRingGeom, new THREE.MeshStandardMaterial({
+        color: cyanDark, emissive: cyanMid, emissiveIntensity: 0.6, roughness: 0.1
+      }));
+      podRing.position.set(-8, ry, 0);
+      podRing.rotation.x = Math.PI / 2;
+      scene3D.add(podRing); currentRoomMeshes.push(podRing);
+    }
+
+    // Right equipment pod
+    const eqPod2 = new THREE.Mesh(eqPodGeom.clone(), eqPodMat.clone());
+    eqPod2.position.set(8, 1.0, -5);
+    eqPod2.castShadow = true;
+    scene3D.add(eqPod2); currentRoomMeshes.push(eqPod2);
+
+    for (const ry of [0.4, 1.0, 1.6]) {
+      const podRingGeom = new THREE.TorusGeometry(0.65, 0.03, 8, 16);
+      const podRing = new THREE.Mesh(podRingGeom, new THREE.MeshStandardMaterial({
+        color: cyanDark, emissive: cyanMid, emissiveIntensity: 0.6, roughness: 0.1
+      }));
+      podRing.position.set(8, ry, -5);
+      podRing.rotation.x = Math.PI / 2;
+      scene3D.add(podRing); currentRoomMeshes.push(podRing);
+    }
+
+    // ─── SPECIMEN TANKS — Small containment units along walls ───────
+    for (const [tx, tz] of [[-5, -6.5], [-3, -6.5], [3, -6.5]]) {
+      // Tank base
+      addBox(tx, 0.2, tz, 1.0, 0.4, 0.8, darkMetal, { metalness: 0.6, roughness: 0.3 });
+      // Glass tube
+      const tankGlassGeom = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 12, 1, true);
+      const tankGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x00ccee, transparent: true, opacity: 0.12,
+        emissive: cyanGlow, emissiveIntensity: 0.3,
+        roughness: 0.05, side: THREE.DoubleSide
+      });
+      const tankGlass = new THREE.Mesh(tankGlassGeom, tankGlassMat);
+      tankGlass.position.set(tx, 1.0, tz);
+      scene3D.add(tankGlass); currentRoomMeshes.push(tankGlass);
+      // Inner glow
+      const tankCoreGeom = new THREE.CylinderGeometry(0.12, 0.12, 1.0, 8);
+      const tankCore = new THREE.Mesh(tankCoreGeom, new THREE.MeshStandardMaterial({
+        color: cyanGlow, transparent: true, opacity: 0.2,
+        emissive: cyanGlow, emissiveIntensity: 1.5, roughness: 0.0
+      }));
+      tankCore.position.set(tx, 1.0, tz);
+      scene3D.add(tankCore); currentRoomMeshes.push(tankCore);
+      // Tank cap
+      addBox(tx, 1.65, tz, 0.7, 0.1, 0.7, lightMetal, { metalness: 0.6, roughness: 0.25 });
+    }
+
+    // ─── LOCKER — Kept for gameplay (hide mechanic) ─────────────────
+    // Sci-fi style locker
+    addBox(7, 1.0, 4, 2.5, 2.0, 1.5, midMetal, { metalness: 0.5, roughness: 0.3 });
+    // Locker door lines
+    addBox(7, 1.0, 3.22, 1.0, 1.6, 0.02, lightMetal, { metalness: 0.6, roughness: 0.2 });
+    addBox(8, 1.0, 3.22, 1.0, 1.6, 0.02, lightMetal, { metalness: 0.6, roughness: 0.2 });
+    // Locker neon accent
+    addBox(7, 2.05, 3.22, 2.3, 0.04, 0.02, cyanGlow,
+      { emissive: cyanGlow, emissiveIntensity: 1.0, metalness: 0.0, roughness: 0.1 });
+    // Locker handle
+    addBox(7.45, 1.0, 3.20, 0.08, 0.3, 0.04, 0x808890, { metalness: 0.7, roughness: 0.2 });
+
+    // ─── CEILING TECH — Exposed conduits and tech panels ────────────
+    // Ceiling mounted tech strips
+    for (const cx of [-5, 0, 5]) {
+      addBox(cx, WALL_H - 0.1, -2, 3.0, 0.15, 0.8, darkMetal, { metalness: 0.5, roughness: 0.3 });
+      // Ceiling neon strip
+      addBox(cx, WALL_H - 0.18, -2, 2.5, 0.02, 0.3, cyanGlow,
+        { emissive: cyanGlow, emissiveIntensity: 0.8, metalness: 0.0, roughness: 0.1 });
+    }
   }
 }
 
@@ -1940,14 +2312,19 @@ function setupLights() {
   }
 
   // Industrial/facility lighting — balanced front-to-back
-  // Ambient — raised to lift overall shadow floor
-  addLight(new THREE.AmbientLight(0x405070, 0.50));
+  // Ambient — raised to lift overall shadow floor (darker for sci-fi lab)
+  const ambientIntensity = currentRoom === 3 ? 0.15 : 0.50;
+  const ambientColor = currentRoom === 3 ? 0x102030 : 0x405070;
+  addLight(new THREE.AmbientLight(ambientColor, ambientIntensity));
 
   // Hemisphere — stronger sky contribution for back-wall visibility
-  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.40));
+  const hemiSky = currentRoom === 3 ? 0x003050 : 0x8090c0;
+  const hemiGround = currentRoom === 3 ? 0x050810 : 0x202830;
+  const hemiIntensity = currentRoom === 3 ? 0.20 : 0.40;
+  addLight(new THREE.HemisphereLight(hemiSky, hemiGround, hemiIntensity));
 
   // Spotlight color per room
-  const lightColors = { 1: 0xc8d8f0, 2: 0xd0d8e8, 3: 0xb0c0e0 };
+  const lightColors = { 1: 0xc8d8f0, 2: 0xd0d8e8, 3: 0x40a0c0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
   // Main ceiling spotlight 1 — reduced intensity to stop floor blowout
@@ -2008,6 +2385,47 @@ function setupLights() {
     addLight(rackFillR);
   }
 
+  if (currentRoom === 3) {
+    // Sci-fi lab cyan atmosphere lighting
+    // Central pod glow (dominant cyan light source)
+    const podGlow = new THREE.PointLight(0x00e5ff, 20, 18);
+    podGlow.position.set(0, 2.0, -2);
+    addLight(podGlow);
+
+    // Floor-level pod underglow
+    const podUnder = new THREE.PointLight(0x00aacc, 8, 10);
+    podUnder.position.set(0, 0.3, -2);
+    addLight(podUnder);
+
+    // Gate 07 area cyan accent
+    const gateLightSrc = new THREE.PointLight(0x00e5ff, 8, 8);
+    gateLightSrc.position.set(6, 1.5, -6);
+    addLight(gateLightSrc);
+
+    // Console screen glow (left side)
+    const consoleLightSrc = new THREE.PointLight(0x0088aa, 6, 8);
+    consoleLightSrc.position.set(-7, 2.0, -4.5);
+    addLight(consoleLightSrc);
+
+    // Holographic display glow
+    const holoLightSrc = new THREE.PointLight(0x00e5ff, 5, 6);
+    holoLightSrc.position.set(7, 1.8, 2);
+    addLight(holoLightSrc);
+
+    // Ambient cyan ceiling wash
+    const cyanCeil = new THREE.PointLight(0x004060, 10, 25);
+    cyanCeil.position.set(0, WALL_H + 1, 0);
+    addLight(cyanCeil);
+
+    // Subtle rim lights along walls (cool blue)
+    const rimL = new THREE.PointLight(0x003050, 4, 12);
+    rimL.position.set(-WORLD_W/2 + 1, 1.0, 0);
+    addLight(rimL);
+    const rimR = new THREE.PointLight(0x003050, 4, 12);
+    rimR.position.set(WORLD_W/2 - 1, 1.0, 0);
+    addLight(rimR);
+  }
+
   // Fill light from front — cool industrial
   const fill = new THREE.PointLight(0x506890, 12, 35);
   fill.position.set(3, 4, WORLD_D / 2 + 3);
@@ -2049,12 +2467,15 @@ function initThreeJS() {
   const renderPass = new RenderPass(scene3D, camera3D);
   composer.addPass(renderPass);
 
-  // Bloom — subtle glow on emissive surfaces (LEDs, screens, exit light)
+  // Bloom — glow on emissive surfaces (LEDs, screens, neon, exit light)
+  const bloomStrength = currentRoom === 3 ? 0.55 : 0.25;
+  const bloomRadius = currentRoom === 3 ? 0.6 : 0.4;
+  const bloomThreshold = currentRoom === 3 ? 0.8 : 1.2;
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(W, H),
-    0.25,   // strength — subtle, not overwhelming
-    0.4,    // radius
-    1.2     // threshold — only very bright emissives bloom
+    bloomStrength,
+    bloomRadius,
+    bloomThreshold
   );
   composer.addPass(bloomPass);
 
