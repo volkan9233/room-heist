@@ -644,6 +644,55 @@ let placedTraps = [];
 let jammerActiveTimer = 0;
 let guardSlowTimer = 0;
 
+// ─── Star Rating System ──────────────────────────────────────────────────────
+const STAR_TARGETS = {
+  1: { time: 30 },  // Room 1: complete under 30s for 2 stars
+  2: { time: 45 },  // Room 2: complete under 45s for 2 stars
+  3: { time: 50 },  // Room 3: complete under 50s for 2 stars
+};
+
+const starData = {
+  roomStartTime: 0,    // when player entered current room
+  roomElapsed: 0,      // time spent in current room
+  usedCover: false,     // did player use cover this room?
+  wasNoticed: false,    // was guard ever in notice/alert state?
+  roomStars: { 1: 0, 2: 0, 3: 0 },  // best stars per room
+  totalStars: 0,
+  showResult: false,
+  resultTimer: 0,
+  earnedStars: 0,
+};
+
+function resetStarTracking() {
+  starData.roomStartTime = gameTime;
+  starData.roomElapsed = 0;
+  starData.usedCover = false;
+  starData.wasNoticed = false;
+}
+
+function calculateStars() {
+  let stars = 1; // always get 1 star for completing
+  const target = STAR_TARGETS[currentRoom];
+  if (target && starData.roomElapsed <= target.time) {
+    stars = 2; // completed fast
+  }
+  if (stars >= 2 && !starData.usedCover && !starData.wasNoticed) {
+    stars = 3; // ghost mode — fast + no cover + never noticed
+  }
+  return stars;
+}
+
+function showStarResult(stars) {
+  starData.earnedStars = stars;
+  starData.showResult = true;
+  starData.resultTimer = 2.5;
+  // Update best
+  if (stars > starData.roomStars[currentRoom]) {
+    starData.roomStars[currentRoom] = stars;
+  }
+  starData.totalStars = starData.roomStars[1] + starData.roomStars[2] + starData.roomStars[3];
+}
+
 // ─── Lockpick Mini-Game ──────────────────────────────────────────────────────
 const lockpick = {
   active: false,
@@ -962,6 +1011,7 @@ function shieldedByCover() {
           const rv = guard.v + (player.v - guard.v) * t;
           if (ru > padBox.uMin && ru < padBox.uMax &&
               rv > padBox.vMin && rv < padBox.vMax) {
+            starData.usedCover = true;
             return true;
           }
         }
@@ -4625,6 +4675,7 @@ function updateGuard(dt) {
     guard.lastSeenV = player.v;
     guard.investigating = false;
     guard.investigateTarget = null;
+    starData.wasNoticed = true;
     return;
   }
 
@@ -4847,6 +4898,7 @@ function resetCurrentRoom() {
   guardSlowTimer = 0;
   inventoryOpen = false;
   selectedForCraft = [];
+  resetStarTracking();
 }
 
 const ROOM_CONFIGS = {
@@ -4902,6 +4954,7 @@ function switchToRoom(n) {
   guardSlowTimer = 0;
   inventoryOpen = false;
   selectedForCraft = [];
+  resetStarTracking();
 }
 
 function resetGame() {
@@ -4951,6 +5004,10 @@ function resetGame() {
   for (const roomId in ROOM_ITEMS) {
     for (const item of ROOM_ITEMS[roomId]) item.picked = false;
   }
+  resetStarTracking();
+  starData.roomStars = { 1: 0, 2: 0, 3: 0 };
+  starData.totalStars = 0;
+  starData.showResult = false;
 }
 
 // ─── Character draw ──────────────────────────────────────────────────────────
@@ -5220,6 +5277,17 @@ function update(dt) {
 
   if (roomTransitionTimer > 0) roomTransitionTimer -= dt;
 
+  // Track room time for star rating
+  if (!detected && !won) {
+    starData.roomElapsed = gameTime - starData.roomStartTime;
+  }
+
+  // Star result display timer
+  if (starData.showResult) {
+    starData.resultTimer -= dt;
+    if (starData.resultTimer <= 0) starData.showResult = false;
+  }
+
   // Reset on R
   if (keys['r'] || keys['R']) {
     if (detected) {
@@ -5432,6 +5500,9 @@ function update(dt) {
     };
     if (player.currentHotspot === exitHotspots[currentRoom]) {
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
+      // Calculate stars for completed room
+      const stars = calculateStars();
+      showStarResult(stars);
       if (currentRoom === 1) {
         switchToRoom(2);
         return;
@@ -5915,10 +5986,23 @@ function render() {
     ctx.fillStyle = '#40e040';
     ctx.font = `bold ${s(48)}px monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText('MISSION COMPLETE', s(640), s(340));
+    ctx.fillText('MISSION COMPLETE', s(640), s(310));
+
+    // Show per-room stars
+    ctx.font = `${s(20)}px sans-serif`;
+    ctx.fillStyle = '#ffd740';
+    for (let r = 1; r <= 3; r++) {
+      const rs = starData.roomStars[r] || 0;
+      const starStr = '★'.repeat(rs) + '☆'.repeat(3 - rs);
+      ctx.fillText(`Room ${r}: ${starStr}`, s(640), s(345 + (r - 1) * 28));
+    }
+    ctx.font = `bold ${s(16)}px monospace`;
+    ctx.fillStyle = '#ffd740';
+    ctx.fillText(`Total: ${starData.totalStars} / 9 Stars`, s(640), s(430));
+
     ctx.fillStyle = '#ffffff';
-    ctx.font = `${s(18)}px monospace`;
-    ctx.fillText('Press R to play again', s(640), s(390));
+    ctx.font = `${s(14)}px monospace`;
+    ctx.fillText('Press R to play again', s(640), s(460));
   }
 
   // Atmospheric post-processing
@@ -5932,6 +6016,59 @@ function render() {
 
   // Inventory HUD
   drawInventoryHUD();
+
+  // Star rating HUD (top-left)
+  if (!detected && !won) {
+    ctx.textAlign = 'left';
+    // Total stars across all rooms
+    ctx.font = `bold ${s(13)}px monospace`;
+    ctx.fillStyle = 'rgba(255,220,80,0.7)';
+    const starText = '★'.repeat(starData.totalStars) + '☆'.repeat(9 - starData.totalStars);
+    ctx.fillText(starText, s(30), s(25));
+    // Current room timer
+    ctx.font = `${s(11)}px monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    const elapsed = Math.floor(starData.roomElapsed);
+    const target = STAR_TARGETS[currentRoom];
+    const timeColor = target && elapsed <= target.time ? 'rgba(100,255,100,0.5)' : 'rgba(255,100,100,0.5)';
+    ctx.fillStyle = timeColor;
+    ctx.fillText(`${elapsed}s`, s(30), s(42));
+    if (target) {
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillText(` / ${target.time}s`, s(30 + ctx.measureText(`${elapsed}s`).width / scale), s(42));
+    }
+  }
+
+  // Star result popup (when completing a room)
+  if (starData.showResult) {
+    const alpha = Math.min(starData.resultTimer / 0.5, 1) * 0.95;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const rpW = 220, rpH = 80;
+    const rpX = 640 - rpW / 2, rpY = 120;
+    ctx.fillStyle = 'rgba(10,10,20,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(s(rpX), s(rpY), s(rpW), s(rpH), s(8));
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,80,0.4)';
+    ctx.lineWidth = s(1.5);
+    ctx.stroke();
+    // Stars
+    ctx.font = `${s(28)}px sans-serif`;
+    ctx.textAlign = 'center';
+    const starStr = '★'.repeat(starData.earnedStars) + '☆'.repeat(3 - starData.earnedStars);
+    ctx.fillStyle = '#ffd740';
+    ctx.fillText(starStr, s(640), s(rpY + 38));
+    // Label
+    ctx.font = `${s(11)}px monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    const labels = { 1: 'Complete', 2: 'Speed Run', 3: 'Ghost' };
+    ctx.fillText(labels[starData.earnedStars] || 'Complete', s(640), s(rpY + 60));
+    ctx.restore();
+  }
+
+  // Win overlay — show final star count
+  // (this overrides the generic win text below if stars are displayed)
 
   // Jammer active indicator
   if (jammerActiveTimer > 0) {
