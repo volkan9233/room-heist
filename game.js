@@ -98,51 +98,79 @@ function createFloorTexture(palIdx) {
   const tc = document.createElement('canvas');
   tc.width = 1024; tc.height = 1024;
   const t = tc.getContext('2d');
-  // Base floor color — Room 1 is clean tech facility, bright polished floor
-  const bases = { 1: [180,185,195], 2: [52,46,40], 3: [38,48,60] };
+  // Room 1: warm polished wood-like floor; Room 2: industrial concrete; Room 3: lab tile
+  const bases = { 1: [140,120,95], 2: [52,46,40], 3: [38,48,60] };
   const b = bases[palIdx] || bases[1];
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
   t.fillRect(0, 0, 1024, 1024);
-  // Noise/grain for concrete texture
-  for (let i = 0; i < 8000; i++) {
-    const nx = Math.random() * 1024, ny = Math.random() * 1024;
-    const v = Math.random() * 30 - 15;
-    t.fillStyle = `rgba(${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${Math.abs(v) / 255})`;
-    t.fillRect(nx, ny, 1 + Math.random() * 3, 1 + Math.random() * 3);
+
+  if (palIdx === 1) {
+    // Wood plank pattern — warm parquet floor
+    const plankW = 1024 / 6;
+    const plankH = 1024 / 12;
+    for (let row = 0; row < 12; row++) {
+      const offset = (row % 2) * plankW * 0.5;
+      for (let col = -1; col < 7; col++) {
+        const px = col * plankW + offset;
+        const py = row * plankH;
+        // Plank base with slight color variation
+        const rv = Math.random() * 20 - 10;
+        t.fillStyle = `rgb(${b[0]+rv},${b[1]+rv-5},${b[2]+rv-8})`;
+        t.fillRect(px + 1, py + 1, plankW - 2, plankH - 2);
+        // Wood grain lines
+        t.strokeStyle = `rgba(90,70,45,${0.06 + Math.random() * 0.08})`;
+        t.lineWidth = 0.5;
+        for (let g = 0; g < 6; g++) {
+          const gy = py + 3 + g * (plankH / 7) + Math.random() * 2;
+          t.beginPath(); t.moveTo(px + 3, gy); t.lineTo(px + plankW - 3, gy + (Math.random() - 0.5) * 3); t.stroke();
+        }
+      }
+    }
+    // Plank gap lines
+    t.strokeStyle = 'rgba(40,30,20,0.3)';
+    t.lineWidth = 1.5;
+    for (let row = 0; row <= 12; row++) {
+      const y = row * plankH;
+      t.beginPath(); t.moveTo(0, y); t.lineTo(1024, y); t.stroke();
+    }
+    for (let row = 0; row < 12; row++) {
+      const offset = (row % 2) * plankW * 0.5;
+      for (let col = 0; col < 7; col++) {
+        const x = col * plankW + offset;
+        t.beginPath(); t.moveTo(x, row * plankH); t.lineTo(x, (row + 1) * plankH); t.stroke();
+      }
+    }
+    // Subtle warm varnish sheen gradient
+    const sheen = t.createLinearGradient(0, 0, 1024, 1024);
+    sheen.addColorStop(0, 'rgba(200,180,140,0.06)');
+    sheen.addColorStop(0.5, 'rgba(255,240,200,0.04)');
+    sheen.addColorStop(1, 'rgba(180,160,120,0.06)');
+    t.fillStyle = sheen;
+    t.fillRect(0, 0, 1024, 1024);
+  } else {
+    // Original concrete tile for rooms 2/3
+    for (let i = 0; i < 8000; i++) {
+      const nx = Math.random() * 1024, ny = Math.random() * 1024;
+      const v = Math.random() * 30 - 15;
+      t.fillStyle = `rgba(${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${Math.abs(v) / 255})`;
+      t.fillRect(nx, ny, 1 + Math.random() * 3, 1 + Math.random() * 3);
+    }
+    const tileSize = 1024 / 8;
+    t.strokeStyle = 'rgba(0,0,0,0.35)';
+    t.lineWidth = 2;
+    for (let i = 0; i <= 8; i++) {
+      t.beginPath(); t.moveTo(i * tileSize, 0); t.lineTo(i * tileSize, 1024); t.stroke();
+      t.beginPath(); t.moveTo(0, i * tileSize); t.lineTo(1024, i * tileSize); t.stroke();
+    }
   }
-  // Tile grid — lighter for Room 1's bright floor
-  const tileSize = 1024 / 8;
-  t.strokeStyle = palIdx === 1 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.35)';
-  t.lineWidth = palIdx === 1 ? 1.5 : 2;
-  for (let i = 0; i <= 8; i++) {
-    t.beginPath(); t.moveTo(i * tileSize, 0); t.lineTo(i * tileSize, 1024); t.stroke();
-    t.beginPath(); t.moveTo(0, i * tileSize); t.lineTo(1024, i * tileSize); t.stroke();
-  }
-  // Tile highlight edges
-  t.strokeStyle = `rgba(200,210,230,0.08)`;
-  t.lineWidth = 1;
-  for (let i = 0; i <= 8; i++) {
-    t.beginPath(); t.moveTo(i * tileSize + 2, 0); t.lineTo(i * tileSize + 2, 1024); t.stroke();
-    t.beginPath(); t.moveTo(0, i * tileSize + 2); t.lineTo(1024, i * tileSize + 2); t.stroke();
-  }
-  // Subtle stains/wear marks
-  for (let s = 0; s < 6; s++) {
-    const sx = Math.random() * 1024, sy = Math.random() * 1024, sr = 40 + Math.random() * 80;
+  // Subtle wear/scuffs (all rooms)
+  for (let s = 0; s < 5; s++) {
+    const sx = Math.random() * 1024, sy = Math.random() * 1024, sr = 30 + Math.random() * 60;
     const sg = t.createRadialGradient(sx, sy, 0, sx, sy, sr);
-    sg.addColorStop(0, `rgba(${b[0]-15},${b[1]-12},${b[2]-10},0.3)`);
+    sg.addColorStop(0, `rgba(${b[0]-20},${b[1]-18},${b[2]-15},0.2)`);
     sg.addColorStop(1, 'rgba(0,0,0,0)');
     t.fillStyle = sg;
-    t.beginPath(); t.ellipse(sx, sy, sr, sr * 0.7, Math.random() * Math.PI, 0, Math.PI * 2); t.fill();
-  }
-  // Scuff marks
-  for (let s = 0; s < 12; s++) {
-    const sx = Math.random() * 1024, sy = Math.random() * 1024;
-    t.strokeStyle = `rgba(0,0,0,${0.03 + Math.random() * 0.06})`;
-    t.lineWidth = 1 + Math.random() * 2;
-    t.beginPath();
-    t.moveTo(sx, sy);
-    t.lineTo(sx + (Math.random() - 0.5) * 60, sy + (Math.random() - 0.5) * 60);
-    t.stroke();
+    t.beginPath(); t.ellipse(sx, sy, sr, sr * 0.6, Math.random() * Math.PI, 0, Math.PI * 2); t.fill();
   }
   return new THREE.CanvasTexture(tc);
 }
@@ -152,77 +180,125 @@ function createWallTexture(palIdx, w, h) {
   tc.width = w || 1024; tc.height = h || 512;
   const t = tc.getContext('2d');
   const cw = tc.width, ch = tc.height;
-  const bases = { 1: [70,80,100], 2: [55,48,42], 3: [34,44,58] };
-  const b = bases[palIdx] || bases[1];
-  // Base color
-  t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
-  t.fillRect(0, 0, cw, ch);
-  // Subtle vertical gradient (darker at bottom)
-  const vg = t.createLinearGradient(0, 0, 0, ch);
-  vg.addColorStop(0, 'rgba(180,190,210,0.06)');
-  vg.addColorStop(0.5, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.15)');
-  t.fillStyle = vg;
-  t.fillRect(0, 0, cw, ch);
-  // Concrete noise
-  for (let i = 0; i < 5000; i++) {
-    const nx = Math.random() * cw, ny = Math.random() * ch;
-    const v = Math.random() * 20 - 10;
-    t.fillStyle = `rgba(${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${Math.abs(v) / 300})`;
-    t.fillRect(nx, ny, 1 + Math.random() * 2, 1 + Math.random() * 2);
-  }
-  // Horizontal panel seams (industrial panels)
-  const panelH = ch / 4;
-  for (let i = 1; i < 4; i++) {
-    const y = i * panelH;
-    // Dark seam line
-    t.strokeStyle = 'rgba(0,0,0,0.35)';
-    t.lineWidth = 2;
-    t.beginPath(); t.moveTo(0, y); t.lineTo(cw, y); t.stroke();
-    // Light highlight below
-    t.strokeStyle = 'rgba(200,210,230,0.08)';
+
+  if (palIdx === 1) {
+    // Room 1: warm beige/tan upper wall + dark wood wainscoting lower
+    const wainscotH = ch * 0.35; // lower 35% is dark wood
+
+    // Upper wall — warm beige with subtle texture
+    const upperGrad = t.createLinearGradient(0, 0, 0, ch - wainscotH);
+    upperGrad.addColorStop(0, 'rgb(185,170,145)');
+    upperGrad.addColorStop(0.5, 'rgb(175,160,135)');
+    upperGrad.addColorStop(1, 'rgb(165,150,125)');
+    t.fillStyle = upperGrad;
+    t.fillRect(0, 0, cw, ch - wainscotH);
+
+    // Plaster texture noise on upper wall
+    for (let i = 0; i < 4000; i++) {
+      const nx = Math.random() * cw, ny = Math.random() * (ch - wainscotH);
+      const v = Math.random() * 15 - 7;
+      t.fillStyle = `rgba(${v > 0 ? 220 : 80},${v > 0 ? 200 : 70},${v > 0 ? 170 : 60},${Math.abs(v) / 200})`;
+      t.fillRect(nx, ny, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+
+    // Chair rail / molding between upper and lower
+    const railY = ch - wainscotH;
+    t.fillStyle = 'rgb(120,100,70)';
+    t.fillRect(0, railY - 6, cw, 12);
+    t.strokeStyle = 'rgba(180,160,120,0.4)';
     t.lineWidth = 1;
-    t.beginPath(); t.moveTo(0, y + 2); t.lineTo(cw, y + 2); t.stroke();
-  }
-  // Vertical seams
-  const panelW = cw / 4;
-  for (let i = 1; i < 4; i++) {
-    t.strokeStyle = 'rgba(0,0,0,0.25)';
-    t.lineWidth = 1.5;
-    t.beginPath(); t.moveTo(i * panelW, 0); t.lineTo(i * panelW, ch); t.stroke();
-  }
-  // Rivets/bolts at seam intersections
-  for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 4; c++) {
-      const rx = c * panelW + panelW / 2, ry = r * panelH + panelH / 2;
-      // Bolt pairs at top-left of each panel
-      for (const [ox, oy] of [[8, 8], [panelW - 8, 8], [8, panelH - 8], [panelW - 8, panelH - 8]]) {
-        const bx = c * panelW + ox, by = r * panelH + oy;
-        if (bx < cw && by < ch) {
-          t.fillStyle = 'rgba(100,110,130,0.2)';
-          t.beginPath(); t.arc(bx, by, 2.5, 0, Math.PI * 2); t.fill();
-          t.fillStyle = 'rgba(200,210,230,0.08)';
-          t.beginPath(); t.arc(bx, by - 0.5, 1, 0, Math.PI * 2); t.fill();
+    t.beginPath(); t.moveTo(0, railY - 6); t.lineTo(cw, railY - 6); t.stroke();
+    t.strokeStyle = 'rgba(0,0,0,0.2)';
+    t.beginPath(); t.moveTo(0, railY + 6); t.lineTo(cw, railY + 6); t.stroke();
+
+    // Lower wainscoting — dark wood panels
+    const woodGrad = t.createLinearGradient(0, railY, 0, ch);
+    woodGrad.addColorStop(0, 'rgb(85,65,45)');
+    woodGrad.addColorStop(0.5, 'rgb(75,55,38)');
+    woodGrad.addColorStop(1, 'rgb(60,42,28)');
+    t.fillStyle = woodGrad;
+    t.fillRect(0, railY + 6, cw, wainscotH);
+
+    // Wood panel divisions
+    const panelW = cw / 5;
+    for (let i = 0; i < 5; i++) {
+      const px = i * panelW + 4;
+      const pw = panelW - 8;
+      // Panel frame (recessed)
+      t.strokeStyle = 'rgba(0,0,0,0.25)';
+      t.lineWidth = 1.5;
+      t.strokeRect(px, railY + 14, pw, wainscotH - 22);
+      // Inner highlight
+      t.strokeStyle = 'rgba(140,110,75,0.2)';
+      t.lineWidth = 0.8;
+      t.strokeRect(px + 2, railY + 16, pw - 4, wainscotH - 26);
+      // Wood grain in each panel
+      t.strokeStyle = 'rgba(50,35,20,0.08)';
+      t.lineWidth = 0.5;
+      for (let g = 0; g < 8; g++) {
+        const gy = railY + 20 + g * ((wainscotH - 30) / 8);
+        t.beginPath(); t.moveTo(px + 5, gy); t.lineTo(px + pw - 5, gy + (Math.random() - 0.5) * 4); t.stroke();
+      }
+    }
+
+    // Baseboard at bottom
+    t.fillStyle = 'rgb(50,35,22)';
+    t.fillRect(0, ch - 10, cw, 10);
+    t.strokeStyle = 'rgba(90,70,45,0.3)';
+    t.lineWidth = 1;
+    t.beginPath(); t.moveTo(0, ch - 10); t.lineTo(cw, ch - 10); t.stroke();
+
+  } else {
+    // Rooms 2/3 — original industrial style
+    const bases = { 2: [55,48,42], 3: [34,44,58] };
+    const b = bases[palIdx] || bases[2];
+    t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
+    t.fillRect(0, 0, cw, ch);
+    const vg = t.createLinearGradient(0, 0, 0, ch);
+    vg.addColorStop(0, 'rgba(180,190,210,0.06)');
+    vg.addColorStop(0.5, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.15)');
+    t.fillStyle = vg;
+    t.fillRect(0, 0, cw, ch);
+    for (let i = 0; i < 5000; i++) {
+      const nx = Math.random() * cw, ny = Math.random() * ch;
+      const v = Math.random() * 20 - 10;
+      t.fillStyle = `rgba(${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${v > 0 ? 200 : 0},${Math.abs(v) / 300})`;
+      t.fillRect(nx, ny, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+    const panelH = ch / 4;
+    for (let i = 1; i < 4; i++) {
+      const y = i * panelH;
+      t.strokeStyle = 'rgba(0,0,0,0.35)';
+      t.lineWidth = 2;
+      t.beginPath(); t.moveTo(0, y); t.lineTo(cw, y); t.stroke();
+      t.strokeStyle = 'rgba(200,210,230,0.08)';
+      t.lineWidth = 1;
+      t.beginPath(); t.moveTo(0, y + 2); t.lineTo(cw, y + 2); t.stroke();
+    }
+    const panelW = cw / 4;
+    for (let i = 1; i < 4; i++) {
+      t.strokeStyle = 'rgba(0,0,0,0.25)';
+      t.lineWidth = 1.5;
+      t.beginPath(); t.moveTo(i * panelW, 0); t.lineTo(i * panelW, ch); t.stroke();
+    }
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        for (const [ox, oy] of [[8, 8], [panelW - 8, 8], [8, panelH - 8], [panelW - 8, panelH - 8]]) {
+          const bx = c * panelW + ox, by = r * panelH + oy;
+          if (bx < cw && by < ch) {
+            t.fillStyle = 'rgba(100,110,130,0.2)';
+            t.beginPath(); t.arc(bx, by, 2.5, 0, Math.PI * 2); t.fill();
+          }
         }
       }
     }
+    const gg = t.createLinearGradient(0, ch - 60, 0, ch);
+    gg.addColorStop(0, 'rgba(0,0,0,0)');
+    gg.addColorStop(1, 'rgba(20,15,10,0.2)');
+    t.fillStyle = gg;
+    t.fillRect(0, ch - 60, cw, 60);
   }
-  // Water stain drip from top
-  for (let s = 0; s < 3; s++) {
-    const sx = Math.random() * cw;
-    const sg = t.createLinearGradient(sx, 0, sx, ch * 0.5);
-    sg.addColorStop(0, 'rgba(30,40,30,0.12)');
-    sg.addColorStop(0.5, 'rgba(30,40,30,0.04)');
-    sg.addColorStop(1, 'rgba(0,0,0,0)');
-    t.fillStyle = sg;
-    t.fillRect(sx - 8, 0, 16 + Math.random() * 10, ch * 0.5);
-  }
-  // Grime at bottom
-  const gg = t.createLinearGradient(0, ch - 60, 0, ch);
-  gg.addColorStop(0, 'rgba(0,0,0,0)');
-  gg.addColorStop(1, 'rgba(20,15,10,0.2)');
-  t.fillStyle = gg;
-  t.fillRect(0, ch - 60, cw, 60);
   return new THREE.CanvasTexture(tc);
 }
 
@@ -243,8 +319,8 @@ function createRoom3D(roomNum) {
 
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const floorRoughness = rn === 1 ? 0.55 : 0.82;
-  const floorMetalness = rn === 1 ? 0.05 : 0.02;
+  const floorRoughness = rn === 1 ? 0.65 : 0.82;
+  const floorMetalness = rn === 1 ? 0.03 : 0.02;
   const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: floorRoughness, metalness: floorMetalness, side: THREE.DoubleSide });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -554,28 +630,52 @@ function addBox(x, y, z, w, h, d, color, opts) {
 
 function createFurniture3D(roomNum) {
   if (roomNum === 1) {
-    // ─── Desk — sleek modern control desk ───
-    addBox(5.5, 0.9, -4, 5, 0.12, 2.0, 0xc0cad0, { metalness: 0.6, roughness: 0.25 }); // polished surface
-    addBox(3.3, 0.45, -4, 0.08, 0.9, 1.8, 0x8090a0, { metalness: 0.5 }); // left leg
-    addBox(7.7, 0.45, -4, 0.08, 0.9, 1.8, 0x8090a0, { metalness: 0.5 }); // right leg
-    addBox(5.5, 0.45, -4.9, 5, 0.78, 0.06, 0x505a65, { metalness: 0.3 }); // back modesty panel
-    // Desk drawer unit
-    addBox(4.0, 0.45, -4, 1.0, 0.8, 1.4, 0x606a75, { metalness: 0.35, roughness: 0.5 });
-    addBox(4.0, 0.65, -3.28, 0.8, 0.04, 0.02, 0x909aa0, { metalness: 0.5 }); // drawer handle
-    addBox(4.0, 0.35, -3.28, 0.8, 0.04, 0.02, 0x909aa0, { metalness: 0.5 }); // lower handle
-    // Monitor — larger with brighter screen
-    addBox(7.0, 1.45, -4.2, 1.2, 0.8, 0.06, 0x1a1a22, { metalness: 0.4, roughness: 0.3 }); // bezel
-    addBox(7.0, 1.47, -4.17, 1.05, 0.62, 0.02, 0x1840a0, { emissive: 0x2050c0, emissiveIntensity: 0.7 }); // screen
-    addBox(7.0, 1.0, -4.1, 0.15, 0.12, 0.4, 0x404550, { metalness: 0.5 }); // stand neck
-    addBox(7.0, 0.96, -4.0, 0.4, 0.02, 0.25, 0x505560, { metalness: 0.5 }); // stand base
+    // ─── Desk — rich dark wood with warm tones ───
+    addBox(5.5, 0.9, -4, 5, 0.14, 2.0, 0x6b4830, { roughness: 0.55, metalness: 0.05 }); // dark wood surface
+    addBox(5.5, 0.88, -4, 5.05, 0.04, 2.05, 0x4a3320, { roughness: 0.6 }); // edge trim
+    addBox(3.3, 0.45, -4, 0.15, 0.9, 1.6, 0x5a3a25, { roughness: 0.6 }); // left panel leg
+    addBox(7.7, 0.45, -4, 0.15, 0.9, 1.6, 0x5a3a25, { roughness: 0.6 }); // right panel leg
+    addBox(5.5, 0.45, -4.9, 5, 0.78, 0.08, 0x4a3220, { roughness: 0.6 }); // back panel (dark wood)
+    // Desk drawer unit — dark wood
+    addBox(4.0, 0.45, -4, 1.0, 0.8, 1.4, 0x5a3a25, { roughness: 0.6 });
+    addBox(4.0, 0.65, -3.28, 0.5, 0.03, 0.02, 0xc0a060, { metalness: 0.6 }); // brass handle
+    addBox(4.0, 0.35, -3.28, 0.5, 0.03, 0.02, 0xc0a060, { metalness: 0.6 }); // brass handle
+    // Monitor — warm-toned screen
+    addBox(7.0, 1.45, -4.2, 1.2, 0.8, 0.06, 0x1a1a1a, { metalness: 0.3, roughness: 0.3 });
+    addBox(7.0, 1.47, -4.17, 1.05, 0.62, 0.02, 0x183060, { emissive: 0x2040a0, emissiveIntensity: 0.6 });
+    addBox(7.0, 1.0, -4.1, 0.12, 0.12, 0.4, 0x2a2a30, { metalness: 0.4 });
+    addBox(7.0, 0.96, -4.0, 0.35, 0.02, 0.22, 0x2a2a30, { metalness: 0.4 });
     // Keyboard + mouse
-    addBox(6.3, 0.97, -3.4, 0.65, 0.02, 0.22, 0x303540, { roughness: 0.6 }); // keyboard
-    addBox(7.1, 0.97, -3.4, 0.15, 0.02, 0.1, 0x303540, { roughness: 0.6 }); // mouse
-    // Coffee mug on desk
-    const mugGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.12, 10);
-    const mugMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4 });
+    addBox(6.3, 0.97, -3.4, 0.6, 0.02, 0.2, 0x2a2a2a, { roughness: 0.6 });
+    addBox(7.1, 0.97, -3.4, 0.12, 0.02, 0.08, 0x2a2a2a, { roughness: 0.6 });
+    // Desk lamp — warm brass + cream shade
+    const lampBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.12, 0.04, 12),
+      new THREE.MeshStandardMaterial({ color: 0xb8963c, metalness: 0.7, roughness: 0.25 })
+    );
+    lampBase.position.set(4.8, 0.98, -4.3);
+    scene3D.add(lampBase); currentRoomMeshes.push(lampBase);
+    const lampArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6),
+      new THREE.MeshStandardMaterial({ color: 0xb8963c, metalness: 0.7, roughness: 0.25 })
+    );
+    lampArm.position.set(4.8, 1.23, -4.3);
+    scene3D.add(lampArm); currentRoomMeshes.push(lampArm);
+    const lampShade = new THREE.Mesh(
+      new THREE.ConeGeometry(0.18, 0.15, 12, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0xf0e8d0, emissive: 0xffe0a0, emissiveIntensity: 0.4, roughness: 0.8, side: THREE.DoubleSide })
+    );
+    lampShade.position.set(4.8, 1.52, -4.3);
+    scene3D.add(lampShade); currentRoomMeshes.push(lampShade);
+    // Warm desk lamp light
+    const lampLight = new THREE.PointLight(0xffe0a0, 8, 5);
+    lampLight.position.set(4.8, 1.5, -4.3);
+    scene3D.add(lampLight); currentRoomMeshes.push(lampLight);
+    // Coffee mug — ceramic
+    const mugGeom = new THREE.CylinderGeometry(0.05, 0.055, 0.1, 10);
+    const mugMat = new THREE.MeshStandardMaterial({ color: 0xd4c4a0, roughness: 0.5 });
     const mug = new THREE.Mesh(mugGeom, mugMat);
-    mug.position.set(5.0, 1.02, -3.5);
+    mug.position.set(5.6, 1.02, -3.4);
     scene3D.add(mug); currentRoomMeshes.push(mug);
 
     // ─── Server rack 1 — detailed with proper shelves ───
@@ -624,10 +724,10 @@ function createFurniture3D(roomNum) {
     addBox(9.92, 1.6, 0, 0.02, 0.18, 0.12, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.6 });
     addBox(9.92, 1.35, 0, 0.02, 0.18, 0.12, 0xe04040, { emissive: 0xe04040, emissiveIntensity: 0.3 });
 
-    // ─── Floor baseboards — dark trim along walls ───
-    addBox(0, 0.06, -WORLD_D / 2 + 0.06, WORLD_W, 0.12, 0.12, 0x2a3040, { roughness: 0.5, metalness: 0.2 }); // back
-    addBox(-WORLD_W / 2 + 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x2a3040, { roughness: 0.5, metalness: 0.2 }); // left
-    addBox(WORLD_W / 2 - 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x2a3040, { roughness: 0.5, metalness: 0.2 }); // right
+    // ─── Floor baseboards — warm dark wood trim ───
+    addBox(0, 0.06, -WORLD_D / 2 + 0.06, WORLD_W, 0.12, 0.12, 0x3a2818, { roughness: 0.6 }); // back
+    addBox(-WORLD_W / 2 + 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a2818, { roughness: 0.6 }); // left
+    addBox(WORLD_W / 2 - 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a2818, { roughness: 0.6 }); // right
 
     // ─── Ventilation grate on back wall ───
     addBox(-7, 2.5, -7.45, 1.2, 0.4, 0.06, 0x3a3e48, { metalness: 0.5, roughness: 0.3 });
@@ -636,9 +736,9 @@ function createFurniture3D(roomNum) {
       addBox(-7, 2.5 - 0.14 + vi * 0.07, -7.42, 1.0, 0.01, 0.02, 0x505860, { metalness: 0.4 });
     }
 
-    // ─── Ceiling light fixture housings (visible from cutaway) ───
-    addBox(-3, WALL_H - 0.05, 0, 1.2, 0.08, 0.4, 0xe8e8f0, { emissive: 0xd0d8f0, emissiveIntensity: 0.4 });
-    addBox(5, WALL_H - 0.05, -2, 1.2, 0.08, 0.4, 0xe8e8f0, { emissive: 0xd0d8f0, emissiveIntensity: 0.4 });
+    // ─── Ceiling light fixture housings — warm glow ───
+    addBox(-3, WALL_H - 0.05, 0, 1.2, 0.08, 0.4, 0xf0e8d0, { emissive: 0xffe0a0, emissiveIntensity: 0.5 });
+    addBox(5, WALL_H - 0.05, -2, 1.2, 0.08, 0.4, 0xf0e8d0, { emissive: 0xffe0a0, emissiveIntensity: 0.5 });
 
     // ─── Wheeled office chair at desk ───
     const chairGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.5, 8);
@@ -660,32 +760,38 @@ function createFurniture3D(roomNum) {
     );
     chairStem.position.set(6.5, 0.15, -3.0);
     scene3D.add(chairStem); currentRoomMeshes.push(chairStem);
-    // Keycard on desk — high-contrast orange/gold card on bright desk
+    // ─── Keycard — FLOATING above desk, impossible to miss ───
     const kcGroup = new THREE.Group();
+    // Card body — bright orange, large
     const kcBody = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.03, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0xff6020, emissive: 0xff4010, emissiveIntensity: 0.8, roughness: 0.25, metalness: 0.5 })
+      new THREE.BoxGeometry(0.7, 0.04, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff4400, emissiveIntensity: 1.0, roughness: 0.2, metalness: 0.5 })
     );
     kcGroup.add(kcBody);
     // Gold chip
     const kcChip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.035, 0.1),
-      new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffc000, emissiveIntensity: 0.5, metalness: 0.8 })
+      new THREE.BoxGeometry(0.15, 0.05, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffcc00, emissiveIntensity: 0.8, metalness: 0.9 })
     );
-    kcChip.position.set(-0.12, 0.005, 0);
+    kcChip.position.set(-0.15, 0.01, 0.05);
     kcGroup.add(kcChip);
-    // Magnetic stripe
+    // Dark stripe
     const kcStripe = new THREE.Mesh(
-      new THREE.BoxGeometry(0.38, 0.035, 0.06),
+      new THREE.BoxGeometry(0.5, 0.05, 0.08),
       new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.6 })
     );
-    kcStripe.position.set(0, 0.005, -0.1);
+    kcStripe.position.set(0, 0.01, -0.12);
     kcGroup.add(kcStripe);
-    // Strong glow light — orange pool on desk surface
-    const kcGlow = new THREE.PointLight(0xff6020, 15, 4);
-    kcGlow.position.set(0, 0.3, 0);
+    // Bright beacon light — visible from anywhere in room
+    const kcGlow = new THREE.PointLight(0xff6600, 30, 8);
+    kcGlow.position.set(0, 0.5, 0);
     kcGroup.add(kcGlow);
-    kcGroup.position.set(5.5, 0.98, -3.5);
+    // Second glow below for floor pool
+    const kcFloorGlow = new THREE.PointLight(0xff6600, 10, 4);
+    kcFloorGlow.position.set(0, -0.5, 0);
+    kcGroup.add(kcFloorGlow);
+    // Position: FLOATING 0.6 units above desk surface
+    kcGroup.position.set(5.5, 1.6, -3.8);
     scene3D.add(kcGroup);
     currentRoomMeshes.push(kcGroup);
     keycardMesh3D = kcGroup;
@@ -847,20 +953,27 @@ function setupLights() {
     return light;
   }
 
-  // Ambient light — low fill, let spotlights create drama
-  addLight(new THREE.AmbientLight(0x405070, 0.8));
+  // Room 1: warm hotel/facility feel; Others: cool industrial
+  const isWarm = currentRoom === 1;
 
-  // Hemisphere light for natural sky/ground fill
-  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.6));
+  // Ambient — warm tint for Room 1
+  addLight(new THREE.AmbientLight(isWarm ? 0x806850 : 0x405070, isWarm ? 1.0 : 0.8));
 
-  // Light palette per room
-  const lightColors = { 1: 0xd0daf0, 2: 0xf0dcc0, 3: 0xb0c0e0 };
+  // Hemisphere — warm sky/ground
+  addLight(new THREE.HemisphereLight(
+    isWarm ? 0xc0a880 : 0x8090c0,
+    isWarm ? 0x403020 : 0x202830,
+    isWarm ? 0.7 : 0.6
+  ));
+
+  // Spotlight color per room
+  const lightColors = { 1: 0xffecd0, 2: 0xf0dcc0, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  // Main ceiling spotlight — left side, casts over server racks & crates
-  const spot1 = new THREE.SpotLight(lc, 1800, 35, Math.PI / 3, 0.6, 1.2);
+  // Main ceiling spotlight 1 — warm downlight
+  const spot1 = new THREE.SpotLight(lc, isWarm ? 2200 : 1800, 35, Math.PI / 3, 0.5, 1.0);
   spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
-  spot1.target.position.set(-2, 0, 1);
+  spot1.target.position.set(-1, 0, 1);
   spot1.castShadow = true;
   spot1.shadow.mapSize.set(2048, 2048);
   spot1.shadow.camera.near = 0.5;
@@ -869,10 +982,10 @@ function setupLights() {
   addLight(spot1);
   scene3D.add(spot1.target);
 
-  // Main ceiling spotlight — right side, over desk area
-  const spot2 = new THREE.SpotLight(lc, 1800, 35, Math.PI / 3, 0.6, 1.2);
+  // Main ceiling spotlight 2
+  const spot2 = new THREE.SpotLight(lc, isWarm ? 2200 : 1800, 35, Math.PI / 3, 0.5, 1.0);
   spot2.position.set(5, WALL_H + 4, -WORLD_D / 2 + 1);
-  spot2.target.position.set(5, 0, -2);
+  spot2.target.position.set(4, 0, 0);
   spot2.castShadow = true;
   spot2.shadow.mapSize.set(2048, 2048);
   spot2.shadow.camera.near = 0.5;
@@ -881,25 +994,32 @@ function setupLights() {
   addLight(spot2);
   scene3D.add(spot2.target);
 
-  // Warm accent light — desk area monitor glow bounce
-  if (currentRoom === 1) {
-    const deskAccent = new THREE.PointLight(0x4060c0, 40, 8);
-    deskAccent.position.set(7, 1.5, -4);
-    addLight(deskAccent);
+  if (isWarm) {
+    // Warm accent lights for Room 1
 
-    // Server rack green glow bounce
-    const rackGlow = new THREE.PointLight(0x20c040, 15, 6);
-    rackGlow.position.set(-0.5, 1.5, -6);
+    // Warm ceiling wash from front
+    const ceilWash = new THREE.PointLight(0xffd8a0, 80, 20);
+    ceilWash.position.set(0, WALL_H + 1, 3);
+    addLight(ceilWash);
+
+    // Desk area warm fill
+    const deskFill = new THREE.PointLight(0xffecc0, 30, 8);
+    deskFill.position.set(6, 2, -3);
+    addLight(deskFill);
+
+    // Server rack accent (subtle green)
+    const rackGlow = new THREE.PointLight(0x30c050, 8, 5);
+    rackGlow.position.set(-0.5, 1.5, -6.5);
     addLight(rackGlow);
   }
 
-  // Fill light from front-right — soft visibility fill
-  const fill = new THREE.PointLight(0x506890, 120, 35);
-  fill.position.set(4, 4, WORLD_D / 2 + 3);
+  // Fill light from front — warm for R1, cool for others
+  const fill = new THREE.PointLight(isWarm ? 0xc0a878 : 0x506890, isWarm ? 100 : 120, 35);
+  fill.position.set(3, 4, WORLD_D / 2 + 3);
   addLight(fill);
 
   // Back wall fill
-  const backFill = new THREE.PointLight(0x405070, 60, 25);
+  const backFill = new THREE.PointLight(isWarm ? 0x806040 : 0x405070, isWarm ? 40 : 60, 25);
   backFill.position.set(0, 3, -WORLD_D / 2 + 2);
   addLight(backFill);
 }
@@ -917,8 +1037,8 @@ function initThreeJS() {
 
   // Scene
   scene3D = new THREE.Scene();
-  scene3D.background = new THREE.Color(0x0e1420);
-  scene3D.fog = new THREE.FogExp2(0x0e1420, 0.015);
+  scene3D.background = new THREE.Color(0x1a1510);
+  scene3D.fog = new THREE.FogExp2(0x1a1510, 0.012);
 
   // Camera — cutaway diorama view: frames the playable floor, not the room volume
   camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
@@ -1004,10 +1124,10 @@ const player = {
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
 const ROOM1_PATROL = [
-  { u: 0.70, v: 0.25 },   // front-right (near desk)
-  { u: 0.70, v: 0.72 },   // south-right
-  { u: 0.50, v: 0.72 },   // south-center (east of crates, guard never goes west)
-  { u: 0.50, v: 0.38 },   // mid-center (between racks and crates)
+  { u: 0.40, v: 0.30 },   // center-left near racks (away from desk!)
+  { u: 0.40, v: 0.72 },   // south-center
+  { u: 0.62, v: 0.72 },   // south-right (still west of desk collider 0.66)
+  { u: 0.62, v: 0.30 },   // center-right (still west of desk)
 ];
 
 const ROOM2_PATROL = [
@@ -7016,8 +7136,8 @@ function render() {
       if (keycardMesh3D) {
         keycardMesh3D.visible = !hasKeycard;
         if (!hasKeycard) {
-          keycardMesh3D.position.y = 0.98 + Math.sin(gameTime * 3) * 0.05;
-          keycardMesh3D.rotation.y = gameTime * 0.5;
+          keycardMesh3D.position.y = 1.6 + Math.sin(gameTime * 2.5) * 0.15;
+          keycardMesh3D.rotation.y = gameTime * 1.2;
         }
       }
       updateExitLight();
