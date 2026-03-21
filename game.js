@@ -1173,41 +1173,41 @@ function guardCanSeePlayer() { return guardAwareOfPlayer(); }
 
 // Per-room colour palettes — gives each room a distinct visual identity
 const ROOM_PALETTES = {
-  1: { // Server Room: dark, cold corporate — deep blue shadows
-    backWall:  ['#2e3340', '#282d38', '#222730'],
-    leftWall:  ['#1e2430', '#242a36', '#2a303a'],
-    rightWall: ['#2a303a', '#242a36', '#202630'],
-    floor:     ['#303540', '#2a2f3a', '#242934'],
-    tileGroove: 'rgba(0,0,30,0.18)',
-    tileHighlight: 'rgba(140,160,200,0.04)',
-    seamDark:  'rgba(0,0,30,0.15)',
-    seamLight: 'rgba(160,180,220,0.03)',
-    baseboard: '#181c26',
-    baseHighlight: '#3e4250',
+  1: { // Server Room: cold steel and blue LED glow — high-tech facility
+    backWall:  ['#384450', '#303a46', '#283240'],
+    leftWall:  ['#2a3440', '#303a48', '#364050'],
+    rightWall: ['#364050', '#303a48', '#2c3644'],
+    floor:     ['#3a4250', '#343c4a', '#2e3644'],
+    tileGroove: 'rgba(0,0,40,0.25)',
+    tileHighlight: 'rgba(160,190,240,0.07)',
+    seamDark:  'rgba(0,0,40,0.22)',
+    seamLight: 'rgba(180,200,240,0.05)',
+    baseboard: '#1a2230',
+    baseHighlight: '#4e5668',
   },
-  2: { // Maintenance Workshop: dark warm tones — gritty industrial
-    backWall:  ['#3a3430', '#322c28', '#2a2420'],
-    leftWall:  ['#262220', '#2e2a26', '#342e2a'],
-    rightWall: ['#342e2a', '#2e2a26', '#282420'],
-    floor:     ['#38322c', '#302c26', '#2a2620'],
-    tileGroove: 'rgba(40,20,0,0.16)',
-    tileHighlight: 'rgba(200,180,140,0.03)',
-    seamDark:  'rgba(40,20,0,0.14)',
-    seamLight: 'rgba(200,180,140,0.03)',
-    baseboard: '#1e1a16',
-    baseHighlight: '#4a4438',
+  2: { // Maintenance Workshop: warm industrial amber — rust and grease
+    backWall:  ['#48403a', '#3e3630', '#342c26'],
+    leftWall:  ['#302a24', '#3a342e', '#44403a'],
+    rightWall: ['#44403a', '#3a342e', '#342e28'],
+    floor:     ['#443c34', '#3c3630', '#342e28'],
+    tileGroove: 'rgba(50,25,0,0.25)',
+    tileHighlight: 'rgba(220,190,140,0.06)',
+    seamDark:  'rgba(50,25,0,0.22)',
+    seamLight: 'rgba(220,190,140,0.05)',
+    baseboard: '#241e18',
+    baseHighlight: '#5a5040',
   },
-  3: { // Server Closet: deep blue-black — claustrophobic tech dungeon
-    backWall:  ['#283040', '#222a38', '#1e2430'],
-    leftWall:  ['#1a2234', '#202840', '#262e44'],
-    rightWall: ['#262e44', '#202840', '#1c2436'],
-    floor:     ['#2c3442', '#26303c', '#202a36'],
-    tileGroove: 'rgba(0,10,50,0.18)',
-    tileHighlight: 'rgba(120,150,200,0.04)',
-    seamDark:  'rgba(0,10,50,0.16)',
-    seamLight: 'rgba(120,150,200,0.03)',
-    baseboard: '#141c28',
-    baseHighlight: '#3a4254',
+  3: { // Server Closet: deep blue with cyan accents — claustrophobic tech
+    backWall:  ['#303c50', '#283446', '#22303e'],
+    leftWall:  ['#202c40', '#263450', '#2c3a56'],
+    rightWall: ['#2c3a56', '#263450', '#222e44'],
+    floor:     ['#344050', '#2e3a48', '#283440'],
+    tileGroove: 'rgba(0,15,60,0.25)',
+    tileHighlight: 'rgba(140,170,220,0.07)',
+    seamDark:  'rgba(0,15,60,0.22)',
+    seamLight: 'rgba(140,170,220,0.05)',
+    baseboard: '#182438',
+    baseHighlight: '#445268',
   },
 };
 
@@ -1219,7 +1219,7 @@ function drawRoom() {
   // ── Back wall ──
   const backGrad = ctx.createLinearGradient(s(260), s(60), s(260), s(270));
   backGrad.addColorStop(0, pal.backWall[0]);
-  backGrad.addColorStop(0.6, pal.backWall[1]);
+  backGrad.addColorStop(0.4, pal.backWall[1]);
   backGrad.addColorStop(1, pal.backWall[2]);
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.fillStyle = backGrad;
@@ -1229,9 +1229,9 @@ function drawRoom() {
   ctx.save();
   roomPath([ceilTL, ceilTR, floorTR, floorTL]);
   ctx.clip();
-  // Horizontal seams
+  // Horizontal seams — deeper grooves
   ctx.strokeStyle = pal.seamDark;
-  ctx.lineWidth = s(1);
+  ctx.lineWidth = s(1.2);
   for (let i = 0; i <= 8; i++) {
     const t = i / 8;
     const lx1 = ceilTL.x + (floorTL.x - ceilTL.x) * t;
@@ -1260,30 +1260,71 @@ function drawRoom() {
     ctx.lineTo(s(tx2), s(floorTL.y));
     ctx.stroke();
   }
-  // Subtle stain/variation overlay on back wall
+  // Panel rivet dots at seam intersections
+  ctx.fillStyle = 'rgba(120,130,150,0.12)';
+  for (let row = 1; row <= 7; row++) {
+    for (let col = 1; col <= 5; col++) {
+      const tv = row / 8;
+      const th = col / 6;
+      const rx = ceilTL.x + (ceilTR.x - ceilTL.x) * th;
+      const ry = ceilTL.y + (floorTL.y - ceilTL.y) * tv;
+      const rx2 = floorTL.x + (floorTR.x - floorTL.x) * th;
+      const ry2 = floorTL.y;
+      const ix = rx + (rx2 - rx) * tv;
+      const iy = ry;
+      ctx.beginPath();
+      ctx.arc(s(ix), s(iy), s(1.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Subtle stain/variation overlays on back wall
   const stainGrad = ctx.createRadialGradient(
-    s(500), s(180), 0, s(500), s(180), s(120)
+    s(500), s(180), 0, s(500), s(180), s(140)
   );
-  stainGrad.addColorStop(0, 'rgba(0,0,0,0.04)');
+  stainGrad.addColorStop(0, 'rgba(0,0,0,0.06)');
+  stainGrad.addColorStop(0.6, 'rgba(0,0,0,0.03)');
   stainGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = stainGrad;
   ctx.fillRect(s(ceilTL.x), s(ceilTL.y), s(ceilTR.x - ceilTL.x), s(floorTL.y - ceilTL.y));
+  // Water stain / discoloration patch
+  const stain2 = ctx.createRadialGradient(s(750), s(200), 0, s(750), s(200), s(80));
+  stain2.addColorStop(0, 'rgba(60,50,30,0.06)');
+  stain2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = stain2;
+  ctx.fillRect(s(670), s(140), s(180), s(120));
+  // Horizontal conduit pipe near ceiling
+  const pipeY = ceilTL.y + (floorTL.y - ceilTL.y) * 0.12;
+  const pipeGrad = ctx.createLinearGradient(0, s(pipeY - 3), 0, s(pipeY + 3));
+  pipeGrad.addColorStop(0, 'rgba(80,85,95,0.35)');
+  pipeGrad.addColorStop(0.3, 'rgba(100,105,115,0.3)');
+  pipeGrad.addColorStop(0.7, 'rgba(70,75,85,0.35)');
+  pipeGrad.addColorStop(1, 'rgba(50,55,65,0.4)');
+  ctx.fillStyle = pipeGrad;
+  const pLx = ceilTL.x + (floorTL.x - ceilTL.x) * 0.12;
+  const pRx = ceilTR.x + (floorTR.x - ceilTR.x) * 0.12;
+  ctx.fillRect(s(pLx), s(pipeY - 3), s(pRx - pLx), s(6));
+  // Pipe brackets
+  ctx.fillStyle = 'rgba(60,65,75,0.3)';
+  for (const bk of [0.2, 0.4, 0.6, 0.8]) {
+    const bx = pLx + (pRx - pLx) * bk;
+    ctx.fillRect(s(bx - 2), s(pipeY - 5), s(4), s(10));
+  }
   ctx.restore();
 
   // ── Left side wall ──
   const leftGrad = ctx.createLinearGradient(s(80), s(130), s(260), s(270));
   leftGrad.addColorStop(0, pal.leftWall[0]);
-  leftGrad.addColorStop(0.5, pal.leftWall[1]);
+  leftGrad.addColorStop(0.35, pal.leftWall[1]);
   leftGrad.addColorStop(1, pal.leftWall[2]);
   roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
   ctx.fillStyle = leftGrad;
   ctx.fill();
-  // Left wall panel seams
+  // Left wall panel seams and detail
   ctx.save();
   roomPath([leftWallTop, ceilTL, floorTL, floorBL]);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-  ctx.lineWidth = s(0.8);
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = s(1);
   for (let i = 1; i <= 3; i++) {
     const t = i / 4;
     const x1 = leftWallTop.x + (ceilTL.x - leftWallTop.x) * t;
@@ -1294,23 +1335,56 @@ function drawRoom() {
     ctx.moveTo(s(x1), s(y1));
     ctx.lineTo(s(x2), s(y2));
     ctx.stroke();
+    // Highlight
+    ctx.strokeStyle = 'rgba(160,170,190,0.04)';
+    ctx.beginPath();
+    ctx.moveTo(s(x1 + 1), s(y1 + 1));
+    ctx.lineTo(s(x2 + 1), s(y2 + 1));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
   }
+  // Vertical pipe on left wall
+  const lpx1 = leftWallTop.x + (ceilTL.x - leftWallTop.x) * 0.15;
+  const lpy1 = leftWallTop.y + (ceilTL.y - leftWallTop.y) * 0.15;
+  const lpx2 = floorBL.x + (floorTL.x - floorBL.x) * 0.15;
+  const lpy2 = floorBL.y + (floorTL.y - floorBL.y) * 0.15;
+  const lwPipeGrad = ctx.createLinearGradient(s(lpx1 - 3), 0, s(lpx1 + 3), 0);
+  lwPipeGrad.addColorStop(0, 'rgba(50,55,65,0.3)');
+  lwPipeGrad.addColorStop(0.4, 'rgba(90,95,105,0.25)');
+  lwPipeGrad.addColorStop(1, 'rgba(40,45,55,0.35)');
+  ctx.strokeStyle = lwPipeGrad;
+  ctx.lineWidth = s(5);
+  ctx.beginPath();
+  ctx.moveTo(s(lpx1), s(lpy1));
+  ctx.lineTo(s(lpx2), s(lpy2));
+  ctx.stroke();
+  // Ambient shadow at bottom of left wall
+  const lwShadow = ctx.createLinearGradient(s(floorBL.x), s(floorBL.y - 40), s(floorBL.x), s(floorBL.y));
+  lwShadow.addColorStop(0, 'rgba(0,0,0,0)');
+  lwShadow.addColorStop(1, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = lwShadow;
+  roomPath([
+    { x: leftWallTop.x, y: floorBL.y - 40 },
+    { x: ceilTL.x, y: floorTL.y - 40 },
+    floorTL, floorBL
+  ]);
+  ctx.fill();
   ctx.restore();
 
   // ── Right side wall ──
   const rightGrad = ctx.createLinearGradient(s(1020), s(270), s(1200), s(130));
   rightGrad.addColorStop(0, pal.rightWall[0]);
-  rightGrad.addColorStop(0.5, pal.rightWall[1]);
+  rightGrad.addColorStop(0.35, pal.rightWall[1]);
   rightGrad.addColorStop(1, pal.rightWall[2]);
   roomPath([ceilTR, rightWallTop, floorBR, floorTR]);
   ctx.fillStyle = rightGrad;
   ctx.fill();
-  // Right wall panel seams
+  // Right wall panel seams and detail
   ctx.save();
   roomPath([ceilTR, rightWallTop, floorBR, floorTR]);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-  ctx.lineWidth = s(0.8);
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = s(1);
   for (let i = 1; i <= 3; i++) {
     const t = i / 4;
     const x1 = ceilTR.x + (rightWallTop.x - ceilTR.x) * t;
@@ -1321,7 +1395,40 @@ function drawRoom() {
     ctx.moveTo(s(x1), s(y1));
     ctx.lineTo(s(x2), s(y2));
     ctx.stroke();
+    // Highlight
+    ctx.strokeStyle = 'rgba(160,170,190,0.04)';
+    ctx.beginPath();
+    ctx.moveTo(s(x1 - 1), s(y1 + 1));
+    ctx.lineTo(s(x2 - 1), s(y2 + 1));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
   }
+  // Vertical conduit on right wall
+  const rpx1 = ceilTR.x + (rightWallTop.x - ceilTR.x) * 0.85;
+  const rpy1 = ceilTR.y + (rightWallTop.y - ceilTR.y) * 0.85;
+  const rpx2 = floorTR.x + (floorBR.x - floorTR.x) * 0.85;
+  const rpy2 = floorTR.y + (floorBR.y - floorTR.y) * 0.85;
+  const rwPipeGrad = ctx.createLinearGradient(s(rpx1 - 3), 0, s(rpx1 + 3), 0);
+  rwPipeGrad.addColorStop(0, 'rgba(40,45,55,0.35)');
+  rwPipeGrad.addColorStop(0.6, 'rgba(90,95,105,0.25)');
+  rwPipeGrad.addColorStop(1, 'rgba(50,55,65,0.3)');
+  ctx.strokeStyle = rwPipeGrad;
+  ctx.lineWidth = s(4);
+  ctx.beginPath();
+  ctx.moveTo(s(rpx1), s(rpy1));
+  ctx.lineTo(s(rpx2), s(rpy2));
+  ctx.stroke();
+  // Ambient shadow at bottom of right wall
+  const rwShadow = ctx.createLinearGradient(s(floorBR.x), s(floorBR.y - 40), s(floorBR.x), s(floorBR.y));
+  rwShadow.addColorStop(0, 'rgba(0,0,0,0)');
+  rwShadow.addColorStop(1, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = rwShadow;
+  roomPath([
+    { x: ceilTR.x, y: floorTR.y - 40 },
+    { x: rightWallTop.x, y: floorBR.y - 40 },
+    floorBR, floorTR
+  ]);
+  ctx.fill();
   ctx.restore();
 
   // ── Wall-mounted decorative props ──
@@ -1336,21 +1443,21 @@ function drawRoom() {
   // ── Floor ──
   const floorGrad = ctx.createLinearGradient(s(640), s(270), s(640), s(640));
   floorGrad.addColorStop(0, pal.floor[0]);
-  floorGrad.addColorStop(0.5, pal.floor[1]);
+  floorGrad.addColorStop(0.35, pal.floor[1]);
   floorGrad.addColorStop(1, pal.floor[2]);
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.fillStyle = floorGrad;
   ctx.fill();
 
-  // Floor tile grid
+  // Floor tile grid — deeper, more visible tiles
   ctx.save();
   roomPath([floorTL, floorTR, floorBR, floorBL]);
   ctx.clip();
   const gridH = 12;
   const gridV = 16;
-  // Tile groove (dark line)
+  // Tile groove (dark line) — stronger
   ctx.strokeStyle = pal.tileGroove;
-  ctx.lineWidth = s(1);
+  ctx.lineWidth = s(1.4);
   for (let i = 0; i <= gridH; i++) {
     const t = i / gridH;
     const lx1 = floorTL.x + (floorBL.x - floorTL.x) * t;
@@ -1371,19 +1478,34 @@ function drawRoom() {
     ctx.lineTo(s(lx2), s(floorBL.y));
     ctx.stroke();
   }
-  // Tile highlight (light line offset by 1px from each groove)
+  // Tile highlight (light line offset by 1px from each groove) — stronger
   ctx.strokeStyle = pal.tileHighlight;
-  ctx.lineWidth = s(0.6);
+  ctx.lineWidth = s(0.8);
   for (let i = 0; i <= gridH; i++) {
     const t = i / gridH;
     const lx1 = floorTL.x + (floorBL.x - floorTL.x) * t;
-    const ly1 = floorTL.y + (floorBL.y - floorTL.y) * t + 1.2;
+    const ly1 = floorTL.y + (floorBL.y - floorTL.y) * t + 1.5;
     const lx2 = floorTR.x + (floorBR.x - floorTR.x) * t;
-    const ly2 = floorTR.y + (floorBR.y - floorTR.y) * t + 1.2;
+    const ly2 = floorTR.y + (floorBR.y - floorTR.y) * t + 1.5;
     ctx.beginPath();
     ctx.moveTo(s(lx1), s(ly1));
     ctx.lineTo(s(lx2), s(ly2));
     ctx.stroke();
+  }
+  // Subtle floor reflection/sheen — specular highlight near light positions
+  for (const t of [0.3, 0.7]) {
+    const reflPos = floorToScreen(t, 0.30);
+    const reflGrad = ctx.createRadialGradient(
+      s(reflPos.x), s(reflPos.y), 0,
+      s(reflPos.x), s(reflPos.y), s(100)
+    );
+    reflGrad.addColorStop(0, 'rgba(200,210,230,0.04)');
+    reflGrad.addColorStop(0.5, 'rgba(200,210,230,0.02)');
+    reflGrad.addColorStop(1, 'rgba(200,210,230,0)');
+    ctx.fillStyle = reflGrad;
+    ctx.beginPath();
+    ctx.ellipse(s(reflPos.x), s(reflPos.y), s(100), s(60), 0, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 
@@ -1402,10 +1524,10 @@ function drawRoom() {
     drawRoom3WallFraming();
   }
 
-  // ── Metal baseboard strips ──
-  // Dark groove
+  // ── Metal baseboard strips — industrial kick plates ──
+  // Dark groove (thicker)
   ctx.strokeStyle = pal.baseboard;
-  ctx.lineWidth = s(3);
+  ctx.lineWidth = s(5);
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y));
   ctx.lineTo(s(floorTR.x), s(floorTR.y));
@@ -1418,20 +1540,20 @@ function drawRoom() {
   ctx.moveTo(s(floorTR.x), s(floorTR.y));
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
   ctx.stroke();
-  // Metal highlight
+  // Metal highlight — brighter
   ctx.strokeStyle = pal.baseHighlight;
-  ctx.lineWidth = s(1.2);
+  ctx.lineWidth = s(1.5);
   ctx.beginPath();
-  ctx.moveTo(s(floorTL.x), s(floorTL.y + 1));
-  ctx.lineTo(s(floorTR.x), s(floorTR.y + 1));
+  ctx.moveTo(s(floorTL.x), s(floorTL.y + 1.5));
+  ctx.lineTo(s(floorTR.x), s(floorTR.y + 1.5));
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(s(floorTL.x + 0.5), s(floorTL.y + 1));
-  ctx.lineTo(s(floorBL.x + 0.5), s(floorBL.y + 1));
+  ctx.moveTo(s(floorTL.x + 0.5), s(floorTL.y + 1.5));
+  ctx.lineTo(s(floorBL.x + 0.5), s(floorBL.y + 1.5));
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(s(floorTR.x - 0.5), s(floorTR.y + 1));
-  ctx.lineTo(s(floorBR.x - 0.5), s(floorBR.y + 1));
+  ctx.moveTo(s(floorTR.x - 0.5), s(floorTR.y + 1.5));
+  ctx.lineTo(s(floorBR.x - 0.5), s(floorBR.y + 1.5));
   ctx.stroke();
 
   // ── Ceiling fluorescent lights ──
@@ -1445,65 +1567,71 @@ function drawFloorAO() {
   ctx.clip();
 
   // Back wall AO
-  const backAO = ctx.createLinearGradient(s(640), s(floorTL.y), s(640), s(floorTL.y + 55));
-  backAO.addColorStop(0, 'rgba(0,0,0,0.30)');
-  backAO.addColorStop(0.5, 'rgba(0,0,0,0.10)');
+  // Back wall AO — stronger, wider
+  const backAO = ctx.createLinearGradient(s(640), s(floorTL.y), s(640), s(floorTL.y + 70));
+  backAO.addColorStop(0, 'rgba(0,0,0,0.40)');
+  backAO.addColorStop(0.3, 'rgba(0,0,0,0.18)');
+  backAO.addColorStop(0.7, 'rgba(0,0,0,0.06)');
   backAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = backAO;
-  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(60));
+  ctx.fillRect(s(floorTL.x), s(floorTL.y), s(floorTR.x - floorTL.x), s(70));
 
-  // Left wall AO
-  const leftAO = ctx.createLinearGradient(s(floorTL.x), s(floorTL.y), s(floorTL.x + 50), s(floorTL.y + 20));
-  leftAO.addColorStop(0, 'rgba(0,0,0,0.22)');
+  // Left wall AO — stronger
+  const leftAO = ctx.createLinearGradient(s(floorTL.x), s(floorTL.y), s(floorTL.x + 65), s(floorTL.y + 20));
+  leftAO.addColorStop(0, 'rgba(0,0,0,0.32)');
+  leftAO.addColorStop(0.5, 'rgba(0,0,0,0.10)');
   leftAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = leftAO;
   ctx.beginPath();
   ctx.moveTo(s(floorTL.x), s(floorTL.y));
   ctx.lineTo(s(floorBL.x), s(floorBL.y));
-  ctx.lineTo(s(floorBL.x + 55), s(floorBL.y));
-  ctx.lineTo(s(floorTL.x + 50), s(floorTL.y));
+  ctx.lineTo(s(floorBL.x + 70), s(floorBL.y));
+  ctx.lineTo(s(floorTL.x + 65), s(floorTL.y));
   ctx.closePath();
   ctx.fill();
 
-  // Right wall AO
-  const rightAO = ctx.createLinearGradient(s(floorTR.x), s(floorTR.y), s(floorTR.x - 50), s(floorTR.y + 20));
-  rightAO.addColorStop(0, 'rgba(0,0,0,0.22)');
+  // Right wall AO — stronger
+  const rightAO = ctx.createLinearGradient(s(floorTR.x), s(floorTR.y), s(floorTR.x - 65), s(floorTR.y + 20));
+  rightAO.addColorStop(0, 'rgba(0,0,0,0.32)');
+  rightAO.addColorStop(0.5, 'rgba(0,0,0,0.10)');
   rightAO.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = rightAO;
   ctx.beginPath();
   ctx.moveTo(s(floorTR.x), s(floorTR.y));
   ctx.lineTo(s(floorBR.x), s(floorBR.y));
-  ctx.lineTo(s(floorBR.x - 55), s(floorBR.y));
-  ctx.lineTo(s(floorTR.x - 50), s(floorTR.y));
+  ctx.lineTo(s(floorBR.x - 70), s(floorBR.y));
+  ctx.lineTo(s(floorTR.x - 65), s(floorTR.y));
   ctx.closePath();
   ctx.fill();
 
-  // Corner AO puddles (where walls meet floor)
-  const cornerR = 50;
+  // Corner AO puddles — stronger, deeper shadows
+  const cornerR = 65;
   // Back-left corner
   const blcGrad = ctx.createRadialGradient(s(floorTL.x), s(floorTL.y), 0, s(floorTL.x), s(floorTL.y), s(cornerR));
-  blcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
-  blcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+  blcGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+  blcGrad.addColorStop(0.4, 'rgba(0,0,0,0.14)');
   blcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = blcGrad;
   ctx.fillRect(s(floorTL.x), s(floorTL.y), s(cornerR), s(cornerR));
   // Back-right corner
   const brcGrad = ctx.createRadialGradient(s(floorTR.x), s(floorTR.y), 0, s(floorTR.x), s(floorTR.y), s(cornerR));
-  brcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
-  brcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+  brcGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+  brcGrad.addColorStop(0.4, 'rgba(0,0,0,0.14)');
   brcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = brcGrad;
   ctx.fillRect(s(floorTR.x - cornerR), s(floorTR.y), s(cornerR), s(cornerR));
   // Front-left corner
-  const flcR = 35;
+  const flcR = 45;
   const flcGrad = ctx.createRadialGradient(s(floorBL.x), s(floorBL.y), 0, s(floorBL.x), s(floorBL.y), s(flcR));
-  flcGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  flcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  flcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
   flcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = flcGrad;
   ctx.fillRect(s(floorBL.x), s(floorBL.y - flcR), s(flcR), s(flcR));
   // Front-right corner
   const frcGrad = ctx.createRadialGradient(s(floorBR.x), s(floorBR.y), 0, s(floorBR.x), s(floorBR.y), s(flcR));
-  frcGrad.addColorStop(0, 'rgba(0,0,0,0.15)');
+  frcGrad.addColorStop(0, 'rgba(0,0,0,0.22)');
+  frcGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
   frcGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = frcGrad;
   ctx.fillRect(s(floorBR.x - flcR), s(floorBR.y - flcR), s(flcR), s(flcR));
@@ -1513,40 +1641,62 @@ function drawFloorAO() {
 
 // Per-room light tints: [diffuser edge, diffuser mid, diffuser center, glow RGBA]
 const LIGHT_TINTS = {
-  1: { de: '#c8ccd6', dm: '#e0e4f0', dc: '#eaf0fa', glow: '190,200,235' }, // cool white
-  2: { de: '#d0c8b8', dm: '#e8dece', dc: '#f2e8d8', glow: '230,210,180' }, // warm
-  3: { de: '#c0c8d6', dm: '#d8e2f0', dc: '#e4eefa', glow: '170,190,230' }, // cool blue
+  1: { de: '#c8ccd6', dm: '#e0e4f0', dc: '#eef4ff', glow: '190,200,240' }, // cool white
+  2: { de: '#d6c8b0', dm: '#eedcca', dc: '#fae8d4', glow: '240,215,175' }, // warm amber
+  3: { de: '#b8c8dc', dm: '#d0e0f4', dc: '#e0eeff', glow: '160,185,240' }, // cool blue
 };
 
 function drawCeilingLight(lx, ly) {
-  const fixtW = 100, fixtH = 5;
+  const fixtW = 110, fixtH = 6;
   const lt = LIGHT_TINTS[currentRoom] || LIGHT_TINTS[1];
-  // Housing (dark metal surround)
+
+  // Visible light beam from fixture downward — trapezoid cone
+  ctx.save();
+  const beamBot = ly + 220;
+  const beamGrad = ctx.createLinearGradient(0, s(ly), 0, s(beamBot));
+  beamGrad.addColorStop(0, `rgba(${lt.glow},0.10)`);
+  beamGrad.addColorStop(0.3, `rgba(${lt.glow},0.05)`);
+  beamGrad.addColorStop(0.7, `rgba(${lt.glow},0.02)`);
+  beamGrad.addColorStop(1, `rgba(${lt.glow},0)`);
+  ctx.fillStyle = beamGrad;
+  ctx.beginPath();
+  ctx.moveTo(s(lx - fixtW / 2 + 10), s(ly + fixtH));
+  ctx.lineTo(s(lx + fixtW / 2 - 10), s(ly + fixtH));
+  ctx.lineTo(s(lx + fixtW / 2 + 50), s(beamBot));
+  ctx.lineTo(s(lx - fixtW / 2 - 50), s(beamBot));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Housing (dark metal surround with depth)
+  ctx.fillStyle = '#3a3d44';
+  ctx.fillRect(s(lx - fixtW / 2 - 4), s(ly - 2), s(fixtW + 8), s(fixtH + 4));
   ctx.fillStyle = '#50535a';
   ctx.fillRect(s(lx - fixtW / 2 - 3), s(ly - 1), s(fixtW + 6), s(fixtH + 2));
   // Diffuser panel (bright — tinted per room)
   const diffGrad = ctx.createLinearGradient(s(lx - fixtW / 2), 0, s(lx + fixtW / 2), 0);
   diffGrad.addColorStop(0, lt.de);
-  diffGrad.addColorStop(0.3, lt.dm);
+  diffGrad.addColorStop(0.2, lt.dm);
   diffGrad.addColorStop(0.5, lt.dc);
-  diffGrad.addColorStop(0.7, lt.dm);
+  diffGrad.addColorStop(0.8, lt.dm);
   diffGrad.addColorStop(1, lt.de);
   ctx.fillStyle = diffGrad;
   ctx.fillRect(s(lx - fixtW / 2), s(ly), s(fixtW), s(fixtH));
-  // Center hotspot line
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = s(0.8);
+  // Center hotspot line — brighter
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = s(1.2);
   ctx.beginPath();
   ctx.moveTo(s(lx - fixtW / 2 + 8), s(ly + fixtH / 2));
   ctx.lineTo(s(lx + fixtW / 2 - 8), s(ly + fixtH / 2));
   ctx.stroke();
-  // Glow cone
-  const glow = ctx.createRadialGradient(s(lx), s(ly + 2), s(5), s(lx), s(ly + 2), s(90));
-  glow.addColorStop(0, `rgba(${lt.glow},0.14)`);
-  glow.addColorStop(0.5, `rgba(${lt.glow},0.05)`);
-  glow.addColorStop(1, `rgba(${lt.glow},0)`);
-  ctx.fillStyle = glow;
-  ctx.fillRect(s(lx - 90), s(ly - 40), s(180), s(100));
+  // Bright glow halo around fixture
+  const haloGrad = ctx.createRadialGradient(s(lx), s(ly + 2), s(8), s(lx), s(ly + 2), s(120));
+  haloGrad.addColorStop(0, `rgba(${lt.glow},0.22)`);
+  haloGrad.addColorStop(0.3, `rgba(${lt.glow},0.10)`);
+  haloGrad.addColorStop(0.6, `rgba(${lt.glow},0.04)`);
+  haloGrad.addColorStop(1, `rgba(${lt.glow},0)`);
+  ctx.fillStyle = haloGrad;
+  ctx.fillRect(s(lx - 120), s(ly - 50), s(240), s(130));
 }
 
 function drawCeilingLights() {
@@ -5149,30 +5299,31 @@ function drawCharacter(pos, facing, type, walkPhase) {
 
   const isGuard = type === 'guard';
 
-  // Palette
-  const torsoHi  = isGuard ? '#4a4a4a' : '#5a88c8';
-  const torsoLo  = isGuard ? '#2a2a2a' : '#3a5e98';
-  const legHi    = isGuard ? '#303030' : '#2e3e6e';
-  const legLo    = isGuard ? '#1e1e1e' : '#1e2a50';
-  const armHi    = isGuard ? '#3e3e3e' : '#4878b8';
-  const armLo    = isGuard ? '#282828' : '#305898';
-  const skinHi   = '#dca070';
-  const skinLo   = '#c08858';
+  // Palette — richer, more saturated colors
+  const torsoHi  = isGuard ? '#555560' : '#6090d0';
+  const torsoLo  = isGuard ? '#303038' : '#3860a0';
+  const legHi    = isGuard ? '#3a3a42' : '#384878';
+  const legLo    = isGuard ? '#222228' : '#243058';
+  const armHi    = isGuard ? '#484850' : '#5080c0';
+  const armLo    = isGuard ? '#2e2e36' : '#3868a8';
+  const skinHi   = '#e4b080';
+  const skinLo   = '#c89060';
 
-  // Ground shadow — outer soft spread
+  // Ground shadow — richer, more realistic
   ctx.save();
-  const shGrad = ctx.createRadialGradient(cx, cy + sc * 2, 0, cx, cy + sc * 2, sc * 14);
-  shGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
-  shGrad.addColorStop(0.5, 'rgba(0,0,0,0.18)');
+  const shGrad = ctx.createRadialGradient(cx, cy + sc * 2, 0, cx, cy + sc * 2, sc * 18);
+  shGrad.addColorStop(0, 'rgba(0,0,0,0.45)');
+  shGrad.addColorStop(0.3, 'rgba(0,0,0,0.25)');
+  shGrad.addColorStop(0.7, 'rgba(0,0,0,0.10)');
   shGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = shGrad;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + sc * 2, sc * 14, sc * 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + sc * 2, sc * 18, sc * 7, 0, 0, Math.PI * 2);
   ctx.fill();
   // Contact ring — tight dark core at feet
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + sc * 2, sc * 7, sc * 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + sc * 2, sc * 8, sc * 3.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
@@ -5857,80 +6008,83 @@ function drawAtmosphere() {
   const { floorTL, floorTR, floorBL, floorBR, ceilTL, ceilTR } = ROOM;
   const lt = LIGHT_TINTS[currentRoom] || LIGHT_TINTS[1];
 
-  // ── Dramatic light cones from ceiling onto floor ──
+  // ── Dramatic light pools on floor — brighter, more visible ──
   for (const t of [0.3, 0.7]) {
     const poolPos = floorToScreen(t, 0.25);
-    // Main light pool — large, visible
+    // Main light pool — large, bright
     const poolGrad = ctx.createRadialGradient(
       s(poolPos.x), s(poolPos.y), 0,
-      s(poolPos.x), s(poolPos.y), s(200)
+      s(poolPos.x), s(poolPos.y), s(240)
     );
-    poolGrad.addColorStop(0, `rgba(${lt.glow},0.18)`);
-    poolGrad.addColorStop(0.3, `rgba(${lt.glow},0.10)`);
-    poolGrad.addColorStop(0.6, `rgba(${lt.glow},0.04)`);
+    poolGrad.addColorStop(0, `rgba(${lt.glow},0.25)`);
+    poolGrad.addColorStop(0.2, `rgba(${lt.glow},0.16)`);
+    poolGrad.addColorStop(0.5, `rgba(${lt.glow},0.08)`);
+    poolGrad.addColorStop(0.8, `rgba(${lt.glow},0.02)`);
     poolGrad.addColorStop(1, `rgba(${lt.glow},0)`);
     ctx.fillStyle = poolGrad;
     ctx.beginPath();
-    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(200), s(120), 0, 0, Math.PI * 2);
+    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(240), s(140), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bright center spot
+    // Bright center hotspot
     const spotGrad = ctx.createRadialGradient(
       s(poolPos.x), s(poolPos.y), 0,
-      s(poolPos.x), s(poolPos.y), s(50)
+      s(poolPos.x), s(poolPos.y), s(60)
     );
-    spotGrad.addColorStop(0, `rgba(${lt.glow},0.12)`);
+    spotGrad.addColorStop(0, `rgba(${lt.glow},0.18)`);
+    spotGrad.addColorStop(0.5, `rgba(${lt.glow},0.06)`);
     spotGrad.addColorStop(1, `rgba(${lt.glow},0)`);
     ctx.fillStyle = spotGrad;
     ctx.beginPath();
-    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(50), s(30), 0, 0, Math.PI * 2);
+    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(60), s(35), 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── Overall darkness overlay — makes room feel dimmer ──
-  ctx.fillStyle = 'rgba(0,0,10,0.15)';
+  // ── Darkness between lights — areas not lit feel darker ──
+  ctx.fillStyle = 'rgba(0,0,12,0.12)';
   ctx.fillRect(0, 0, s(1280), s(720));
 
-  // ── Proximity danger tint — red haze when guard is close ──
+  // ── Proximity danger tint — more dramatic red haze ──
   const du = player.u - guard.u;
   const dv = player.v - guard.v;
   const dist = Math.hypot(du, dv);
   if (dist < 0.35 && !detected && !won && !playerHidden) {
-    const intensity = Math.max(0, 1 - dist / 0.35) * 0.25;
-    ctx.fillStyle = `rgba(180,0,0,${intensity.toFixed(3)})`;
+    const intensity = Math.max(0, 1 - dist / 0.35) * 0.30;
+    ctx.fillStyle = `rgba(200,20,0,${intensity.toFixed(3)})`;
     ctx.fillRect(0, 0, s(1280), s(720));
-    // Pulsing edge glow
+    // Pulsing edge glow — more dramatic
     const pulse = 0.5 + Math.sin(gameTime * 6) * 0.5;
     const edgeGrad = ctx.createRadialGradient(
-      s(640), s(360), s(200),
-      s(640), s(360), s(600)
+      s(640), s(360), s(180),
+      s(640), s(360), s(640)
     );
-    edgeGrad.addColorStop(0, 'rgba(180,0,0,0)');
-    edgeGrad.addColorStop(1, `rgba(180,0,0,${(intensity * pulse * 0.4).toFixed(3)})`);
+    edgeGrad.addColorStop(0, 'rgba(200,20,0,0)');
+    edgeGrad.addColorStop(1, `rgba(200,20,0,${(intensity * pulse * 0.5).toFixed(3)})`);
     ctx.fillStyle = edgeGrad;
     ctx.fillRect(0, 0, s(1280), s(720));
   }
 
-  // ── Heavy vignette — strong cinematic darkness at edges ──
+  // ── Heavy cinematic vignette — deep, rich darkness at edges ──
   const vigW = s(1280), vigH = s(720);
   const vigGrad = ctx.createRadialGradient(
-    vigW / 2, vigH / 2, Math.min(vigW, vigH) * 0.25,
-    vigW / 2, vigH / 2, Math.max(vigW, vigH) * 0.65
+    vigW / 2, vigH / 2, Math.min(vigW, vigH) * 0.22,
+    vigW / 2, vigH / 2, Math.max(vigW, vigH) * 0.68
   );
   vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  vigGrad.addColorStop(0.5, 'rgba(0,0,0,0.12)');
-  vigGrad.addColorStop(0.8, 'rgba(0,0,0,0.30)');
-  vigGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+  vigGrad.addColorStop(0.4, 'rgba(0,0,0,0.10)');
+  vigGrad.addColorStop(0.7, 'rgba(0,0,0,0.30)');
+  vigGrad.addColorStop(0.9, 'rgba(0,0,0,0.50)');
+  vigGrad.addColorStop(1, 'rgba(0,0,0,0.65)');
   ctx.fillStyle = vigGrad;
   ctx.fillRect(0, 0, vigW, vigH);
 
-  // ── Film grain — subtle noise for gritty realism ──
+  // ── Film grain — subtle noise for cinematic feel ──
   ctx.save();
-  ctx.globalAlpha = 0.04;
-  for (let i = 0; i < 100; i++) {
+  ctx.globalAlpha = 0.035;
+  for (let i = 0; i < 120; i++) {
     const gx = Math.random() * 1280;
     const gy = Math.random() * 720;
-    const gs = 1 + Math.random() * 3;
+    const gs = 1 + Math.random() * 2.5;
     ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
     ctx.fillRect(s(gx), s(gy), s(gs), s(gs));
   }
@@ -5938,7 +6092,7 @@ function drawAtmosphere() {
 }
 
 function render() {
-  ctx.fillStyle = '#0a0a0f';
+  ctx.fillStyle = '#060810';
   ctx.fillRect(0, 0, W, H);
 
   ctx.save();
