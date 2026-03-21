@@ -2310,67 +2310,67 @@ function createCharacterModel(type) {
 }
 
 // ─── GLB Model Loading ──────────────────────────────────────────────────────
+let glbPlayerAnimations = [];
+let glbGuardAnimations = [];
+
+function prepareGLBModel(scene, targetHeight) {
+  // Compute bounding box of the loaded scene
+  const box = new THREE.Box3().setFromObject(scene);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  console.log('GLB model size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2));
+
+  // Scale to target height
+  const scaleFactor = targetHeight / size.y;
+  scene.scale.setScalar(scaleFactor);
+
+  // Offset so feet are at y=0 and model is centered on x/z
+  scene.position.set(
+    -center.x * scaleFactor,
+    -box.min.y * scaleFactor,
+    -center.z * scaleFactor
+  );
+
+  scene.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+}
+
+function createGLBWrapper(glbScene) {
+  // Wrap in a Group so the game can set position/rotation on the Group
+  // while the inner model stays correctly scaled and offset
+  const wrapper = new THREE.Group();
+  const clone = glbScene.clone();
+  // Copy scale and position from the prepared model
+  clone.scale.copy(glbScene.scale);
+  clone.position.copy(glbScene.position);
+  wrapper.add(clone);
+  return wrapper;
+}
+
 function loadGLBModels() {
   if (glbModelsLoaded) return;
 
-  // Load scientist model (player character in Room 3)
+  // Load scientist model (player character)
   gltfLoader.load('scp_scientist_male_1_-_fix_rigger.glb', (gltf) => {
     glbPlayerModel = gltf.scene;
-    // Scale and adjust the model
-    const box = new THREE.Box3().setFromObject(glbPlayerModel);
-    const size = box.getSize(new THREE.Vector3());
-    const targetHeight = 1.65; // Match procedural character height
-    const scaleFactor = targetHeight / size.y;
-    glbPlayerModel.scale.setScalar(scaleFactor);
-    // Center model at origin
-    const center = box.getCenter(new THREE.Vector3());
-    glbPlayerModel.position.y = -(center.y * scaleFactor) + (targetHeight / 2 - size.y * scaleFactor / 2);
-    glbPlayerModel.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    // Setup animations if available
-    if (gltf.animations && gltf.animations.length > 0) {
-      playerMixer = new THREE.AnimationMixer(glbPlayerModel);
-      const idleAction = playerMixer.clipAction(gltf.animations[0]);
-      idleAction.play();
-    }
-    // If we're in Room 3, swap the model
-    if (playerModel) {
-      swapToGLBModels();
-    }
-    console.log('Scientist model loaded');
+    glbPlayerAnimations = gltf.animations || [];
+    prepareGLBModel(glbPlayerModel, 1.65);
+    console.log('Scientist model loaded, animations:', glbPlayerAnimations.length);
+    if (playerModel) swapToGLBModels();
   }, undefined, (err) => console.warn('Could not load scientist GLB:', err));
 
-  // Load demon creature model (guard character in Room 3)
+  // Load demon creature model (guard character)
   gltfLoader.load('demon_creature.glb', (gltf) => {
     glbGuardModel = gltf.scene;
-    // Scale and adjust
-    const box = new THREE.Box3().setFromObject(glbGuardModel);
-    const size = box.getSize(new THREE.Vector3());
-    const targetHeight = 1.75; // Slightly taller than player
-    const scaleFactor = targetHeight / size.y;
-    glbGuardModel.scale.setScalar(scaleFactor);
-    const center = box.getCenter(new THREE.Vector3());
-    glbGuardModel.position.y = -(center.y * scaleFactor) + (targetHeight / 2 - size.y * scaleFactor / 2);
-    glbGuardModel.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    // Setup animations if available
-    if (gltf.animations && gltf.animations.length > 0) {
-      guardMixer = new THREE.AnimationMixer(glbGuardModel);
-      const idleAction = guardMixer.clipAction(gltf.animations[0]);
-      idleAction.play();
-    }
-    if (guardModel) {
-      swapToGLBModels();
-    }
-    console.log('Demon creature model loaded');
+    glbGuardAnimations = gltf.animations || [];
+    prepareGLBModel(glbGuardModel, 1.75);
+    console.log('Demon creature model loaded, animations:', glbGuardAnimations.length);
+    if (guardModel) swapToGLBModels();
   }, undefined, (err) => console.warn('Could not load demon GLB:', err));
 
   glbModelsLoaded = true;
@@ -2383,14 +2383,16 @@ function swapToGLBModels() {
     const rot = playerModel.rotation.y;
     const vis = playerModel.visible;
     scene3D.remove(playerModel);
-    playerModel = glbPlayerModel.clone();
+    playerModel = createGLBWrapper(glbPlayerModel);
     playerModel.position.copy(pos);
     playerModel.rotation.y = rot;
     playerModel.visible = vis;
     scene3D.add(playerModel);
-    // Re-setup mixer for the clone
-    if (playerMixer) {
+    // Setup animation mixer on the wrapper
+    if (glbPlayerAnimations.length > 0) {
       playerMixer = new THREE.AnimationMixer(playerModel);
+      const action = playerMixer.clipAction(glbPlayerAnimations[0]);
+      action.play();
     }
   }
 
@@ -2399,12 +2401,14 @@ function swapToGLBModels() {
     const pos = guardModel.position.clone();
     const rot = guardModel.rotation.y;
     scene3D.remove(guardModel);
-    guardModel = glbGuardModel.clone();
+    guardModel = createGLBWrapper(glbGuardModel);
     guardModel.position.copy(pos);
     guardModel.rotation.y = rot;
     scene3D.add(guardModel);
-    if (guardMixer) {
+    if (glbGuardAnimations.length > 0) {
       guardMixer = new THREE.AnimationMixer(guardModel);
+      const action = guardMixer.clipAction(glbGuardAnimations[0]);
+      action.play();
     }
   }
 }
