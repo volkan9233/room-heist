@@ -1614,276 +1614,313 @@ function createCharacterModel(type) {
   const beltMat = new THREE.MeshStandardMaterial({ color: beltColor, roughness: 0.5, metalness: 0.15 });
   const metalMat = new THREE.MeshStandardMaterial({ color: gearMetal, roughness: 0.3, metalness: 0.7 });
 
-  // --- Boots (tactical, thick sole + upper) ---
+  // Helper: tapered cylinder (capsule-like limb segment)
+  function limb(rTop, rBot, h, mat, segs) {
+    return new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, segs || 10), mat);
+  }
+
+  // ═══ BOOTS — tactical, chunky sole + fitted upper ═══
   const soleMat = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.9, metalness: 0.0 });
   for (const side of [-1, 1]) {
-    // Sole
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.26), soleMat);
-    sole.position.set(side * 0.12, 0.02, 0.02);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.04, 0.28), soleMat);
+    sole.position.set(side * 0.11, 0.02, 0.02);
     sole.castShadow = true;
     group.add(sole);
-    // Boot upper
-    const bootUpper = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.22), bootMat);
-    bootUpper.position.set(side * 0.12, 0.13, 0.01);
-    bootUpper.castShadow = true;
-    group.add(bootUpper);
-    // Boot collar trim
-    const bootCollar = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.23), fabricDarkMat);
-    bootCollar.position.set(side * 0.12, 0.22, 0.01);
+    // Boot shaft — tapered to ankle
+    const bootShaft = limb(0.06, 0.075, 0.22, bootMat);
+    bootShaft.position.set(side * 0.11, 0.15, 0.01);
+    bootShaft.castShadow = true;
+    group.add(bootShaft);
+    // Boot collar
+    const bootCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.065, 0.03, 10),
+      fabricDarkMat
+    );
+    bootCollar.position.set(side * 0.11, 0.27, 0.01);
     group.add(bootCollar);
   }
 
-  // --- Legs (tactical pants, tapered) ---
-  const legGeom = new THREE.CylinderGeometry(0.08, 0.10, 0.48, 8);
+  // ═══ LEGS — proper thigh > knee > calf taper ═══
   for (const side of [-1, 1]) {
-    const leg = new THREE.Mesh(legGeom, fabricDarkMat);
-    leg.position.set(side * 0.12, 0.46, 0);
-    leg.name = side < 0 ? 'leftLeg' : 'rightLeg';
-    leg.castShadow = true;
-    group.add(leg);
-    // Knee pad
+    // Thigh — wider at hip, narrower at knee
+    const thigh = limb(0.065, 0.085, 0.28, fabricDarkMat);
+    thigh.position.set(side * 0.11, 0.43, 0);
+    thigh.name = side < 0 ? 'leftLeg' : 'rightLeg';
+    thigh.castShadow = true;
+    group.add(thigh);
+    // Calf — narrower
+    const calf = limb(0.055, 0.065, 0.24, fabricDarkMat);
+    calf.position.set(side * 0.11, 0.30, 0);
+    calf.castShadow = true;
+    group.add(calf);
+    // Knee pad — subtle, rounded
     const kneePad = new THREE.Mesh(
-      new THREE.BoxGeometry(0.10, 0.08, 0.06),
+      new THREE.CylinderGeometry(0.055, 0.06, 0.06, 8),
       new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5, metalness: 0.1 })
     );
-    kneePad.position.set(side * 0.12, 0.42, 0.07);
+    kneePad.position.set(side * 0.11, 0.36, 0.05);
     group.add(kneePad);
-    // Cargo pocket on outer side
-    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.10, 0.08), fabricMat);
-    pocket.position.set(side * 0.19, 0.52, 0);
+    // Cargo pocket on outer thigh
+    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.07), fabricMat);
+    pocket.position.set(side * 0.17, 0.46, 0);
     group.add(pocket);
   }
 
-  // --- Belt / waist separation ---
-  const beltMesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.28), beltMat);
-  beltMesh.position.y = 0.72;
+  // ═══ HIPS / PELVIS — wider than waist, transitions legs to torso ═══
+  const hipsGeom = new THREE.CylinderGeometry(0.18, 0.20, 0.12, 10);
+  const hips = new THREE.Mesh(hipsGeom, fabricDarkMat);
+  hips.position.y = 0.62;
+  hips.castShadow = true;
+  group.add(hips);
+
+  // ═══ BELT — sits at waist ═══
+  const beltMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.19, 0.19, 0.05, 12),
+    beltMat
+  );
+  beltMesh.position.y = 0.70;
   beltMesh.castShadow = true;
   group.add(beltMesh);
   // Belt buckle
-  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.03), metalMat);
-  buckle.position.set(0, 0.72, 0.14);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.02), metalMat);
+  buckle.position.set(0, 0.70, 0.19);
   group.add(buckle);
 
   if (isGuard) {
-    // Guard utility pouches on belt
-    const pouch1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.06), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
-    pouch1.position.set(-0.18, 0.72, 0.12);
+    // Guard utility pouches
+    const pouch1 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.06, 0.05), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
+    pouch1.position.set(-0.16, 0.70, 0.15);
     group.add(pouch1);
-    const pouch2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.09, 0.05), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
-    pouch2.position.set(0.20, 0.72, 0.10);
+    const pouch2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.04), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
+    pouch2.position.set(0.17, 0.70, 0.13);
     group.add(pouch2);
-    // Radio on belt
-    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.10, 0.03), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.4, metalness: 0.3 }));
-    radio.position.set(0.22, 0.75, -0.10);
+    // Radio on belt (hip)
+    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.025), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.4, metalness: 0.3 }));
+    radio.position.set(0.20, 0.73, -0.12);
     group.add(radio);
   } else {
-    // Player: compact belt pouch (tools)
-    const toolPouch = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.05), new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.6 }));
-    toolPouch.position.set(0.18, 0.72, 0.11);
+    const toolPouch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.04), new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.6 }));
+    toolPouch.position.set(0.16, 0.70, 0.14);
     group.add(toolPouch);
   }
 
-  // --- Torso (main body, slightly tapered) ---
-  const torsoGeom = new THREE.BoxGeometry(0.44, 0.52, 0.24);
-  const torso = new THREE.Mesh(torsoGeom, fabricMat);
-  torso.position.y = 1.0;
-  torso.castShadow = true;
-  group.add(torso);
+  // ═══ TORSO — two-part: wider chest + narrower abdomen ═══
+  // Abdomen (lower torso) — narrower
+  const abdomenGeom = new THREE.CylinderGeometry(0.17, 0.19, 0.18, 10);
+  const abdomen = new THREE.Mesh(abdomenGeom, fabricMat);
+  abdomen.position.y = 0.81;
+  abdomen.castShadow = true;
+  group.add(abdomen);
 
-  // Chest panel / vest overlay
-  const vestGeom = new THREE.BoxGeometry(0.40, 0.38, 0.03);
+  // Chest (upper torso) — wider, barrel-shaped
+  const chestGeom = new THREE.CylinderGeometry(0.22, 0.18, 0.30, 10);
+  const chest = new THREE.Mesh(chestGeom, fabricMat);
+  chest.position.y = 1.07;
+  chest.scale.z = 0.85; // slightly flattened front-to-back for natural ribcage
+  chest.castShadow = true;
+  group.add(chest);
+
+  // Vest / tactical overlay
   const vestMat = isGuard
     ? new THREE.MeshStandardMaterial({ color: 0x3a3e45, roughness: 0.65, metalness: 0.05 })
     : new THREE.MeshStandardMaterial({ color: 0x303848, roughness: 0.70, metalness: 0.02 });
-  const vest = new THREE.Mesh(vestGeom, vestMat);
-  vest.position.set(0, 1.05, 0.13);
-  group.add(vest);
-  // Vest back panel
-  const vestBack = new THREE.Mesh(vestGeom, vestMat);
-  vestBack.position.set(0, 1.05, -0.13);
+  // Front vest panel
+  const vestFront = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.03), vestMat);
+  vestFront.position.set(0, 1.06, 0.14);
+  group.add(vestFront);
+  // Back vest panel
+  const vestBack = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.03), vestMat);
+  vestBack.position.set(0, 1.06, -0.14);
   group.add(vestBack);
 
+  // ═══ SHOULDERS — spherical joints bridging chest to arms ═══
+  for (const side of [-1, 1]) {
+    const shoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 10, 8),
+      fabricMat
+    );
+    shoulder.position.set(side * 0.26, 1.20, 0);
+    shoulder.castShadow = true;
+    group.add(shoulder);
+  }
+
   if (isGuard) {
-    // Guard shoulder epaulettes
+    // Epaulettes on shoulders
     for (const side of [-1, 1]) {
       const epaulette = new THREE.Mesh(
-        new THREE.BoxGeometry(0.10, 0.03, 0.14),
+        new THREE.BoxGeometry(0.09, 0.025, 0.12),
         new THREE.MeshStandardMaterial({ color: 0x505560, roughness: 0.5, metalness: 0.2 })
       );
-      epaulette.position.set(side * 0.22, 1.27, 0);
+      epaulette.position.set(side * 0.26, 1.25, 0);
       group.add(epaulette);
     }
-    // Guard chest badge / ID
-    const badge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.01), metalMat);
-    badge.position.set(-0.10, 1.12, 0.155);
+    // Badge
+    const badge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.01), metalMat);
+    badge.position.set(-0.09, 1.10, 0.16);
     group.add(badge);
     // Name tag
     const nameTag = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.04, 0.01),
+      new THREE.BoxGeometry(0.10, 0.035, 0.01),
       new THREE.MeshStandardMaterial({ color: 0xd0d4d8, roughness: 0.3, metalness: 0.4 })
     );
-    nameTag.position.set(0.08, 1.12, 0.155);
+    nameTag.position.set(0.07, 1.10, 0.16);
     group.add(nameTag);
   } else {
-    // Player: shoulder strap / harness detail
-    const strap = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.48, 0.04),
-      new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.5, metalness: 0.1 })
-    );
-    strap.position.set(-0.12, 1.0, 0.13);
-    strap.rotation.z = 0.15;
+    // Player: shoulder harness straps (cross-body)
+    const strapMat = new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.5, metalness: 0.1 });
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.40, 0.035), strapMat);
+    strap.position.set(-0.10, 1.02, 0.12);
+    strap.rotation.z = 0.12;
     group.add(strap);
-    const strap2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.48, 0.04),
-      new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.5, metalness: 0.1 })
-    );
-    strap2.position.set(0.12, 1.0, 0.13);
-    strap2.rotation.z = -0.15;
+    const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.40, 0.035), strapMat);
+    strap2.position.set(0.10, 1.02, 0.12);
+    strap2.rotation.z = -0.12;
     group.add(strap2);
   }
 
-  // --- Collar / neck zone ---
-  const collarGeom = new THREE.BoxGeometry(0.32, 0.06, 0.20);
-  const collar = new THREE.Mesh(collarGeom, fabricLightMat);
-  collar.position.y = 1.28;
+  // ═══ COLLAR / NECK ZONE ═══
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.10, 0.14, 0.05, 10),
+    fabricLightMat
+  );
+  collar.position.y = 1.24;
   group.add(collar);
 
-  // --- Arms (upper + forearm, slight taper) ---
+  // ═══ ARMS — proper upper arm + forearm taper, natural hang ═══
   for (const side of [-1, 1]) {
-    // Upper arm
-    const upperArm = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.065, 0.075, 0.30, 8),
-      fabricMat
-    );
-    upperArm.position.set(side * 0.29, 1.10, 0);
+    // Upper arm — thicker at shoulder, tapers to elbow
+    const upperArm = limb(0.055, 0.065, 0.26, fabricMat);
+    upperArm.position.set(side * 0.30, 1.06, 0);
     upperArm.name = side < 0 ? 'leftArm' : 'rightArm';
     upperArm.castShadow = true;
     group.add(upperArm);
-    // Forearm (rolled sleeve look)
-    const forearm = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.055, 0.065, 0.24, 8),
+    // Elbow joint
+    const elbow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 8, 6),
       fabricDarkMat
     );
-    forearm.position.set(side * 0.29, 0.85, 0);
+    elbow.position.set(side * 0.30, 0.92, 0);
+    group.add(elbow);
+    // Forearm — tapers to wrist
+    const forearm = limb(0.04, 0.052, 0.22, fabricDarkMat);
+    forearm.position.set(side * 0.30, 0.80, 0);
     forearm.castShadow = true;
     group.add(forearm);
-    // Hand
-    const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(0.05, 8, 6),
+    // Wrist
+    const wrist = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.038, 0.04, 0.03, 8),
       skinMat
     );
-    hand.position.set(side * 0.29, 0.72, 0);
+    wrist.position.set(side * 0.30, 0.68, 0);
+    group.add(wrist);
+    // Hand — slightly elongated
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 8, 6),
+      skinMat
+    );
+    hand.position.set(side * 0.30, 0.64, 0.01);
+    hand.scale.y = 1.3;
     group.add(hand);
 
     if (isGuard) {
       // Guard arm band
       const armBand = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.077, 0.077, 0.03, 8),
+        new THREE.CylinderGeometry(0.067, 0.067, 0.025, 10),
         new THREE.MeshStandardMaterial({ color: 0x808590, roughness: 0.35, metalness: 0.3 })
       );
-      armBand.position.set(side * 0.29, 0.97, 0);
+      armBand.position.set(side * 0.30, 0.98, 0);
       group.add(armBand);
     }
   }
 
-  // Guard holds flashlight in right hand
+  // Guard flashlight in right hand
   if (isGuard) {
     const flashlight = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.025, 0.16, 8),
+      new THREE.CylinderGeometry(0.018, 0.022, 0.14, 8),
       new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.3, metalness: 0.6 })
     );
-    flashlight.position.set(0.29, 0.68, 0.04);
+    flashlight.position.set(0.30, 0.60, 0.04);
     flashlight.rotation.x = Math.PI / 2;
     group.add(flashlight);
     const flashlightLens = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.025, 0.025, 0.01, 8),
+      new THREE.CylinderGeometry(0.022, 0.022, 0.01, 8),
       new THREE.MeshStandardMaterial({ color: 0xe0e8f0, emissive: 0xc0d0e0, emissiveIntensity: 0.3, roughness: 0.1, metalness: 0.0 })
     );
-    flashlightLens.position.set(0.29, 0.68, 0.13);
+    flashlightLens.position.set(0.30, 0.60, 0.12);
     flashlightLens.rotation.x = Math.PI / 2;
     group.add(flashlightLens);
   }
 
-  // --- Neck ---
-  const neckGeom = new THREE.CylinderGeometry(0.055, 0.07, 0.10, 8);
-  const neck = new THREE.Mesh(neckGeom, skinMat);
-  neck.position.y = 1.34;
+  // ═══ NECK — visible, connects chest to head ═══
+  const neck = limb(0.055, 0.065, 0.08, skinMat);
+  neck.position.y = 1.30;
   group.add(neck);
 
-  // --- Head (slightly elongated sphere) ---
-  const headGeom = new THREE.SphereGeometry(0.17, 16, 12);
+  // ═══ HEAD — taller, natural cranium shape ═══
+  const headGeom = new THREE.SphereGeometry(0.14, 16, 12);
   const head = new THREE.Mesh(headGeom, skinMat);
-  head.position.y = 1.50;
-  head.scale.y = 1.1;
+  head.position.y = 1.45;
+  head.scale.set(1.0, 1.15, 0.95); // taller, slightly narrower front-to-back
   head.castShadow = true;
   group.add(head);
+
+  // Jaw / chin — subtle box to break the sphere shape
+  const jaw = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.06, 0.10),
+    skinMat
+  );
+  jaw.position.set(0, 1.36, 0.03);
+  group.add(jaw);
 
   // Ears
   for (const side of [-1, 1]) {
     const ear = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 6, 6),
+      new THREE.SphereGeometry(0.03, 6, 6),
       skinMat
     );
-    ear.position.set(side * 0.16, 1.49, 0);
-    ear.scale.set(0.5, 0.8, 0.7);
+    ear.position.set(side * 0.135, 1.44, 0);
+    ear.scale.set(0.4, 0.7, 0.6);
     group.add(ear);
   }
 
-  // --- Headgear ---
+  // ═══ HEADGEAR ═══
   if (isGuard) {
-    // Security cap — proper flat-top cap with visor
+    // Security cap
     const capBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.19, 0.12, 12),
+      new THREE.CylinderGeometry(0.15, 0.16, 0.10, 12),
       new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.75, metalness: 0.0 })
     );
-    capBody.position.y = 1.60;
+    capBody.position.y = 1.55;
     group.add(capBody);
-    // Cap top
     const capTop = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.17, 0.18, 0.02, 12),
+      new THREE.CylinderGeometry(0.14, 0.15, 0.02, 12),
       new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.75 })
     );
-    capTop.position.y = 1.67;
+    capTop.position.y = 1.61;
     group.add(capTop);
-    // Visor
     const visor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.22, 0.02, 0.10),
+      new THREE.BoxGeometry(0.18, 0.015, 0.09),
       new THREE.MeshStandardMaterial({ color: 0x151820, roughness: 0.4, metalness: 0.15 })
     );
-    visor.position.set(0, 1.56, 0.14);
+    visor.position.set(0, 1.51, 0.12);
     visor.rotation.x = -0.2;
     group.add(visor);
-    // Cap badge (small metal emblem)
     const capBadge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.04, 0.01),
+      new THREE.BoxGeometry(0.035, 0.035, 0.01),
       new THREE.MeshStandardMaterial({ color: 0xc0a830, roughness: 0.2, metalness: 0.8 })
     );
-    capBadge.position.set(0, 1.60, 0.19);
+    capBadge.position.set(0, 1.55, 0.16);
     group.add(capBadge);
   } else {
-    // Player: short tactical hair, no headgear — stealth operative look
-    const hairGeom = new THREE.SphereGeometry(0.18, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    // Player: short tactical hair
+    const hairGeom = new THREE.SphereGeometry(0.15, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
     const hairMat = new THREE.MeshStandardMaterial({ color: 0x1a1818, roughness: 0.95 });
     const hair = new THREE.Mesh(hairGeom, hairMat);
-    hair.position.y = 1.54;
+    hair.position.y = 1.49;
     group.add(hair);
   }
 
-  // --- Eyes (simple but intentional) ---
-  for (const side of [-1, 1]) {
-    const eye = new THREE.Mesh(
-      new THREE.SphereGeometry(0.02, 6, 6),
-      new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.2 })
-    );
-    eye.position.set(side * 0.06, 1.51, 0.15);
-    group.add(eye);
-    const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.012, 6, 6),
-      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.1 })
-    );
-    pupil.position.set(side * 0.06, 1.51, 0.165);
-    group.add(pupil);
-  }
+  // No eyes at this scale — they create uncanny effect at game camera distance
 
   group.castShadow = true;
   return group;
@@ -1902,19 +1939,19 @@ function setupLights() {
     return light;
   }
 
-  // Industrial/facility lighting for all rooms
-  // Ambient — cool desaturated, low intensity
-  addLight(new THREE.AmbientLight(0x405070, 0.3));
+  // Industrial/facility lighting — balanced front-to-back
+  // Ambient — raised to lift overall shadow floor
+  addLight(new THREE.AmbientLight(0x405070, 0.50));
 
-  // Hemisphere — cool overhead, dark ground
-  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.25));
+  // Hemisphere — stronger sky contribution for back-wall visibility
+  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.40));
 
-  // Spotlight color per room — cool fluorescent for R1, slightly warmer for others
+  // Spotlight color per room
   const lightColors = { 1: 0xc8d8f0, 2: 0xd0d8e8, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  // Main ceiling spotlight 1 — industrial downlight (physically-based candela)
-  const spot1 = new THREE.SpotLight(lc, 150, 35, Math.PI / 3, 0.5, 1.0);
+  // Main ceiling spotlight 1 — reduced intensity to stop floor blowout
+  const spot1 = new THREE.SpotLight(lc, 80, 35, Math.PI / 3, 0.6, 1.0);
   spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
   spot1.target.position.set(-1, 0, 1);
   spot1.castShadow = true;
@@ -1925,8 +1962,8 @@ function setupLights() {
   addLight(spot1);
   scene3D.add(spot1.target);
 
-  // Main ceiling spotlight 2
-  const spot2 = new THREE.SpotLight(lc, 150, 35, Math.PI / 3, 0.5, 1.0);
+  // Main ceiling spotlight 2 — reduced intensity
+  const spot2 = new THREE.SpotLight(lc, 80, 35, Math.PI / 3, 0.6, 1.0);
   spot2.position.set(5, WALL_H + 4, -WORLD_D / 2 + 1);
   spot2.target.position.set(4, 0, 0);
   spot2.castShadow = true;
@@ -1937,11 +1974,16 @@ function setupLights() {
   addLight(spot2);
   scene3D.add(spot2.target);
 
-  if (currentRoom === 1) {
-    // Industrial accent lights for Room 1
+  // Back wall dedicated spotlight — lights the rack/back area
+  const backSpot = new THREE.SpotLight(lc, 60, 30, Math.PI / 3, 0.5, 1.0);
+  backSpot.position.set(0, WALL_H + 3, -WORLD_D / 2 + 3);
+  backSpot.target.position.set(0, 1, -WORLD_D / 2 + 1);
+  addLight(backSpot);
+  scene3D.add(backSpot.target);
 
-    // Cool ceiling wash from front
-    const ceilWash = new THREE.PointLight(0xc0d0e8, 8, 20);
+  if (currentRoom === 1) {
+    // Ceiling wash — stronger
+    const ceilWash = new THREE.PointLight(0xc0d0e8, 12, 22);
     ceilWash.position.set(0, WALL_H + 1, 3);
     addLight(ceilWash);
 
@@ -1961,9 +2003,9 @@ function setupLights() {
   fill.position.set(3, 4, WORLD_D / 2 + 3);
   addLight(fill);
 
-  // Back wall fill
-  const backFill = new THREE.PointLight(0x405070, 6, 25);
-  backFill.position.set(0, 3, -WORLD_D / 2 + 2);
+  // Back wall fill — stronger, closer to back wall
+  const backFill = new THREE.PointLight(0x405070, 15, 25);
+  backFill.position.set(0, 2.5, -WORLD_D / 2 + 1);
   addLight(backFill);
 }
 
@@ -1975,18 +2017,18 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 0.6;
+  renderer3D.toneMappingExposure = 0.8;
   renderer3D.outputColorSpace = THREE.SRGBColorSpace;
 
   // Scene — dark industrial atmosphere
   scene3D = new THREE.Scene();
   scene3D.background = new THREE.Color(0x0a0c12);
-  scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.018);
+  scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
 
-  // Camera — composed cinematic framing: intimate, close, deliberate
-  camera3D = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
-  camera3D.position.set(1, 8, 14);
-  camera3D.lookAt(0, 0, -0.5);
+  // Camera — premium fixed-camera 3/4 stealth room shot
+  camera3D = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
+  camera3D.position.set(0.5, 5.5, 12);
+  camera3D.lookAt(0, 0.5, -1.5);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
@@ -2009,8 +2051,8 @@ function initThreeJS() {
   const vignetteShader = {
     uniforms: {
       tDiffuse: { value: null },
-      darkness: { value: 0.6 },
-      offset: { value: 1.2 },
+      darkness: { value: 0.4 },
+      offset: { value: 1.4 },
     },
     vertexShader: `
       varying vec2 vUv;
