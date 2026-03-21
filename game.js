@@ -38,6 +38,7 @@ let scene3D, camera3D, renderer3D, composer;
 let playerModel, guardModel;
 let playerMixer, guardMixer; // Animation mixers for GLB models
 let glbModelsLoaded = false;
+let assetsReady = false; // Gate: true when both GLB models are loaded and scene-ready
 let currentRoomMeshes = [];
 const gltfLoader = new GLTFLoader();
 const WORLD_W = 20, WORLD_D = 15, WORLD_H = 6;
@@ -2310,6 +2311,15 @@ function loadGLBModels() {
   if (glbModelsLoaded) return;
   glbModelsLoaded = true;
 
+  let playerLoaded = false, guardLoaded = false;
+
+  function checkAllLoaded() {
+    if (playerLoaded && guardLoaded) {
+      assetsReady = true;
+      console.log('All GLB assets loaded — scene ready');
+    }
+  }
+
   // Helper to compute GLB model data with a target height
   function processGLB(gltf, targetHeight) {
     const scene = gltf.scene;
@@ -2324,10 +2334,9 @@ function loadGLBModels() {
     const center = box.getCenter(new THREE.Vector3());
     let sf = targetHeight / size.y;
     // Safety clamp: if raw model is absurdly small/large, cap the scale factor
-    // Reasonable GLB models are 0.1–10 units tall; scale factor should be 0.1–50
     if (sf > 50) sf = 50;
     if (sf < 0.001) sf = 0.001;
-    console.log('GLB raw size:', size.x.toFixed(4), size.y.toFixed(4), size.z.toFixed(4), '→ scale:', sf.toFixed(6));
+    console.log('GLB raw size:', size.x.toFixed(4), size.y.toFixed(4), size.z.toFixed(4), '→ scale:', sf.toFixed(6), '→ targetHeight:', targetHeight);
 
     return {
       scene, animations: gltf.animations || [],
@@ -2336,34 +2345,37 @@ function loadGLBModels() {
     };
   }
 
-  // Load scientist model (player character)
+  // Load scientist model (player character) — adult human scale
   gltfLoader.load('scp_scientist_male_1_-_fix_rigger.glb', (gltf) => {
-    glbPlayerData = processGLB(gltf, 1.1);
-    replaceWithGLB('player');
+    glbPlayerData = processGLB(gltf, 1.75);
+    buildGLBModel('player');
+    playerLoaded = true;
+    checkAllLoaded();
   }, undefined, (err) => console.warn('Could not load scientist GLB:', err));
 
-  // Load demon creature model (guard character)
+  // Load demon creature model (guard character) — larger, imposing
   gltfLoader.load('demon_creature.glb', (gltf) => {
-    glbGuardData = processGLB(gltf, 1.2);
-    replaceWithGLB('guard');
+    glbGuardData = processGLB(gltf, 2.2);
+    buildGLBModel('guard');
+    guardLoaded = true;
+    checkAllLoaded();
   }, undefined, (err) => console.warn('Could not load demon GLB:', err));
 }
 
-function replaceWithGLB(who) {
+// Build GLB model directly into the scene (no procedural swap)
+function buildGLBModel(who) {
   const data = who === 'player' ? glbPlayerData : glbGuardData;
-  const oldModel = who === 'player' ? playerModel : guardModel;
-  if (!data || !oldModel || !scene3D) return;
+  if (!data || !scene3D) return;
 
-  // Remove the old procedural model completely
-  scene3D.remove(oldModel);
+  // Remove any prior model (e.g. on room switch reload)
+  const oldModel = who === 'player' ? playerModel : guardModel;
+  if (oldModel) scene3D.remove(oldModel);
 
   // Create wrapper Group — game controls wrapper position/rotation
-  // Inner model is scaled, offset, and rotation-corrected inside the wrapper
   const wrapper = new THREE.Group();
   const inner = data.scene;
   inner.scale.setScalar(data.sf);
   inner.position.set(data.offsetX, data.offsetY, data.offsetZ);
-  // Apply rotation offset so model's "front" aligns with game's facing system
   inner.rotation.y = data.rotationOffset || 0;
   inner.traverse((child) => {
     if (child.isMesh) {
@@ -2373,12 +2385,8 @@ function replaceWithGLB(who) {
   });
   wrapper.add(inner);
 
-  // Copy position from old model, always start visible
-  wrapper.position.copy(oldModel.position);
-  wrapper.rotation.y = oldModel.rotation.y;
+  // Position at world origin initially; updateCharacterModel will place correctly
   wrapper.visible = true;
-
-  // Store rotation offset on wrapper for updateCharacterModel to use
   wrapper.userData.rotationOffset = data.rotationOffset || 0;
   wrapper.userData.isGLB = true;
 
@@ -2388,9 +2396,7 @@ function replaceWithGLB(who) {
   let mixer = null;
   if (data.animations.length > 0) {
     mixer = new THREE.AnimationMixer(inner);
-    // Log available animations for debugging
     console.log(who, 'animations:', data.animations.map(a => a.name));
-    // Find walk/run animation or use first one
     let walkClip = data.animations.find(a => /walk|run|move|locomotion/i.test(a.name));
     if (!walkClip) walkClip = data.animations[0];
     const action = mixer.clipAction(walkClip);
@@ -2628,13 +2634,7 @@ function initThreeJS() {
   fxaaPass.uniforms['resolution'].value.set(1 / W, 1 / H);
   composer.addPass(fxaaPass);
 
-  // Characters — start with procedural models visible, GLB will replace when loaded
-  playerModel = createCharacterModel('player');
-  guardModel = createCharacterModel('guard');
-  scene3D.add(playerModel);
-  scene3D.add(guardModel);
-
-  // Start loading GLB models (async — will swap when ready)
+  // Start loading GLB character models (game waits for assetsReady before gameplay)
   loadGLBModels();
 }
 
@@ -9045,9 +9045,39 @@ try {
   ctx.fillText('Three.js init failed: ' + e.message, 20, 40);
 }
 
+function renderLoadingScreen() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0, 0, W, H);
+
+  // Pulsing loading text
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 500);
+  ctx.globalAlpha = 0.4 + 0.6 * pulse;
+  ctx.fillStyle = '#40e8e0';
+  ctx.font = `bold ${Math.round(18 * scale)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('LOADING ASSETS...', W / 2, H / 2);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+
+  // Render 3D scene in background (room is already built, just no characters yet)
+  if (renderer3D && scene3D && camera3D) {
+    if (composer) composer.render();
+    else renderer3D.render(scene3D, camera3D);
+  }
+}
+
 function loop(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
+
+  if (!assetsReady) {
+    // Assets still loading — show loading screen, do NOT run gameplay
+    renderLoadingScreen();
+    requestAnimationFrame(loop);
+    return;
+  }
+
   update(dt);
   render();
   requestAnimationFrame(loop);
