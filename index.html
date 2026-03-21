@@ -9,7 +9,14 @@
 <body>
   <canvas id="gameCanvas"></canvas>
   <canvas id="uiCanvas"></canvas>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.min.js"></script>
+  <!-- Three.js r157 — last version with UMD three.min.js build -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script>
+    // Fallback if primary CDN fails
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="https://unpkg.com/three@0.157.0/build/three.min.js"><\/script>');
+    }
+  </script>
   <script src="game.js"></script>
 </body>
 </html>
