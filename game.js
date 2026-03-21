@@ -412,6 +412,12 @@ canvas.addEventListener('pointerdown', function(e) {
   const clickX = e.clientX;
   const clickY = e.clientY;
 
+  // Handle lockpick clicks
+  if (lockpick.active && !lockpick.success && !lockpick.failed) {
+    lockpickClick();
+    return;
+  }
+
   // Handle crafting panel clicks when open
   if (inventoryOpen && inventory.length >= 2) {
     const offsetX = (W - 1280 * scale) / 2;
@@ -637,6 +643,220 @@ function useItem(itemId) {
 let placedTraps = [];
 let jammerActiveTimer = 0;
 let guardSlowTimer = 0;
+
+// ─── Lockpick Mini-Game ──────────────────────────────────────────────────────
+const lockpick = {
+  active: false,
+  pins: [],        // array of { targetY, currentY, locked, speed, phase }
+  numPins: 4,
+  timeLimit: 12,   // seconds to complete
+  timer: 0,
+  success: false,
+  failed: false,
+  onComplete: null, // callback when lock is picked
+  fadeTimer: 0,
+};
+
+function startLockpick(numPins, timeLimit, onComplete) {
+  lockpick.active = true;
+  lockpick.numPins = numPins || 4;
+  lockpick.timeLimit = timeLimit || 12;
+  lockpick.timer = lockpick.timeLimit;
+  lockpick.success = false;
+  lockpick.failed = false;
+  lockpick.onComplete = onComplete;
+  lockpick.fadeTimer = 0;
+  lockpick.pins = [];
+  for (let i = 0; i < lockpick.numPins; i++) {
+    lockpick.pins.push({
+      targetY: 0.3 + Math.random() * 0.4,  // sweet spot (0-1 range)
+      currentY: 0,
+      locked: false,
+      speed: 0.6 + Math.random() * 0.8,     // oscillation speed
+      phase: Math.random() * Math.PI * 2,    // starting phase
+      sweetSpotSize: 0.12 - i * 0.015,       // gets harder per pin
+    });
+  }
+}
+
+function updateLockpick(dt) {
+  if (!lockpick.active) return;
+  if (lockpick.success || lockpick.failed) {
+    lockpick.fadeTimer += dt;
+    if (lockpick.fadeTimer > 1.5) {
+      lockpick.active = false;
+      if (lockpick.success && lockpick.onComplete) {
+        lockpick.onComplete();
+      }
+    }
+    return;
+  }
+
+  lockpick.timer -= dt;
+  if (lockpick.timer <= 0) {
+    lockpick.failed = true;
+    lockpick.fadeTimer = 0;
+    return;
+  }
+
+  // Animate unlocked pins
+  for (const pin of lockpick.pins) {
+    if (!pin.locked) {
+      pin.phase += dt * pin.speed * Math.PI * 2;
+      pin.currentY = 0.5 + Math.sin(pin.phase) * 0.5; // 0-1 oscillation
+    }
+  }
+}
+
+function lockpickClick() {
+  if (!lockpick.active || lockpick.success || lockpick.failed) return;
+
+  // Find first unlocked pin
+  for (const pin of lockpick.pins) {
+    if (!pin.locked) {
+      const dist = Math.abs(pin.currentY - pin.targetY);
+      if (dist < pin.sweetSpotSize) {
+        pin.locked = true;
+        pin.currentY = pin.targetY;
+        // Check if all pins locked
+        if (lockpick.pins.every(p => p.locked)) {
+          lockpick.success = true;
+          lockpick.fadeTimer = 0;
+        }
+      } else {
+        // Missed — reset all pins!
+        for (const p of lockpick.pins) {
+          p.locked = false;
+          p.phase = Math.random() * Math.PI * 2;
+        }
+      }
+      return;
+    }
+  }
+}
+
+function drawLockpick() {
+  if (!lockpick.active) return;
+
+  const panelW = 360, panelH = 280;
+  const px = 640 - panelW / 2;
+  const py = 360 - panelH / 2;
+
+  // Darken background
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, s(1280), s(720));
+
+  // Panel
+  ctx.fillStyle = 'rgba(15,15,25,0.95)';
+  ctx.beginPath();
+  ctx.roundRect(s(px), s(py), s(panelW), s(panelH), s(10));
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,60,0.4)';
+  ctx.lineWidth = s(2);
+  ctx.stroke();
+
+  // Title
+  ctx.font = `bold ${s(16)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd740';
+  ctx.fillText('LOCKPICK', s(640), s(py + 24));
+
+  // Timer bar
+  const timerPct = Math.max(0, lockpick.timer / lockpick.timeLimit);
+  const barW = panelW - 40;
+  const barH = 8;
+  const barX = px + 20;
+  const barY = py + 34;
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(s(barX), s(barY), s(barW), s(barH));
+  const timerColor = timerPct > 0.3 ? '#40e040' : '#ff4040';
+  ctx.fillStyle = timerColor;
+  ctx.fillRect(s(barX), s(barY), s(barW * timerPct), s(barH));
+
+  // Pin slots
+  const pinAreaY = py + 55;
+  const pinAreaH = 160;
+  const pinW = 40;
+  const pinGap = 15;
+  const totalPinW = lockpick.numPins * pinW + (lockpick.numPins - 1) * pinGap;
+  const pinStartX = 640 - totalPinW / 2;
+
+  for (let i = 0; i < lockpick.pins.length; i++) {
+    const pin = lockpick.pins[i];
+    const pinX = pinStartX + i * (pinW + pinGap);
+
+    // Pin channel
+    ctx.fillStyle = 'rgba(30,30,50,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(s(pinX), s(pinAreaY), s(pinW), s(pinAreaH), s(4));
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = s(1);
+    ctx.stroke();
+
+    // Sweet spot indicator
+    const sweetY = pinAreaY + pin.targetY * pinAreaH;
+    const sweetH = pin.sweetSpotSize * pinAreaH;
+    ctx.fillStyle = pin.locked ? 'rgba(60,200,60,0.3)' : 'rgba(255,200,60,0.15)';
+    ctx.fillRect(s(pinX + 2), s(sweetY - sweetH / 2), s(pinW - 4), s(sweetH));
+
+    // Pin head (moving element)
+    const pinY = pinAreaY + pin.currentY * pinAreaH;
+    const pinHeadH = 12;
+
+    if (pin.locked) {
+      // Locked — green
+      ctx.fillStyle = '#40c040';
+    } else {
+      // Moving — metallic
+      const pinGrad = ctx.createLinearGradient(s(pinX + 4), 0, s(pinX + pinW - 4), 0);
+      pinGrad.addColorStop(0, '#606878');
+      pinGrad.addColorStop(0.3, '#8890a0');
+      pinGrad.addColorStop(0.7, '#8890a0');
+      pinGrad.addColorStop(1, '#606878');
+      ctx.fillStyle = pinGrad;
+    }
+
+    ctx.beginPath();
+    ctx.roundRect(s(pinX + 4), s(pinY - pinHeadH / 2), s(pinW - 8), s(pinHeadH), s(3));
+    ctx.fill();
+
+    // Pin number
+    ctx.font = `bold ${s(10)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = pin.locked ? '#80ff80' : 'rgba(255,255,255,0.5)';
+    ctx.fillText(pin.locked ? '✓' : `${i + 1}`, s(pinX + pinW / 2), s(pinAreaY + pinAreaH + 16));
+  }
+
+  // Instructions
+  ctx.font = `${s(11)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('Click/tap when pin is in the yellow zone', s(640), s(py + panelH - 12));
+
+  // Success/Fail overlay
+  if (lockpick.success) {
+    const alpha = Math.min(lockpick.fadeTimer / 0.5, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `bold ${s(28)}px monospace`;
+    ctx.fillStyle = '#40ff40';
+    ctx.fillText('UNLOCKED!', s(640), s(360));
+    ctx.restore();
+  }
+  if (lockpick.failed) {
+    const alpha = Math.min(lockpick.fadeTimer / 0.5, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `bold ${s(28)}px monospace`;
+    ctx.fillStyle = '#ff4040';
+    ctx.fillText('LOCK JAMMED', s(640), s(360));
+    ctx.font = `${s(14)}px monospace`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Try again...', s(640), s(390));
+    ctx.restore();
+  }
+}
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -5117,14 +5337,23 @@ function update(dt) {
   }
 
   // Keycard pickup — press E or Space at keycard hotspot
-  if (!hasKeycard && player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
+  // Room 1: direct pickup (tutorial). Room 2+: requires lockpick mini-game
+  if (!hasKeycard && !lockpick.active && player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
     const keycardHotspots = {
       1: 'r1_frontDesk',
       2: 'r2_frontBench',
       3: 'r3_frontTable',
     };
     if (player.currentHotspot === keycardHotspots[currentRoom]) {
-      hasKeycard = true;
+      if (currentRoom === 1) {
+        // Direct pickup for tutorial room
+        hasKeycard = true;
+      } else {
+        // Start lockpick mini-game for locked drawer
+        const pins = currentRoom === 2 ? 4 : 5;
+        const time = currentRoom === 2 ? 15 : 12;
+        startLockpick(pins, time, () => { hasKeycard = true; });
+      }
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
   }
@@ -5213,6 +5442,14 @@ function update(dt) {
         won = true;
       }
     }
+  }
+
+  // Lockpick mini-game update (guard still patrols!)
+  if (lockpick.active) {
+    updateLockpick(dt);
+    // Guard keeps patrolling during lockpick — tension!
+    updateGuard(dt);
+    return;
   }
 
   // Guard AI (includes state machine: patrol → alert → suspicious → patrol, or caught)
@@ -5610,7 +5847,8 @@ function render() {
 
     // Keycard prompt
     if (!hasKeycard && hs === keycardHotspots[currentRoom]) {
-      drawPrompt('[E] Pick up keycard', '#80e0ff', player.u, player.v - 0.06);
+      const kcText = currentRoom === 1 ? '[E] Pick up keycard' : '[E] Pick lock';
+      drawPrompt(kcText, '#80e0ff', player.u, player.v - 0.06);
     }
 
     // Exit prompt
@@ -5685,6 +5923,9 @@ function render() {
 
   // Atmospheric post-processing
   drawAtmosphere();
+
+  // Lockpick mini-game overlay
+  drawLockpick();
 
   // Item pickup animation
   drawPickupAnimation();
