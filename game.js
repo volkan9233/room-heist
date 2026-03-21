@@ -1060,17 +1060,17 @@ function createFurniture3D(roomNum) {
     for (let vi = 0; vi < 4; vi++) {
       addBox(-2 + (vi - 1.5) * 0.30, 2.70, -6.27, 0.18, 0.01, 0.01, 0x151a22, { roughness: 0.50 });
     }
-    // LED indicators — status lights on each device
-    addBox(-2.60, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
-    addBox(-2.45, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
-    addBox(-1.50, 2.67, -6.25, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.4 });
-    addBox(-2.60, 2.47, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
-    addBox(-2.45, 2.47, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
-    addBox(-2.60, 1.82, -6.29, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
-    addBox(-1.50, 1.47, -6.14, 0.04, 0.04, 0.01, 0xff3020, { emissive: 0xff3020, emissiveIntensity: 0.4 });
-    addBox(-2.60, 1.07, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
-    addBox(-2.60, 0.77, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
-    addBox(-2.45, 0.77, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    // LED indicators — status lights on each device (boosted for readability)
+    addBox(-2.60, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.2 });
+    addBox(-2.45, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.0 });
+    addBox(-1.50, 2.67, -6.25, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.8 });
+    addBox(-2.60, 2.47, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.9 });
+    addBox(-2.45, 2.47, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(-2.60, 1.82, -6.29, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.0 });
+    addBox(-1.50, 1.47, -6.14, 0.04, 0.04, 0.01, 0xff3020, { emissive: 0xff3020, emissiveIntensity: 0.7 });
+    addBox(-2.60, 1.07, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(-2.60, 0.77, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.8 });
+    addBox(-2.45, 0.77, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.0 });
     // Cable management bar behind rack
     addBox(-2, 1.5, -7.25, 0.10, 2.80, 0.08, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
     // Cables running down the back
@@ -1102,16 +1102,16 @@ function createFurniture3D(roomNum) {
     addBox(2.10, 2.40, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
     addBox(0.90, 1.60, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
     addBox(2.10, 1.60, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
-    // LEDs
-    addBox(0.90, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
-    addBox(1.05, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
-    addBox(2.10, 2.67, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
-    addBox(0.90, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
-    addBox(1.05, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.4 });
-    addBox(0.90, 2.02, -6.27, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.4 });
-    addBox(0.90, 1.62, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
-    addBox(0.90, 1.22, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
-    addBox(1.05, 1.22, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    // LEDs (boosted for readability)
+    addBox(0.90, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.2 });
+    addBox(1.05, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(2.10, 2.67, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.9 });
+    addBox(0.90, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(1.05, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.7 });
+    addBox(0.90, 2.02, -6.27, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.8 });
+    addBox(0.90, 1.62, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(0.90, 1.22, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.9 });
+    addBox(1.05, 1.22, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 1.0 });
     // Cable management
     addBox(1.5, 1.5, -7.25, 0.10, 2.80, 0.08, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
     for (let ci = 0; ci < 3; ci++) {
@@ -1975,9 +1975,9 @@ function setupLights() {
   scene3D.add(spot2.target);
 
   // Back wall dedicated spotlight — lights the rack/back area
-  const backSpot = new THREE.SpotLight(lc, 60, 30, Math.PI / 3, 0.5, 1.0);
-  backSpot.position.set(0, WALL_H + 3, -WORLD_D / 2 + 3);
-  backSpot.target.position.set(0, 1, -WORLD_D / 2 + 1);
+  const backSpot = new THREE.SpotLight(lc, 80, 30, Math.PI / 2.5, 0.5, 1.0);
+  backSpot.position.set(0, WALL_H + 2, -WORLD_D / 2 + 4);
+  backSpot.target.position.set(0, 1.2, -WORLD_D / 2 + 0.5);
   addLight(backSpot);
   scene3D.add(backSpot.target);
 
@@ -1993,9 +1993,19 @@ function setupLights() {
     addLight(deskFill);
 
     // Server rack accent (subtle green/blue)
-    const rackGlow = new THREE.PointLight(0x20a050, 2, 5);
+    const rackGlow = new THREE.PointLight(0x20a050, 3, 6);
     rackGlow.position.set(-0.5, 1.5, -6.5);
     addLight(rackGlow);
+
+    // Left rack dedicated fill — shows panel detail and LEDs
+    const rackFillL = new THREE.PointLight(0xb0c0d8, 6, 8);
+    rackFillL.position.set(-2, 2.0, -5.5);
+    addLight(rackFillL);
+
+    // Right rack dedicated fill
+    const rackFillR = new THREE.PointLight(0xb0c0d8, 6, 8);
+    rackFillR.position.set(1.5, 2.0, -5.5);
+    addLight(rackFillR);
   }
 
   // Fill light from front — cool industrial
@@ -2026,9 +2036,10 @@ function initThreeJS() {
   scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
 
   // Camera — premium fixed-camera 3/4 stealth room shot
+  // LookAt shifted forward so player occupies lower-mid foreground
   camera3D = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
-  camera3D.position.set(0.5, 5.5, 12);
-  camera3D.lookAt(0, 0.5, -1.5);
+  camera3D.position.set(0.5, 5.5, 12.5);
+  camera3D.lookAt(0, 0.3, -0.5);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
@@ -2162,10 +2173,17 @@ const player = {
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
 const ROOM1_PATROL = [
-  { u: 0.40, v: 0.30 },   // center-left near racks (away from desk!)
-  { u: 0.40, v: 0.72 },   // south-center
-  { u: 0.62, v: 0.72 },   // south-right (still west of desk collider 0.66)
-  { u: 0.62, v: 0.30 },   // center-right (still west of desk)
+  // Perimeter loop — starts at desk front, clockwise
+  { u: 0.78, v: 0.34 },   // 1. desk front (start — south face of desk)
+  { u: 0.60, v: 0.20 },   // 2. move left, behind rack2 (north of rack2)
+  { u: 0.30, v: 0.15 },   // 3. continue left toward back-left
+  { u: 0.08, v: 0.20 },   // 4. far left, north of rack1
+  { u: 0.08, v: 0.45 },   // 5. down left side (west of crates)
+  { u: 0.10, v: 0.78 },   // 6. bottom-left corner
+  { u: 0.50, v: 0.85 },   // 7. along front (south), mid
+  { u: 0.88, v: 0.85 },   // 8. bottom-right corner
+  { u: 0.88, v: 0.50 },   // 9. up right side
+  { u: 0.88, v: 0.34 },   // 10. right side, level with desk front
 ];
 
 const ROOM2_PATROL = [
