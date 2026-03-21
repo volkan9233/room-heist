@@ -32,7 +32,7 @@ let scene3D, camera3D, renderer3D;
 let playerModel, guardModel;
 let currentRoomMeshes = [];
 const WORLD_W = 20, WORLD_D = 15, WORLD_H = 6;
-const WALL_H = 2.5; // Cutaway wall height for diorama presentation
+const WALL_H = 3; // Cutaway wall height for diorama presentation
 
 function resize() {
   W = window.innerWidth;
@@ -768,8 +768,8 @@ function initThreeJS() {
 
   // Camera — cutaway diorama view: frames the playable floor, not the room volume
   camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
-  camera3D.position.set(0, 10, 18);
-  camera3D.lookAt(0, 0, 0);
+  camera3D.position.set(0, 9, 17);
+  camera3D.lookAt(0, 0, 1.5);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
