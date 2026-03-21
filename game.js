@@ -61,6 +61,10 @@ const player = {
   targetHotspot: null,         // id of hotspot player is walking toward
   walkFromU: 0, walkFromV: 0,  // origin of current walk
   walkProgress: 0,             // 0-1 lerp between from and target
+  // Destination-based movement (Part 1)
+  walkPath: [],                // ordered list of hotspot IDs to walk through
+  walkPathIndex: 0,            // current index in walkPath
+  queuedDestination: null,     // next destination clicked while walking (at most one)
 };
 
 // ─── Guard ───────────────────────────────────────────────────────────────────
@@ -271,6 +275,112 @@ function getHotspot(id) {
   }
   return null;
 }
+
+// ─── Pathfinding & destination movement ──────────────────────────────────────
+
+// BFS from startId to goalId along hotspot edges. Returns array of hotspot IDs
+// (excluding startId, including goalId), or null if unreachable.
+function findPath(startId, goalId) {
+  if (startId === goalId) return [];
+  const visited = new Set([startId]);
+  const parent = {};
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const node = getHotspot(current);
+    if (!node) continue;
+    for (const neighborId of node.edges) {
+      if (visited.has(neighborId)) continue;
+      visited.add(neighborId);
+      parent[neighborId] = current;
+      if (neighborId === goalId) {
+        // Reconstruct path
+        const path = [];
+        let id = goalId;
+        while (id !== startId) {
+          path.push(id);
+          id = parent[id];
+        }
+        path.reverse();
+        return path;
+      }
+      queue.push(neighborId);
+    }
+  }
+  return null; // unreachable
+}
+
+// Start walking to a destination hotspot. Returns true if path found.
+function startWalkToDestination(destinationId) {
+  const fromId = player.currentHotspot;
+  if (!fromId) return false; // mid-walk, can't start new path from here
+  if (fromId === destinationId) return false; // already there
+
+  const path = findPath(fromId, destinationId);
+  if (!path || path.length === 0) return false; // unreachable
+
+  player.walkPath = path;
+  player.walkPathIndex = 0;
+  player.queuedDestination = null;
+
+  // Start first segment
+  const from = getHotspot(fromId);
+  const firstTarget = getHotspot(path[0]);
+  player.targetHotspot = path[0];
+  player.walkFromU = from.u;
+  player.walkFromV = from.v;
+  player.walkProgress = 0;
+  player.currentHotspot = null;
+
+  // Face toward first waypoint
+  if (Math.abs(firstTarget.u - from.u) > Math.abs(firstTarget.v - from.v)) {
+    player.facing = firstTarget.u > from.u ? 'right' : 'left';
+  } else {
+    player.facing = firstTarget.v > from.v ? 'down' : 'up';
+  }
+  return true;
+}
+
+// Find closest hotspot to a screen-space click point
+function findClickedHotspot(screenX, screenY, maxDist) {
+  let bestId = null, bestDist = Infinity;
+  for (const h of HOTSPOTS) {
+    const pos = floorToScreen(h.u, h.v);
+    // Apply the same transform as render: scale and center
+    const drawX = pos.x * scale + (W - 1280 * scale) / 2;
+    const drawY = pos.y * scale + (H - 720 * scale) / 2;
+    const d = Math.hypot(screenX - drawX, screenY - drawY);
+    if (d < bestDist) {
+      bestDist = d;
+      bestId = h.id;
+    }
+  }
+  return bestDist <= maxDist ? bestId : null;
+}
+
+// ─── Click/tap handler for destination movement ─────────────────────────────
+canvas.addEventListener('pointerdown', function(e) {
+  // Ignore if game is over or transitioning
+  if (detected || won || roomTransitionTimer > 0) return;
+  // Ignore if player is hidden
+  if (playerHidden) return;
+
+  const clickX = e.clientX;
+  const clickY = e.clientY;
+
+  // Hit radius scales with screen size — 40px at 1280w baseline
+  const hitRadius = 40 * scale;
+  const clickedId = findClickedHotspot(clickX, clickY, hitRadius);
+  if (!clickedId) return;
+
+  if (player.currentHotspot) {
+    // Player is idle at a hotspot — start walking
+    startWalkToDestination(clickedId);
+  } else if (player.targetHotspot) {
+    // Player is mid-walk — queue this as next destination (replaces any prior queue)
+    player.queuedDestination = clickedId;
+  }
+});
 
 // ─── Game state ──────────────────────────────────────────────────────────────
 let detected = false;
@@ -4239,6 +4349,9 @@ function resetCurrentRoom() {
   player.currentHotspot = cfg.startHotspot;
   player.targetHotspot = null;
   player.walkProgress = 0;
+  player.walkPath = [];
+  player.walkPathIndex = 0;
+  player.queuedDestination = null;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
@@ -4282,6 +4395,9 @@ function switchToRoom(n) {
   player.currentHotspot = cfg.startHotspot;
   player.targetHotspot = null;
   player.walkProgress = 0;
+  player.walkPath = [];
+  player.walkPathIndex = 0;
+  player.queuedDestination = null;
   guard.u = PATROL[0].u;
   guard.v = PATROL[0].v;
   guard.waypointIdx = 0;
@@ -4635,6 +4751,9 @@ function update(dt) {
         player.v = hs.v;
         player.currentHotspot = 'r3_nearLocker';
         player.targetHotspot = null;
+        player.walkPath = [];
+        player.walkPathIndex = 0;
+        player.queuedDestination = null;
       }
       player.facing = 'down';
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
@@ -4653,73 +4772,9 @@ function update(dt) {
     return;
   }
 
-  // ── Hotspot movement: directional selection + auto-walk ──
+  // ── Destination-based movement: click/tap to choose destination, auto-walk along path ──
 
-  // If at a hotspot, check for directional input to pick next destination
-  if (player.currentHotspot && !player.targetHotspot) {
-    let inputU = 0, inputV = 0;
-    // Accept both fresh presses and held keys (auto-chain when arriving at hotspot)
-    if (framePressed['ArrowLeft']  || framePressed['a'] || framePressed['A'] ||
-        keys['ArrowLeft']  || keys['a'] || keys['A']) inputU = -1;
-    if (framePressed['ArrowRight'] || framePressed['d'] || framePressed['D'] ||
-        keys['ArrowRight'] || keys['d'] || keys['D']) inputU = 1;
-    if (framePressed['ArrowUp']    || framePressed['w'] || framePressed['W'] ||
-        keys['ArrowUp']    || keys['w'] || keys['W']) inputV = -1;
-    if (framePressed['ArrowDown']  || framePressed['s'] || framePressed['S'] ||
-        keys['ArrowDown']  || keys['s'] || keys['S']) inputV = 1;
-
-    if (inputU !== 0 || inputV !== 0) {
-      const from = getHotspot(player.currentHotspot);
-      if (from) {
-        // Convert input direction to screen-space for comparison
-        const fromScreen = floorToScreen(from.u, from.v);
-        const probeU = from.u + inputU * 0.1;
-        const probeV = from.v + inputV * 0.1;
-        const probeScreen = floorToScreen(probeU, probeV);
-        const inputDX = probeScreen.x - fromScreen.x;
-        const inputDY = probeScreen.y - fromScreen.y;
-        const inputAngle = Math.atan2(inputDY, inputDX);
-
-        let bestId = null, bestScore = Infinity;
-        for (const edgeId of from.edges) {
-          const target = getHotspot(edgeId);
-          if (!target) continue;
-          const ts = floorToScreen(target.u, target.v);
-          const dx = ts.x - fromScreen.x;
-          const dy = ts.y - fromScreen.y;
-          const edgeAngle = Math.atan2(dy, dx);
-          let diff = Math.abs(edgeAngle - inputAngle);
-          if (diff > Math.PI) diff = Math.PI * 2 - diff;
-          // Only consider edges within ~90° of input direction
-          if (diff < Math.PI * 0.55) {
-            // Distance penalty: prefer closer hotspots when angles are similar
-            const dist = Math.hypot(dx, dy);
-            const score = diff + dist * 0.0005;
-            if (score < bestScore) {
-              bestScore = score;
-              bestId = edgeId;
-            }
-          }
-        }
-        if (bestId) {
-          player.targetHotspot = bestId;
-          player.walkFromU = from.u;
-          player.walkFromV = from.v;
-          player.walkProgress = 0;
-          player.currentHotspot = null;  // now mid-walk
-          // Face toward target
-          const tgt = getHotspot(bestId);
-          if (Math.abs(tgt.u - from.u) > Math.abs(tgt.v - from.v)) {
-            player.facing = tgt.u > from.u ? 'right' : 'left';
-          } else {
-            player.facing = tgt.v > from.v ? 'down' : 'up';
-          }
-        }
-      }
-    }
-  }
-
-  // Auto-walk toward target hotspot
+  // Auto-walk along multi-waypoint path
   if (player.targetHotspot) {
     const tgt = getHotspot(player.targetHotspot);
     if (tgt) {
@@ -4733,14 +4788,49 @@ function update(dt) {
       // Walk animation
       player.walkPhase += dt * 10;
 
-      // Arrived
+      // Arrived at current waypoint
       if (player.walkProgress >= 1) {
         player.u = tgt.u;
         player.v = tgt.v;
         player.currentHotspot = player.targetHotspot;
         player.targetHotspot = null;
         player.walkProgress = 0;
-        player.walkPhase = 0;
+
+        // Check for queued destination first (overrides remaining path)
+        if (player.queuedDestination) {
+          const queued = player.queuedDestination;
+          player.queuedDestination = null;
+          startWalkToDestination(queued);
+        }
+        // Otherwise continue along path to next waypoint
+        else if (player.walkPath.length > 0 && player.walkPathIndex < player.walkPath.length - 1) {
+          player.walkPathIndex++;
+          const nextId = player.walkPath[player.walkPathIndex];
+          const next = getHotspot(nextId);
+          if (next) {
+            player.targetHotspot = nextId;
+            player.walkFromU = tgt.u;
+            player.walkFromV = tgt.v;
+            player.walkProgress = 0;
+            player.currentHotspot = null;
+            // Face toward next waypoint
+            if (Math.abs(next.u - tgt.u) > Math.abs(next.v - tgt.v)) {
+              player.facing = next.u > tgt.u ? 'right' : 'left';
+            } else {
+              player.facing = next.v > tgt.v ? 'down' : 'up';
+            }
+          } else {
+            // Invalid next waypoint — stop here
+            player.walkPath = [];
+            player.walkPathIndex = 0;
+            player.walkPhase = 0;
+          }
+        } else {
+          // Path complete — stop
+          player.walkPath = [];
+          player.walkPathIndex = 0;
+          player.walkPhase = 0;
+        }
       }
     }
   } else if (player.currentHotspot) {
