@@ -521,19 +521,19 @@ function shieldedByCover() {
       if (face === 'south') {
         nearFace = player.v > b.vMax && player.v < b.vMax + COVER_DIST &&
                    player.u > b.uMin - COVER_LAT && player.u < b.uMax + COVER_LAT;
-        guardOnOppositeSide = guard.v < b.vMin;
+        guardOnOppositeSide = guard.v < b.vMax;  // guard is not south of collider
       } else if (face === 'north') {
         nearFace = player.v < b.vMin && player.v > b.vMin - COVER_DIST &&
                    player.u > b.uMin - COVER_LAT && player.u < b.uMax + COVER_LAT;
-        guardOnOppositeSide = guard.v > b.vMax;
+        guardOnOppositeSide = guard.v > b.vMin;  // guard is not north of collider
       } else if (face === 'east') {
         nearFace = player.u > b.uMax && player.u < b.uMax + COVER_DIST &&
                    player.v > b.vMin - COVER_LAT && player.v < b.vMax + COVER_LAT;
-        guardOnOppositeSide = guard.u < b.uMin;
+        guardOnOppositeSide = guard.u < b.uMax;  // guard is not east of collider
       } else if (face === 'west') {
         nearFace = player.u < b.uMin && player.u > b.uMin - COVER_DIST &&
                    player.v > b.vMin - COVER_LAT && player.v < b.vMax + COVER_LAT;
-        guardOnOppositeSide = guard.u > b.uMax;
+        guardOnOppositeSide = guard.u > b.uMin;  // guard is not west of collider
       }
       if (nearFace && guardOnOppositeSide) {
         // Expand this collider for the LOS ray check
