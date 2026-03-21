@@ -694,38 +694,47 @@ function showStarResult(stars) {
   starData.totalStars = starData.roomStars[1] + starData.roomStars[2] + starData.roomStars[3];
 }
 
-// ─── Lockpick Mini-Game ──────────────────────────────────────────────────────
+// ─── Lockpick Mini-Game: Safe Dial ───────────────────────────────────────────
 const lockpick = {
   active: false,
-  pins: [],        // array of { targetY, currentY, locked, speed, phase }
-  numPins: 4,
-  timeLimit: 12,   // seconds to complete
+  // Dial state
+  dialAngle: 0,           // current dial angle in radians
+  targets: [],            // array of target angles (radians)
+  currentTarget: 0,       // which target we're trying to hit
+  direction: 1,           // 1 = clockwise, -1 = counter-clockwise (alternates)
+  sweetSpot: 0.15,        // radians tolerance
+  timeLimit: 15,
   timer: 0,
   success: false,
   failed: false,
-  onComplete: null, // callback when lock is picked
+  onComplete: null,
   fadeTimer: 0,
+  // Tension bar — builds when near sweet spot
+  tension: 0,
+  shakeAmount: 0,
+  unlockedTumbler: [],    // visual feedback for solved tumblers
 };
 
-function startLockpick(numPins, timeLimit, onComplete) {
+function startLockpick(numTumblers, timeLimit, onComplete) {
   lockpick.active = true;
-  lockpick.numPins = numPins || 4;
-  lockpick.timeLimit = timeLimit || 12;
+  lockpick.timeLimit = timeLimit || 15;
   lockpick.timer = lockpick.timeLimit;
   lockpick.success = false;
   lockpick.failed = false;
   lockpick.onComplete = onComplete;
   lockpick.fadeTimer = 0;
-  lockpick.pins = [];
-  for (let i = 0; i < lockpick.numPins; i++) {
-    lockpick.pins.push({
-      targetY: 0.3 + Math.random() * 0.4,  // sweet spot (0-1 range)
-      currentY: 0,
-      locked: false,
-      speed: 0.6 + Math.random() * 0.8,     // oscillation speed
-      phase: Math.random() * Math.PI * 2,    // starting phase
-      sweetSpotSize: 0.12 - i * 0.015,       // gets harder per pin
-    });
+  lockpick.dialAngle = 0;
+  lockpick.currentTarget = 0;
+  lockpick.direction = 1;
+  lockpick.tension = 0;
+  lockpick.shakeAmount = 0;
+  lockpick.unlockedTumbler = [];
+  lockpick.targets = [];
+  const n = numTumblers || 3;
+  lockpick.sweetSpot = n <= 3 ? 0.18 : 0.14;
+  for (let i = 0; i < n; i++) {
+    // Random target angles, well separated
+    lockpick.targets.push(Math.PI * 0.4 + Math.random() * Math.PI * 1.2);
   }
 }
 
@@ -749,161 +758,242 @@ function updateLockpick(dt) {
     return;
   }
 
-  // Animate unlocked pins
-  for (const pin of lockpick.pins) {
-    if (!pin.locked) {
-      pin.phase += dt * pin.speed * Math.PI * 2;
-      pin.currentY = 0.5 + Math.sin(pin.phase) * 0.5; // 0-1 oscillation
-    }
-  }
+  // Auto-rotate dial
+  const speed = 1.8 + lockpick.currentTarget * 0.3; // faster each tumbler
+  lockpick.dialAngle += lockpick.direction * speed * dt;
+  // Keep in 0-2PI
+  if (lockpick.dialAngle > Math.PI * 2) lockpick.dialAngle -= Math.PI * 2;
+  if (lockpick.dialAngle < 0) lockpick.dialAngle += Math.PI * 2;
+
+  // Tension feedback — how close to target?
+  const target = lockpick.targets[lockpick.currentTarget];
+  let diff = Math.abs(lockpick.dialAngle - target);
+  if (diff > Math.PI) diff = Math.PI * 2 - diff;
+  lockpick.tension = Math.max(0, 1 - diff / 0.5);
+  lockpick.shakeAmount = lockpick.tension * 2;
 }
 
 function lockpickClick() {
   if (!lockpick.active || lockpick.success || lockpick.failed) return;
 
-  // Find first unlocked pin
-  for (const pin of lockpick.pins) {
-    if (!pin.locked) {
-      const dist = Math.abs(pin.currentY - pin.targetY);
-      if (dist < pin.sweetSpotSize) {
-        pin.locked = true;
-        pin.currentY = pin.targetY;
-        // Check if all pins locked
-        if (lockpick.pins.every(p => p.locked)) {
-          lockpick.success = true;
-          lockpick.fadeTimer = 0;
-        }
-      } else {
-        // Missed — reset all pins!
-        for (const p of lockpick.pins) {
-          p.locked = false;
-          p.phase = Math.random() * Math.PI * 2;
-        }
-      }
-      return;
+  const target = lockpick.targets[lockpick.currentTarget];
+  let diff = Math.abs(lockpick.dialAngle - target);
+  if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+  if (diff < lockpick.sweetSpot) {
+    // Tumbler solved!
+    lockpick.unlockedTumbler.push(lockpick.currentTarget);
+    lockpick.currentTarget++;
+    lockpick.direction *= -1; // reverse direction for next
+    if (lockpick.currentTarget >= lockpick.targets.length) {
+      lockpick.success = true;
+      lockpick.fadeTimer = 0;
     }
+  } else {
+    // Wrong — reset progress
+    lockpick.currentTarget = 0;
+    lockpick.unlockedTumbler = [];
+    lockpick.direction = 1;
+    lockpick.shakeAmount = 5;
   }
 }
 
 function drawLockpick() {
   if (!lockpick.active) return;
 
-  const panelW = 360, panelH = 280;
-  const px = 640 - panelW / 2;
-  const py = 360 - panelH / 2;
+  const cx = 640, cy = 340;
+  const dialR = 110;
+  const shk = lockpick.shakeAmount > 0.1 ? (Math.random() - 0.5) * lockpick.shakeAmount : 0;
+  lockpick.shakeAmount *= 0.9;
 
   // Darken background
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
   ctx.fillRect(0, 0, s(1280), s(720));
 
-  // Panel
-  ctx.fillStyle = 'rgba(15,15,25,0.95)';
+  ctx.save();
+  ctx.translate(s(shk), s(shk * 0.5));
+
+  // ── Lock body (metallic rectangle) ──
+  const bodyW = 320, bodyH = 320;
+  const bx = cx - bodyW / 2, by = cy - bodyH / 2 + 10;
+  const bodyGrad = ctx.createLinearGradient(s(bx), s(by), s(bx + bodyW), s(by + bodyH));
+  bodyGrad.addColorStop(0, '#2a2a30');
+  bodyGrad.addColorStop(0.3, '#3a3a42');
+  bodyGrad.addColorStop(0.7, '#3a3a42');
+  bodyGrad.addColorStop(1, '#22222a');
+  ctx.fillStyle = bodyGrad;
   ctx.beginPath();
-  ctx.roundRect(s(px), s(py), s(panelW), s(panelH), s(10));
+  ctx.roundRect(s(bx), s(by), s(bodyW), s(bodyH), s(12));
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,200,60,0.4)';
-  ctx.lineWidth = s(2);
+  // Metallic edge
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = s(3);
+  ctx.stroke();
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = s(1);
+  ctx.beginPath();
+  ctx.roundRect(s(bx + 3), s(by + 3), s(bodyW - 6), s(bodyH - 6), s(10));
   ctx.stroke();
 
-  // Title
-  ctx.font = `bold ${s(16)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffd740';
-  ctx.fillText('LOCKPICK', s(640), s(py + 24));
+  // ── Dial background (dark circle) ──
+  const dialCX = s(cx), dialCY = s(cy);
+  const dR = s(dialR);
 
-  // Timer bar
-  const timerPct = Math.max(0, lockpick.timer / lockpick.timeLimit);
-  const barW = panelW - 40;
-  const barH = 8;
-  const barX = px + 20;
-  const barY = py + 34;
-  ctx.fillStyle = 'rgba(255,255,255,0.1)';
-  ctx.fillRect(s(barX), s(barY), s(barW), s(barH));
-  const timerColor = timerPct > 0.3 ? '#40e040' : '#ff4040';
-  ctx.fillStyle = timerColor;
-  ctx.fillRect(s(barX), s(barY), s(barW * timerPct), s(barH));
+  // Outer ring — brushed metal
+  const outerGrad = ctx.createRadialGradient(dialCX, dialCY, dR - s(8), dialCX, dialCY, dR + s(5));
+  outerGrad.addColorStop(0, '#555860');
+  outerGrad.addColorStop(0.5, '#70747c');
+  outerGrad.addColorStop(1, '#40444c');
+  ctx.fillStyle = outerGrad;
+  ctx.beginPath();
+  ctx.arc(dialCX, dialCY, dR + s(5), 0, Math.PI * 2);
+  ctx.fill();
 
-  // Pin slots
-  const pinAreaY = py + 55;
-  const pinAreaH = 160;
-  const pinW = 40;
-  const pinGap = 15;
-  const totalPinW = lockpick.numPins * pinW + (lockpick.numPins - 1) * pinGap;
-  const pinStartX = 640 - totalPinW / 2;
+  // Inner dial face
+  const faceGrad = ctx.createRadialGradient(dialCX - s(20), dialCY - s(20), 0, dialCX, dialCY, dR);
+  faceGrad.addColorStop(0, '#2e3038');
+  faceGrad.addColorStop(1, '#1a1c22');
+  ctx.fillStyle = faceGrad;
+  ctx.beginPath();
+  ctx.arc(dialCX, dialCY, dR - s(5), 0, Math.PI * 2);
+  ctx.fill();
 
-  for (let i = 0; i < lockpick.pins.length; i++) {
-    const pin = lockpick.pins[i];
-    const pinX = pinStartX + i * (pinW + pinGap);
-
-    // Pin channel
-    ctx.fillStyle = 'rgba(30,30,50,0.9)';
+  // ── Number ticks around dial ──
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const isMajor = i % 5 === 0;
+    const innerR = isMajor ? dR - s(28) : dR - s(18);
+    const outerR2 = dR - s(10);
+    ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = isMajor ? s(2) : s(1);
     ctx.beginPath();
-    ctx.roundRect(s(pinX), s(pinAreaY), s(pinW), s(pinAreaH), s(4));
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = s(1);
+    ctx.moveTo(dialCX + Math.cos(a) * innerR, dialCY + Math.sin(a) * innerR);
+    ctx.lineTo(dialCX + Math.cos(a) * outerR2, dialCY + Math.sin(a) * outerR2);
     ctx.stroke();
-
-    // Sweet spot indicator
-    const sweetY = pinAreaY + pin.targetY * pinAreaH;
-    const sweetH = pin.sweetSpotSize * pinAreaH;
-    ctx.fillStyle = pin.locked ? 'rgba(60,200,60,0.3)' : 'rgba(255,200,60,0.15)';
-    ctx.fillRect(s(pinX + 2), s(sweetY - sweetH / 2), s(pinW - 4), s(sweetH));
-
-    // Pin head (moving element)
-    const pinY = pinAreaY + pin.currentY * pinAreaH;
-    const pinHeadH = 12;
-
-    if (pin.locked) {
-      // Locked — green
-      ctx.fillStyle = '#40c040';
-    } else {
-      // Moving — metallic
-      const pinGrad = ctx.createLinearGradient(s(pinX + 4), 0, s(pinX + pinW - 4), 0);
-      pinGrad.addColorStop(0, '#606878');
-      pinGrad.addColorStop(0.3, '#8890a0');
-      pinGrad.addColorStop(0.7, '#8890a0');
-      pinGrad.addColorStop(1, '#606878');
-      ctx.fillStyle = pinGrad;
+    if (isMajor) {
+      const numR = dR - s(36);
+      ctx.font = `${s(10)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillText(`${i}`, dialCX + Math.cos(a) * numR, dialCY + Math.sin(a) * numR);
     }
-
-    ctx.beginPath();
-    ctx.roundRect(s(pinX + 4), s(pinY - pinHeadH / 2), s(pinW - 8), s(pinHeadH), s(3));
-    ctx.fill();
-
-    // Pin number
-    ctx.font = `bold ${s(10)}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = pin.locked ? '#80ff80' : 'rgba(255,255,255,0.5)';
-    ctx.fillText(pin.locked ? '✓' : `${i + 1}`, s(pinX + pinW / 2), s(pinAreaY + pinAreaH + 16));
   }
 
-  // Instructions
-  ctx.font = `${s(11)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('Click/tap when pin is in the yellow zone', s(640), s(py + panelH - 12));
+  // ── Sweet spot indicator (subtle glow at target angle) ──
+  if (lockpick.currentTarget < lockpick.targets.length) {
+    const target = lockpick.targets[lockpick.currentTarget];
+    // Subtle golden arc at target
+    ctx.strokeStyle = `rgba(255,200,60,${0.15 + lockpick.tension * 0.4})`;
+    ctx.lineWidth = s(6);
+    ctx.beginPath();
+    ctx.arc(dialCX, dialCY, dR - s(16), target - lockpick.sweetSpot, target + lockpick.sweetSpot);
+    ctx.stroke();
+  }
 
-  // Success/Fail overlay
+  // ── Rotating dial pointer ──
+  const pAngle = lockpick.dialAngle;
+  const pointerLen = dR - s(20);
+  // Pointer line
+  ctx.strokeStyle = '#e04040';
+  ctx.lineWidth = s(3);
+  ctx.beginPath();
+  ctx.moveTo(dialCX, dialCY);
+  ctx.lineTo(dialCX + Math.cos(pAngle) * pointerLen, dialCY + Math.sin(pAngle) * pointerLen);
+  ctx.stroke();
+  // Pointer tip
+  ctx.fillStyle = '#ff4444';
+  ctx.beginPath();
+  ctx.arc(dialCX + Math.cos(pAngle) * pointerLen, dialCY + Math.sin(pAngle) * pointerLen, s(5), 0, Math.PI * 2);
+  ctx.fill();
+  // Center cap
+  const capGrad = ctx.createRadialGradient(dialCX, dialCY, 0, dialCX, dialCY, s(12));
+  capGrad.addColorStop(0, '#606468');
+  capGrad.addColorStop(1, '#303338');
+  ctx.fillStyle = capGrad;
+  ctx.beginPath();
+  ctx.arc(dialCX, dialCY, s(12), 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Tumbler indicators (below dial) ──
+  const tumblerY = cy + dialR + 30;
+  const totalT = lockpick.targets.length;
+  const tSize = 16;
+  const tGap = 8;
+  const tStartX = cx - (totalT * tSize + (totalT - 1) * tGap) / 2;
+  for (let i = 0; i < totalT; i++) {
+    const tx = tStartX + i * (tSize + tGap);
+    const solved = lockpick.unlockedTumbler.includes(i);
+    ctx.fillStyle = solved ? '#40c040' : (i === lockpick.currentTarget ? 'rgba(255,200,60,0.5)' : 'rgba(255,255,255,0.15)');
+    ctx.beginPath();
+    ctx.arc(s(tx + tSize / 2), s(tumblerY), s(tSize / 2), 0, Math.PI * 2);
+    ctx.fill();
+    if (solved) {
+      ctx.font = `bold ${s(10)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('✓', s(tx + tSize / 2), s(tumblerY));
+    }
+  }
+
+  // ── Timer bar ──
+  const timerPct = Math.max(0, lockpick.timer / lockpick.timeLimit);
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.roundRect(s(bx + 20), s(by + bodyH - 30), s(bodyW - 40), s(8), s(4));
+  ctx.fill();
+  ctx.fillStyle = timerPct > 0.3 ? '#40e040' : '#ff4040';
+  ctx.beginPath();
+  ctx.roundRect(s(bx + 20), s(by + bodyH - 30), s((bodyW - 40) * timerPct), s(8), s(4));
+  ctx.fill();
+
+  // ── Title ──
+  ctx.font = `bold ${s(14)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd740';
+  ctx.fillText('CRACK THE SAFE', s(cx), s(by + 22));
+
+  // ── Tension feedback text ──
+  if (lockpick.tension > 0.3 && !lockpick.success && !lockpick.failed) {
+    ctx.font = `${s(11)}px monospace`;
+    ctx.fillStyle = `rgba(255,200,60,${lockpick.tension})`;
+    ctx.fillText('Getting closer...', s(cx), s(by + bodyH - 42));
+  }
+
+  // ── Instructions ──
+  ctx.font = `${s(10)}px monospace`;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillText('Click when pointer is in the golden zone', s(cx), s(by + bodyH - 10));
+
+  ctx.restore();
+
+  // ── Success/Fail overlay ──
   if (lockpick.success) {
     const alpha = Math.min(lockpick.fadeTimer / 0.5, 1);
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.font = `bold ${s(28)}px monospace`;
+    ctx.fillStyle = 'rgba(0,40,0,0.4)';
+    ctx.fillRect(0, 0, s(1280), s(720));
+    ctx.font = `bold ${s(32)}px monospace`;
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#40ff40';
-    ctx.fillText('UNLOCKED!', s(640), s(360));
+    ctx.fillText('SAFE CRACKED', s(640), s(350));
     ctx.restore();
   }
   if (lockpick.failed) {
     const alpha = Math.min(lockpick.fadeTimer / 0.5, 1);
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.font = `bold ${s(28)}px monospace`;
+    ctx.fillStyle = 'rgba(40,0,0,0.4)';
+    ctx.fillRect(0, 0, s(1280), s(720));
+    ctx.font = `bold ${s(32)}px monospace`;
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#ff4040';
-    ctx.fillText('LOCK JAMMED', s(640), s(360));
+    ctx.fillText('LOCK JAMMED', s(640), s(350));
     ctx.font = `${s(14)}px monospace`;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('Try again...', s(640), s(390));
+    ctx.fillText('Try again...', s(640), s(385));
     ctx.restore();
   }
 }
@@ -5421,10 +5511,10 @@ function update(dt) {
         // Direct pickup for tutorial room
         hasKeycard = true;
       } else {
-        // Start lockpick mini-game for locked drawer
-        const pins = currentRoom === 2 ? 4 : 5;
-        const time = currentRoom === 2 ? 15 : 12;
-        startLockpick(pins, time, () => { hasKeycard = true; });
+        // Start safe-cracking mini-game
+        const tumblers = currentRoom === 2 ? 3 : 4;
+        const time = currentRoom === 2 ? 18 : 15;
+        startLockpick(tumblers, time, () => { hasKeycard = true; });
       }
       keys['e'] = false; keys['E'] = false; keys[' '] = false;
     }
@@ -5923,7 +6013,7 @@ function render() {
 
     // Keycard prompt
     if (!hasKeycard && hs === keycardHotspots[currentRoom]) {
-      const kcText = currentRoom === 1 ? '[E] Pick up keycard' : '[E] Pick lock';
+      const kcText = currentRoom === 1 ? '[E] Pick up keycard' : '[E] Crack the safe';
       drawPrompt(kcText, '#80e0ff', player.u, player.v - 0.06);
     }
 
