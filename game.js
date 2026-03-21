@@ -927,11 +927,11 @@ function createFurniture3D(roomNum) {
     kcStripe.position.set(0, 0.01, -0.12);
     kcGroup.add(kcStripe);
     // Bright beacon light — visible from anywhere in room
-    const kcGlow = new THREE.PointLight(0xff6600, 30, 8);
+    const kcGlow = new THREE.PointLight(0xff6600, 5, 6);
     kcGlow.position.set(0, 0.5, 0);
     kcGroup.add(kcGlow);
     // Second glow below for floor pool
-    const kcFloorGlow = new THREE.PointLight(0xff6600, 10, 4);
+    const kcFloorGlow = new THREE.PointLight(0xff6600, 3, 3);
     kcFloorGlow.position.set(0, -0.5, 0);
     kcGroup.add(kcFloorGlow);
     // Position: FLOATING 0.6 units above desk surface
@@ -1098,18 +1098,18 @@ function setupLights() {
   }
 
   // Industrial/facility lighting for all rooms
-  // Ambient — cool desaturated
-  addLight(new THREE.AmbientLight(0x405070, 0.8));
+  // Ambient — cool desaturated, low intensity
+  addLight(new THREE.AmbientLight(0x405070, 0.3));
 
   // Hemisphere — cool overhead, dark ground
-  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.6));
+  addLight(new THREE.HemisphereLight(0x8090c0, 0x202830, 0.25));
 
   // Spotlight color per room — cool fluorescent for R1, slightly warmer for others
   const lightColors = { 1: 0xc8d8f0, 2: 0xd0d8e8, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  // Main ceiling spotlight 1 — industrial downlight
-  const spot1 = new THREE.SpotLight(lc, 2000, 35, Math.PI / 3, 0.5, 1.0);
+  // Main ceiling spotlight 1 — industrial downlight (physically-based candela)
+  const spot1 = new THREE.SpotLight(lc, 150, 35, Math.PI / 3, 0.5, 1.0);
   spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
   spot1.target.position.set(-1, 0, 1);
   spot1.castShadow = true;
@@ -1121,7 +1121,7 @@ function setupLights() {
   scene3D.add(spot1.target);
 
   // Main ceiling spotlight 2
-  const spot2 = new THREE.SpotLight(lc, 2000, 35, Math.PI / 3, 0.5, 1.0);
+  const spot2 = new THREE.SpotLight(lc, 150, 35, Math.PI / 3, 0.5, 1.0);
   spot2.position.set(5, WALL_H + 4, -WORLD_D / 2 + 1);
   spot2.target.position.set(4, 0, 0);
   spot2.castShadow = true;
@@ -1136,28 +1136,28 @@ function setupLights() {
     // Industrial accent lights for Room 1
 
     // Cool ceiling wash from front
-    const ceilWash = new THREE.PointLight(0xc0d0e8, 60, 20);
+    const ceilWash = new THREE.PointLight(0xc0d0e8, 8, 20);
     ceilWash.position.set(0, WALL_H + 1, 3);
     addLight(ceilWash);
 
     // Desk area cool fill
-    const deskFill = new THREE.PointLight(0xb0c0d8, 25, 8);
+    const deskFill = new THREE.PointLight(0xb0c0d8, 4, 8);
     deskFill.position.set(6, 2, -3);
     addLight(deskFill);
 
     // Server rack accent (subtle green/blue)
-    const rackGlow = new THREE.PointLight(0x20a050, 10, 5);
+    const rackGlow = new THREE.PointLight(0x20a050, 2, 5);
     rackGlow.position.set(-0.5, 1.5, -6.5);
     addLight(rackGlow);
   }
 
   // Fill light from front — cool industrial
-  const fill = new THREE.PointLight(0x506890, 120, 35);
+  const fill = new THREE.PointLight(0x506890, 12, 35);
   fill.position.set(3, 4, WORLD_D / 2 + 3);
   addLight(fill);
 
   // Back wall fill
-  const backFill = new THREE.PointLight(0x405070, 60, 25);
+  const backFill = new THREE.PointLight(0x405070, 6, 25);
   backFill.position.set(0, 3, -WORLD_D / 2 + 2);
   addLight(backFill);
 }
@@ -1170,7 +1170,7 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 1.0;
+  renderer3D.toneMappingExposure = 0.6;
   renderer3D.outputColorSpace = THREE.SRGBColorSpace;
 
   // Scene — dark industrial atmosphere
@@ -1194,9 +1194,9 @@ function initThreeJS() {
   // Bloom — subtle glow on emissive surfaces (LEDs, screens, exit light)
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(W, H),
-    0.35,   // strength — subtle, not overwhelming
-    0.6,    // radius
-    0.8     // threshold — only bright emissives bloom
+    0.25,   // strength — subtle, not overwhelming
+    0.4,    // radius
+    1.2     // threshold — only very bright emissives bloom
   );
   composer.addPass(bloomPass);
 
