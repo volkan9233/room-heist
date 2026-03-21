@@ -825,12 +825,11 @@ function initThreeJS() {
   scene3D.background = new THREE.Color(0x080c14);
   scene3D.fog = new THREE.FogExp2(0x080c14, 0.02);
 
-  // Camera — elevated view showing the full room
-  // Room: 20w x 15d x 6h, centered at origin, floor at y=0
-  // Player starts at v=0.85 → z≈5.25, must be visible
-  camera3D = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
-  camera3D.position.set(0, 9, 13);
-  camera3D.lookAt(0, 0, 0);
+  // Camera — at ceiling height, far back, looking at room center
+  // This ensures back wall top is near viewport top, player area at bottom
+  camera3D = new THREE.PerspectiveCamera(60, W / H, 0.1, 100);
+  camera3D.position.set(0, 6.5, 15);
+  camera3D.lookAt(0, 2.5, 0);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
