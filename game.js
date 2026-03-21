@@ -4692,8 +4692,11 @@ function update(dt) {
           if (diff > Math.PI) diff = Math.PI * 2 - diff;
           // Only consider edges within ~90° of input direction
           if (diff < Math.PI * 0.55) {
-            if (diff < bestScore) {
-              bestScore = diff;
+            // Distance penalty: prefer closer hotspots when angles are similar
+            const dist = Math.hypot(dx, dy);
+            const score = diff + dist * 0.0005;
+            if (score < bestScore) {
+              bestScore = score;
               bestId = edgeId;
             }
           }
