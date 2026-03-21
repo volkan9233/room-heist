@@ -2316,13 +2316,14 @@ function loadGLBModels() {
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const targetHeight = 1.65;
+    const targetHeight = 1.1; // Match procedural model height
     const sf = targetHeight / size.y;
     console.log('Scientist GLB size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), 'scale:', sf.toFixed(4));
 
     glbPlayerData = {
       scene, animations: gltf.animations || [],
-      sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf
+      sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf,
+      rotationOffset: Math.PI // Model faces -Z by default, rotate 180° to face +Z (game "down")
     };
 
     // Immediately replace the procedural player
@@ -2335,13 +2336,14 @@ function loadGLBModels() {
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const targetHeight = 1.75;
+    const targetHeight = 1.2; // Slightly taller than player
     const sf = targetHeight / size.y;
     console.log('Demon GLB size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2), 'scale:', sf.toFixed(4));
 
     glbGuardData = {
       scene, animations: gltf.animations || [],
-      sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf
+      sf, offsetX: -center.x * sf, offsetY: -box.min.y * sf, offsetZ: -center.z * sf,
+      rotationOffset: Math.PI // Model faces -Z by default, rotate 180° to face +Z (game "down")
     };
 
     // Immediately replace the procedural guard
@@ -2358,11 +2360,13 @@ function replaceWithGLB(who) {
   scene3D.remove(oldModel);
 
   // Create wrapper Group — game controls wrapper position/rotation
-  // Inner model is scaled and offset inside the wrapper
+  // Inner model is scaled, offset, and rotation-corrected inside the wrapper
   const wrapper = new THREE.Group();
   const inner = data.scene;
   inner.scale.setScalar(data.sf);
   inner.position.set(data.offsetX, data.offsetY, data.offsetZ);
+  // Apply rotation offset so model's "front" aligns with game's facing system
+  inner.rotation.y = data.rotationOffset || 0;
   inner.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
@@ -2376,25 +2380,34 @@ function replaceWithGLB(who) {
   wrapper.rotation.y = oldModel.rotation.y;
   wrapper.visible = oldModel.visible;
 
+  // Store rotation offset on wrapper for updateCharacterModel to use
+  wrapper.userData.rotationOffset = data.rotationOffset || 0;
+  wrapper.userData.isGLB = true;
+
   scene3D.add(wrapper);
+
+  // Setup animation mixer
+  let mixer = null;
+  if (data.animations.length > 0) {
+    mixer = new THREE.AnimationMixer(inner);
+    // Log available animations for debugging
+    console.log(who, 'animations:', data.animations.map(a => a.name));
+    // Find walk/run animation or use first one
+    let walkClip = data.animations.find(a => /walk|run|move|locomotion/i.test(a.name));
+    if (!walkClip) walkClip = data.animations[0];
+    const action = mixer.clipAction(walkClip);
+    action.play();
+  }
 
   // Update the global reference
   if (who === 'player') {
     playerModel = wrapper;
-    if (data.animations.length > 0) {
-      playerMixer = new THREE.AnimationMixer(inner);
-      const action = playerMixer.clipAction(data.animations[0]);
-      action.play();
-    }
+    playerMixer = mixer;
   } else {
     guardModel = wrapper;
-    if (data.animations.length > 0) {
-      guardMixer = new THREE.AnimationMixer(inner);
-      const action = guardMixer.clipAction(data.animations[0]);
-      action.play();
-    }
+    guardMixer = mixer;
   }
-  console.log(who, 'replaced with GLB model');
+  console.log(who, 'replaced with GLB model, animations:', data.animations.length);
 }
 
 let currentLights = [];
@@ -2635,7 +2648,17 @@ function updateCharacterModel(model, u, v, facing, walkPhase) {
   const facingAngles = { up: Math.PI, down: 0, left: Math.PI / 2, right: -Math.PI / 2 };
   model.rotation.y = facingAngles[facing] || 0;
 
-  // Walk animation
+  // For GLB models, the AnimationMixer handles walk animation via timeScale
+  if (model.userData.isGLB) {
+    const mixer = model === playerModel ? playerMixer : guardMixer;
+    if (mixer) {
+      // Speed up/pause animation based on movement
+      mixer.timeScale = walkPhase > 0 ? 1.0 : 0.0;
+    }
+    return;
+  }
+
+  // Procedural model walk animation (limb swing)
   if (walkPhase > 0) {
     const swing = Math.sin(walkPhase) * 0.3;
     const ll = model.getObjectByName('leftLeg');
