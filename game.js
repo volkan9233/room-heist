@@ -32,6 +32,7 @@ let scene3D, camera3D, renderer3D;
 let playerModel, guardModel;
 let currentRoomMeshes = [];
 const WORLD_W = 20, WORLD_D = 15, WORLD_H = 6;
+const WALL_H = 2.5; // Cutaway wall height for diorama presentation
 
 function resize() {
   W = window.innerWidth;
@@ -249,73 +250,44 @@ function createRoom3D(roomNum) {
   scene3D.add(floor);
   currentRoomMeshes.push(floor);
 
+  // Walls — low cutaway height (stage-set borders, not full enclosure)
   // Back wall
-  const bwGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_H);
+  const bwGeom = new THREE.PlaneGeometry(WORLD_W, WALL_H);
   const bwMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const backWall = new THREE.Mesh(bwGeom, bwMat);
-  backWall.position.set(0, WORLD_H / 2, -WORLD_D / 2);
+  backWall.position.set(0, WALL_H / 2, -WORLD_D / 2);
   backWall.receiveShadow = true;
   scene3D.add(backWall);
   currentRoomMeshes.push(backWall);
 
   // Left wall
-  const lwGeom = new THREE.PlaneGeometry(WORLD_D, WORLD_H);
+  const lwGeom = new THREE.PlaneGeometry(WORLD_D, WALL_H);
   const lwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const leftWall = new THREE.Mesh(lwGeom, lwMat);
-  leftWall.position.set(-WORLD_W / 2, WORLD_H / 2, 0);
+  leftWall.position.set(-WORLD_W / 2, WALL_H / 2, 0);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.receiveShadow = true;
   scene3D.add(leftWall);
   currentRoomMeshes.push(leftWall);
 
   // Right wall
-  const rwGeom = new THREE.PlaneGeometry(WORLD_D, WORLD_H);
+  const rwGeom = new THREE.PlaneGeometry(WORLD_D, WALL_H);
   const rwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const rightWall = new THREE.Mesh(rwGeom, rwMat);
-  rightWall.position.set(WORLD_W / 2, WORLD_H / 2, 0);
+  rightWall.position.set(WORLD_W / 2, WALL_H / 2, 0);
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.receiveShadow = true;
   scene3D.add(rightWall);
   currentRoomMeshes.push(rightWall);
 
-  // Ceiling — visible from both sides (camera is above it)
-  const ceilTc = document.createElement('canvas');
-  ceilTc.width = 512; ceilTc.height = 512;
-  const ceilCtx = ceilTc.getContext('2d');
-  ceilCtx.fillStyle = '#1a2030';
-  ceilCtx.fillRect(0, 0, 512, 512);
-  // Ceiling panel grid
-  const cpSize = 512 / 4;
-  ceilCtx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ceilCtx.lineWidth = 2;
-  for (let i = 1; i < 4; i++) {
-    ceilCtx.beginPath(); ceilCtx.moveTo(i * cpSize, 0); ceilCtx.lineTo(i * cpSize, 512); ceilCtx.stroke();
-    ceilCtx.beginPath(); ceilCtx.moveTo(0, i * cpSize); ceilCtx.lineTo(512, i * cpSize); ceilCtx.stroke();
-  }
-  // Vent grate in one panel
-  ceilCtx.fillStyle = 'rgba(0,0,0,0.4)';
-  ceilCtx.fillRect(cpSize + 20, cpSize + 20, cpSize - 40, cpSize - 40);
-  for (let sl = 0; sl < 6; sl++) {
-    ceilCtx.fillStyle = 'rgba(40,50,60,0.8)';
-    ceilCtx.fillRect(cpSize + 25, cpSize + 25 + sl * 18, cpSize - 50, 8);
-  }
-  const ceilTex = new THREE.CanvasTexture(ceilTc);
-  const ceilGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const ceilMat = new THREE.MeshStandardMaterial({
-    map: ceilTex, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide
-  });
-  const ceiling = new THREE.Mesh(ceilGeom, ceilMat);
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = WORLD_H;
-  scene3D.add(ceiling);
-  currentRoomMeshes.push(ceiling);
+  // Ceiling removed — cutaway diorama presentation
 
   // Horizontal pipe near ceiling on back wall
   const pipeGeom = new THREE.CylinderGeometry(0.08, 0.08, WORLD_W - 2, 8);
   const pipeMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.4, metalness: 0.6 });
   const pipe = new THREE.Mesh(pipeGeom, pipeMat);
   pipe.rotation.z = Math.PI / 2;
-  pipe.position.set(0, WORLD_H * 0.85, -WORLD_D / 2 + 0.15);
+  pipe.position.set(0, WALL_H - 0.3, -WORLD_D / 2 + 0.15);
   pipe.castShadow = true;
   scene3D.add(pipe);
   currentRoomMeshes.push(pipe);
@@ -325,15 +297,15 @@ function createRoom3D(roomNum) {
   const bracketMat = new THREE.MeshStandardMaterial({ color: 0x4a5060, roughness: 0.5, metalness: 0.5 });
   for (const bx of [-6, -2, 2, 6]) {
     const bracket = new THREE.Mesh(bracketGeom, bracketMat);
-    bracket.position.set(bx, WORLD_H * 0.85, -WORLD_D / 2 + 0.1);
+    bracket.position.set(bx, WALL_H - 0.3, -WORLD_D / 2 + 0.1);
     scene3D.add(bracket);
     currentRoomMeshes.push(bracket);
   }
 
   // Vertical pipe on left wall
-  const vpGeom = new THREE.CylinderGeometry(0.06, 0.06, WORLD_H, 8);
+  const vpGeom = new THREE.CylinderGeometry(0.06, 0.06, WALL_H, 8);
   const vp = new THREE.Mesh(vpGeom, pipeMat);
-  vp.position.set(-WORLD_W / 2 + 0.15, WORLD_H / 2, -WORLD_D / 2 + 2);
+  vp.position.set(-WORLD_W / 2 + 0.15, WALL_H / 2, -WORLD_D / 2 + 2);
   scene3D.add(vp);
   currentRoomMeshes.push(vp);
 
@@ -464,43 +436,12 @@ function createCornerShadows() {
   ceilCtx.fillRect(0, 0, 256, 64);
   const ceilEdgeTex = new THREE.CanvasTexture(ceilEdgeTc);
 
-  // Back wall ceiling shadow
-  const ceilShadowGeom = new THREE.PlaneGeometry(WORLD_W, 1.2);
-  const ceilShadowMat = new THREE.MeshBasicMaterial({
-    map: ceilEdgeTex,
-    transparent: true,
-    depthWrite: false,
-  });
-  const ceilShadow = new THREE.Mesh(ceilShadowGeom, ceilShadowMat);
-  ceilShadow.position.set(0, WORLD_H - 0.6, -hd + 0.01);
-  scene3D.add(ceilShadow);
-  currentRoomMeshes.push(ceilShadow);
+  // Ceiling shadow removed — cutaway diorama, no ceiling
 }
 
 function createCeilingLights3D() {
-  const lightColors = { 1: 0xc0d0f0, 2: 0xf0dcc0, 3: 0xb0c8e8 };
-  const lc = lightColors[currentRoom] || lightColors[1];
-
-  for (const xPos of [-3, 3]) {
-    // Fixture housing
-    const housGeom = new THREE.BoxGeometry(2.5, 0.12, 0.5);
-    const housMat = new THREE.MeshStandardMaterial({ color: 0x50535a, roughness: 0.4, metalness: 0.5 });
-    const hous = new THREE.Mesh(housGeom, housMat);
-    hous.position.set(xPos, WORLD_H - 0.06, -WORLD_D / 2 + 1.5);
-    scene3D.add(hous);
-    currentRoomMeshes.push(hous);
-
-    // Diffuser panel (emissive)
-    const diffGeom = new THREE.PlaneGeometry(2.3, 0.4);
-    const diffMat = new THREE.MeshStandardMaterial({
-      color: lc, emissive: lc, emissiveIntensity: 0.8, roughness: 0.2
-    });
-    const diff = new THREE.Mesh(diffGeom, diffMat);
-    diff.rotation.x = Math.PI / 2;
-    diff.position.set(xPos, WORLD_H - 0.13, -WORLD_D / 2 + 1.5);
-    scene3D.add(diff);
-    currentRoomMeshes.push(diff);
-  }
+  // Physical fixtures removed — cutaway diorama has no visible ceiling
+  // Spotlights in setupLighting3D provide the actual illumination
 }
 
 function createExitDoor3D(roomNum) {
@@ -778,7 +719,7 @@ function setupLights() {
   const lc = lightColors[currentRoom] || lightColors[1];
 
   const spot1 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
-  spot1.position.set(-3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
+  spot1.position.set(-3, WALL_H + 3, -WORLD_D / 2 + 1.5);
   spot1.target.position.set(-3, 0, 2);
   spot1.castShadow = true;
   spot1.shadow.mapSize.set(1024, 1024);
@@ -789,7 +730,7 @@ function setupLights() {
   scene3D.add(spot1.target);
 
   const spot2 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
-  spot2.position.set(3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
+  spot2.position.set(3, WALL_H + 3, -WORLD_D / 2 + 1.5);
   spot2.target.position.set(3, 0, 2);
   spot2.castShadow = true;
   spot2.shadow.mapSize.set(1024, 1024);
@@ -825,11 +766,10 @@ function initThreeJS() {
   scene3D.background = new THREE.Color(0x080c14);
   scene3D.fog = new THREE.FogExp2(0x080c14, 0.02);
 
-  // Camera — at ceiling height, far back, looking at room center
-  // This ensures back wall top is near viewport top, player area at bottom
-  camera3D = new THREE.PerspectiveCamera(60, W / H, 0.1, 100);
-  camera3D.position.set(0, 6.5, 15);
-  camera3D.lookAt(0, 2.5, 0);
+  // Camera — cutaway diorama view: frames the playable floor, not the room volume
+  camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
+  camera3D.position.set(0, 10, 18);
+  camera3D.lookAt(0, 0, 0);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
