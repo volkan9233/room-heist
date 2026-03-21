@@ -2559,10 +2559,11 @@ function initThreeJS() {
   scene3D.background = new THREE.Color(0x0a0c12);
   scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
 
-  // Camera — elevated diorama view looking down at the room
-  camera3D = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
-  camera3D.position.set(0, 14, 12);
-  camera3D.lookAt(0, 0, -1);
+  // Camera — cinematic 3/4 fixed shot, composed around gameplay subjects
+  // NOT fitting the whole room; framing player, guard, objectives
+  camera3D = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+  camera3D.position.set(0, 7, 9);
+  camera3D.lookAt(0, 0.5, -1);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
