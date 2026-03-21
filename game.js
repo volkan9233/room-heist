@@ -98,8 +98,8 @@ function createFloorTexture(palIdx) {
   const tc = document.createElement('canvas');
   tc.width = 1024; tc.height = 1024;
   const t = tc.getContext('2d');
-  // Base concrete color — darker for more contrast with lights
-  const bases = { 1: [42,48,58], 2: [52,46,40], 3: [38,48,60] };
+  // Base floor color — Room 1 is clean tech facility, bright polished floor
+  const bases = { 1: [180,185,195], 2: [52,46,40], 3: [38,48,60] };
   const b = bases[palIdx] || bases[1];
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
   t.fillRect(0, 0, 1024, 1024);
@@ -110,10 +110,10 @@ function createFloorTexture(palIdx) {
     t.fillStyle = `rgba(${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${Math.abs(v) / 255})`;
     t.fillRect(nx, ny, 1 + Math.random() * 3, 1 + Math.random() * 3);
   }
-  // Tile grid
+  // Tile grid — lighter for Room 1's bright floor
   const tileSize = 1024 / 8;
-  t.strokeStyle = `rgba(0,0,0,0.35)`;
-  t.lineWidth = 2;
+  t.strokeStyle = palIdx === 1 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.35)';
+  t.lineWidth = palIdx === 1 ? 1.5 : 2;
   for (let i = 0; i <= 8; i++) {
     t.beginPath(); t.moveTo(i * tileSize, 0); t.lineTo(i * tileSize, 1024); t.stroke();
     t.beginPath(); t.moveTo(0, i * tileSize); t.lineTo(1024, i * tileSize); t.stroke();
@@ -152,7 +152,7 @@ function createWallTexture(palIdx, w, h) {
   tc.width = w || 1024; tc.height = h || 512;
   const t = tc.getContext('2d');
   const cw = tc.width, ch = tc.height;
-  const bases = { 1: [38,48,62], 2: [55,48,42], 3: [34,44,58] };
+  const bases = { 1: [70,80,100], 2: [55,48,42], 3: [34,44,58] };
   const b = bases[palIdx] || bases[1];
   // Base color
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
@@ -243,7 +243,9 @@ function createRoom3D(roomNum) {
 
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide });
+  const floorRoughness = rn === 1 ? 0.55 : 0.82;
+  const floorMetalness = rn === 1 ? 0.05 : 0.02;
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: floorRoughness, metalness: floorMetalness, side: THREE.DoubleSide });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -433,7 +435,7 @@ function createCeilingLights3D() {
 function createExitDoor3D(roomNum) {
   // Door position depends on room
   const isRight = roomNum === 1;
-  const doorW = 1.5, doorH = 3;
+  const doorW = 1.5, doorH = 2.2;
   const doorGeom = new THREE.PlaneGeometry(doorW, doorH);
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x585b62, roughness: 0.6, metalness: 0.3 });
   const door = new THREE.Mesh(doorGeom, doorMat);
@@ -512,31 +514,103 @@ function addBox(x, y, z, w, h, d, color, opts) {
 
 function createFurniture3D(roomNum) {
   if (roomNum === 1) {
-    // Desk — metal surface with legs
-    addBox(5.5, 0.9, -4, 5, 0.12, 1.8, 0x7a8a9a, { metalness: 0.5, roughness: 0.4 });
-    addBox(3.5, 0.45, -4, 0.12, 0.9, 1.5, 0x5a6a7a, { metalness: 0.4 });
-    addBox(7.5, 0.45, -4, 0.12, 0.9, 1.5, 0x5a6a7a, { metalness: 0.4 });
+    // ─── Desk — sleek modern control desk ───
+    addBox(5.5, 0.9, -4, 5, 0.12, 2.0, 0xc0cad0, { metalness: 0.6, roughness: 0.25 }); // polished surface
+    addBox(3.3, 0.45, -4, 0.08, 0.9, 1.8, 0x8090a0, { metalness: 0.5 }); // left leg
+    addBox(7.7, 0.45, -4, 0.08, 0.9, 1.8, 0x8090a0, { metalness: 0.5 }); // right leg
+    addBox(5.5, 0.45, -4.9, 5, 0.78, 0.06, 0x505a65, { metalness: 0.3 }); // back modesty panel
     // Desk drawer unit
-    addBox(4.2, 0.45, -4, 1.0, 0.8, 1.4, 0x4a5a6a, { metalness: 0.3 });
-    // Monitor on desk — screen with blue glow
-    addBox(7.0, 1.4, -4.1, 1.0, 0.7, 0.06, 0x0a0a15);
-    addBox(7.0, 1.42, -4.07, 0.88, 0.55, 0.02, 0x102040, { emissive: 0x1030a0, emissiveIntensity: 0.5 });
-    addBox(7.0, 1.0, -4, 0.12, 0.12, 0.35, 0x3a3a4a, { metalness: 0.5 });
-    // Keyboard
-    addBox(6.5, 0.98, -3.5, 0.6, 0.03, 0.2, 0x2a2a35);
-    // Server rack 1 — with LED strips
-    addBox(-2, 1.5, -6.8, 2.0, 3.0, 0.8, 0x2a2e38, { metalness: 0.5, roughness: 0.4 });
-    addBox(-2, 2.8, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
-    addBox(-2, 2.2, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.5 });
-    addBox(-2, 1.6, -6.35, 1.8, 0.03, 0.05, 0xff4000, { emissive: 0xff4000, emissiveIntensity: 0.4 });
-    // Server rack 2 — with LED strips
-    addBox(1.5, 1.5, -6.8, 2.0, 3.0, 0.8, 0x2a2e38, { metalness: 0.5, roughness: 0.4 });
-    addBox(1.5, 2.8, -6.35, 1.8, 0.03, 0.05, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
-    addBox(1.5, 2.0, -6.35, 1.8, 0.03, 0.05, 0x40a0ff, { emissive: 0x40a0ff, emissiveIntensity: 0.6 });
-    // Crates — wooden with darker bands
-    addBox(-4.5, 0.5, 3.5, 2.0, 1.0, 1.5, 0x8a7040, { roughness: 0.85 });
-    addBox(-4.5, 0.5, 3.5, 2.1, 0.08, 1.55, 0x6a5030, { roughness: 0.9 }); // band
-    addBox(-4.5, 1.2, 3.5, 1.5, 0.7, 1.2, 0x7a6030, { roughness: 0.85 });
+    addBox(4.0, 0.45, -4, 1.0, 0.8, 1.4, 0x606a75, { metalness: 0.35, roughness: 0.5 });
+    addBox(4.0, 0.65, -3.28, 0.8, 0.04, 0.02, 0x909aa0, { metalness: 0.5 }); // drawer handle
+    addBox(4.0, 0.35, -3.28, 0.8, 0.04, 0.02, 0x909aa0, { metalness: 0.5 }); // lower handle
+    // Monitor — larger with brighter screen
+    addBox(7.0, 1.45, -4.2, 1.2, 0.8, 0.06, 0x1a1a22, { metalness: 0.4, roughness: 0.3 }); // bezel
+    addBox(7.0, 1.47, -4.17, 1.05, 0.62, 0.02, 0x1840a0, { emissive: 0x2050c0, emissiveIntensity: 0.7 }); // screen
+    addBox(7.0, 1.0, -4.1, 0.15, 0.12, 0.4, 0x404550, { metalness: 0.5 }); // stand neck
+    addBox(7.0, 0.96, -4.0, 0.4, 0.02, 0.25, 0x505560, { metalness: 0.5 }); // stand base
+    // Keyboard + mouse
+    addBox(6.3, 0.97, -3.4, 0.65, 0.02, 0.22, 0x303540, { roughness: 0.6 }); // keyboard
+    addBox(7.1, 0.97, -3.4, 0.15, 0.02, 0.1, 0x303540, { roughness: 0.6 }); // mouse
+    // Coffee mug on desk
+    const mugGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.12, 10);
+    const mugMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.4 });
+    const mug = new THREE.Mesh(mugGeom, mugMat);
+    mug.position.set(5.0, 1.02, -3.5);
+    scene3D.add(mug); currentRoomMeshes.push(mug);
+
+    // ─── Server rack 1 — detailed with proper shelves ───
+    addBox(-2, 1.5, -6.8, 2.2, 3.0, 1.0, 0x303840, { metalness: 0.55, roughness: 0.35 }); // main body
+    addBox(-2, 0.3, -6.8, 2.3, 0.06, 1.05, 0x404850); // base platform
+    // Rack unit panels
+    addBox(-2, 2.6, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    addBox(-2, 1.9, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    addBox(-2, 1.2, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    // LED indicators — green/amber/blue
+    addBox(-2.5, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 1.0 });
+    addBox(-2.3, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
+    addBox(-2.1, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
+    addBox(-1.5, 2.7, -6.25, 0.06, 0.06, 0.02, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.5 });
+    addBox(-2.5, 2.0, -6.25, 0.06, 0.06, 0.02, 0x4090ff, { emissive: 0x4090ff, emissiveIntensity: 0.7 });
+    addBox(-2.3, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
+    addBox(-1.5, 1.3, -6.25, 0.06, 0.06, 0.02, 0xff3000, { emissive: 0xff3000, emissiveIntensity: 0.5 });
+
+    // ─── Server rack 2 — matching ───
+    addBox(1.5, 1.5, -6.8, 2.2, 3.0, 1.0, 0x303840, { metalness: 0.55, roughness: 0.35 });
+    addBox(1.5, 0.3, -6.8, 2.3, 0.06, 1.05, 0x404850);
+    addBox(1.5, 2.6, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    addBox(1.5, 1.9, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    addBox(1.5, 1.2, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
+    addBox(1.0, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 1.0 });
+    addBox(1.2, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
+    addBox(2.0, 2.7, -6.25, 0.06, 0.06, 0.02, 0x4090ff, { emissive: 0x4090ff, emissiveIntensity: 0.7 });
+    addBox(1.0, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
+    addBox(1.2, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.5 });
+
+    // ─── Supply crates — stacked, clean wooden with metal edges ───
+    addBox(-4.5, 0.5, 3.5, 2.0, 1.0, 1.5, 0xa08848, { roughness: 0.8 }); // bottom crate
+    addBox(-4.5, 0.02, 3.5, 2.05, 0.04, 1.55, 0x6a5838); // bottom band
+    addBox(-4.5, 0.98, 3.5, 2.05, 0.04, 1.55, 0x6a5838); // top band
+    addBox(-4.5, 1.2, 3.5, 1.6, 0.7, 1.2, 0x907838, { roughness: 0.8 }); // top crate
+    addBox(-4.5, 0.87, 3.5, 1.65, 0.04, 1.25, 0x5a4828); // top crate band
+
+    // ─── Wall-mounted cable tray along back wall ───
+    addBox(5, 2.0, -7.2, 6, 0.06, 0.3, 0x606870, { metalness: 0.5, roughness: 0.4 });
+    // Cable bundle on tray
+    addBox(5, 2.06, -7.15, 5.5, 0.08, 0.15, 0x2a2a35, { roughness: 0.8 });
+
+    // ─── Small wall panel / access terminal on right wall ───
+    addBox(9.95, 1.5, -2, 0.06, 0.6, 0.4, 0x404850, { metalness: 0.4 });
+    addBox(9.92, 1.55, -2, 0.02, 0.15, 0.1, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.5 }); // green indicator
+    // Keycard on desk — glowing 3D card
+    const kcGroup = new THREE.Group();
+    const kcBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.02, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x30b0f0, emissive: 0x30b0f0, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.4 })
+    );
+    kcGroup.add(kcBody);
+    // Gold chip
+    const kcChip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.025, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xf0d060, emissive: 0xf0d060, emissiveIntensity: 0.3, metalness: 0.7 })
+    );
+    kcChip.position.set(-0.1, 0.005, 0);
+    kcGroup.add(kcChip);
+    // Magnetic stripe
+    const kcStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.025, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x70d0ff, emissive: 0x70d0ff, emissiveIntensity: 0.4 })
+    );
+    kcStripe.position.set(0, 0.005, -0.08);
+    kcGroup.add(kcStripe);
+    // Glow light under card
+    const kcGlow = new THREE.PointLight(0x50c8ff, 8, 3);
+    kcGlow.position.set(0, 0.1, 0);
+    kcGroup.add(kcGlow);
+    kcGroup.position.set(5.5, 0.98, -3.5);
+    scene3D.add(kcGroup);
+    currentRoomMeshes.push(kcGroup);
+    keycardMesh3D = kcGroup;
+
     // Fire extinguisher — red with details
     const feGeom = new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12);
     const feMat = new THREE.MeshStandardMaterial({ color: 0xcc2020, roughness: 0.35, metalness: 0.3 });
@@ -1286,6 +1360,7 @@ canvas.addEventListener('pointerdown', function(e) {
 // ─── Game state ──────────────────────────────────────────────────────────────
 let detected = false;
 let hasKeycard = false;
+let keycardMesh3D = null;
 let won = false;
 let gameTime = 0;
 let currentRoom = 1;
@@ -6840,6 +6915,14 @@ function render() {
       }
       if (guardModel) {
         updateCharacterModel(guardModel, guard.u, guard.v, guard.facing, guard.walkPhase);
+      }
+      // Keycard 3D: hide when picked, bob when visible
+      if (keycardMesh3D) {
+        keycardMesh3D.visible = !hasKeycard;
+        if (!hasKeycard) {
+          keycardMesh3D.position.y = 0.98 + Math.sin(gameTime * 3) * 0.05;
+          keycardMesh3D.rotation.y = gameTime * 0.5;
+        }
       }
       updateExitLight();
       renderer3D.render(scene3D, camera3D);
