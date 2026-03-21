@@ -2562,7 +2562,7 @@ function initThreeJS() {
   // Camera — premium fixed-camera 3/4 stealth room shot
   // LookAt shifted forward so player occupies lower-mid foreground
   camera3D = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
-  camera3D.position.set(0.5, 5.5, 12.5);
+  camera3D.position.set(0.5, 6.5, 15);
   camera3D.lookAt(0, 0.3, -0.5);
 
   // Room geometry (also sets up lights)
