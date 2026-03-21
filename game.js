@@ -706,11 +706,11 @@ function initThreeJS() {
   scene3D = new THREE.Scene();
   scene3D.background = new THREE.Color(0x060810);
 
-  // Camera — elevated view looking down into the room
+  // Camera — front-elevated view looking into the room (like original 2D perspective)
   // Room: 20w x 15d x 6h, centered at origin, floor at y=0
-  camera3D = new THREE.PerspectiveCamera(52, W / H, 0.1, 100);
-  camera3D.position.set(0, 16, 10);
-  camera3D.lookAt(0, 0, -1.5);
+  camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
+  camera3D.position.set(0, 8, 14);
+  camera3D.lookAt(0, 1.5, -2);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
