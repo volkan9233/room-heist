@@ -7,6 +7,26 @@ const ctx = uiCanvas.getContext('2d');
 
 let W, H, scale;
 
+// ─── Global error display ─────────────────────────────────────────────────────
+window.onerror = function(msg, url, line, col, error) {
+  const c = document.getElementById('uiCanvas');
+  if (c) {
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#000';
+    cx.fillRect(0, 0, c.width, c.height);
+    cx.fillStyle = '#ff4040';
+    cx.font = '20px monospace';
+    cx.fillText('ERROR: ' + msg, 20, 40);
+    cx.fillStyle = '#aaa';
+    cx.font = '14px monospace';
+    cx.fillText('Line: ' + line + ', Col: ' + col, 20, 70);
+    if (error && error.stack) {
+      const stackLines = error.stack.split('\n').slice(0, 5);
+      stackLines.forEach((sl, i) => cx.fillText(sl.trim(), 20, 100 + i * 20));
+    }
+  }
+};
+
 // ─── Three.js globals ────────────────────────────────────────────────────────
 let scene3D, camera3D, renderer3D;
 let playerModel, guardModel;
@@ -47,7 +67,7 @@ function uvToWorld(u, v) {
 }
 
 // Projects UV floor coordinates to 2D screen space via Three.js camera
-const _projVec = new THREE.Vector3();
+let _projVec = null;
 function floorToScreen(u, v) {
   if (!camera3D) {
     // Fallback before Three.js init (uses old bilinear interpolation)
@@ -57,6 +77,7 @@ function floorToScreen(u, v) {
       y: (1-u)*(1-v)*floorTL.y + u*(1-v)*floorTR.y + (1-u)*v*floorBL.y + u*v*floorBR.y,
     };
   }
+  if (!_projVec) _projVec = new THREE.Vector3();
   _projVec.set((u - 0.5) * WORLD_W, 0, (v - 0.5) * WORLD_D);
   _projVec.project(camera3D);
   // Map NDC to screen pixels, then to design-space (accounting for letterbox offset)
@@ -6763,22 +6784,34 @@ function drawAtmosphere() {
 function render() {
   // ─── Three.js 3D rendering ──────────────────────────────────────────────────
   if (renderer3D && scene3D && camera3D) {
-    // Update 3D character models
-    if (playerModel) {
-      playerModel.visible = !playerHidden;
-      if (!playerHidden) {
-        updateCharacterModel(playerModel, player.u, player.v, player.facing, player.walkPhase);
+    try {
+      // Update 3D character models
+      if (playerModel) {
+        playerModel.visible = !playerHidden;
+        if (!playerHidden) {
+          updateCharacterModel(playerModel, player.u, player.v, player.facing, player.walkPhase);
+        }
       }
+      if (guardModel) {
+        updateCharacterModel(guardModel, guard.u, guard.v, guard.facing, guard.walkPhase);
+      }
+      updateExitLight();
+      renderer3D.render(scene3D, camera3D);
+    } catch (e) {
+      // Show render error on UI canvas
+      ctx.fillStyle = '#ff4040';
+      ctx.font = '16px monospace';
+      ctx.fillText('Render error: ' + e.message, 20, 60);
     }
-    if (guardModel) {
-      updateCharacterModel(guardModel, guard.u, guard.v, guard.facing, guard.walkPhase);
-    }
-    updateExitLight();
-    renderer3D.render(scene3D, camera3D);
   }
 
   // ─── 2D UI overlay on uiCanvas ──────────────────────────────────────────────
   ctx.clearRect(0, 0, W, H);
+
+  // Debug status (temporary)
+  ctx.fillStyle = '#00ff00';
+  ctx.font = '12px monospace';
+  ctx.fillText('Loop OK | 3D: ' + (renderer3D ? 'YES' : 'NO') + ' | Scene children: ' + (scene3D ? scene3D.children.length : 0), 10, H - 10);
 
   ctx.save();
   ctx.translate((W - 1280 * scale) / 2, (H - 720 * scale) / 2);
@@ -7047,7 +7080,24 @@ function render() {
 let lastTime = 0;
 
 // Initialize Three.js before starting the game loop
-initThreeJS();
+if (typeof THREE !== 'undefined') {
+  try {
+    initThreeJS();
+  } catch (e) {
+    console.error('Three.js init failed:', e);
+    ctx.fillStyle = '#ff4040';
+    ctx.font = '20px monospace';
+    ctx.fillText('Three.js init failed: ' + e.message, 20, 40);
+  }
+} else {
+  console.error('THREE is not defined — CDN may have failed to load');
+  ctx.fillStyle = '#ff4040';
+  ctx.font = '20px monospace';
+  ctx.fillText('Error: Three.js library failed to load', 20, 40);
+  ctx.fillStyle = '#aaa';
+  ctx.font = '14px monospace';
+  ctx.fillText('Check network connection / CDN availability', 20, 70);
+}
 
 function loop(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
