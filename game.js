@@ -135,6 +135,9 @@ function createRoom3D(roomNum) {
   for (const m of currentRoomMeshes) scene3D.remove(m);
   currentRoomMeshes = [];
 
+  // Re-setup lights for new room palette
+  setupLights();
+
   const rn = roomNum || 1;
   const floorTex = createFloorTexture(rn);
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
@@ -144,7 +147,7 @@ function createRoom3D(roomNum) {
 
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.75, metalness: 0.05 });
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.75, metalness: 0.05, side: THREE.DoubleSide });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -153,33 +156,38 @@ function createRoom3D(roomNum) {
 
   // Back wall
   const bwGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_H);
-  const bwMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.02 });
+  const bwMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const backWall = new THREE.Mesh(bwGeom, bwMat);
   backWall.position.set(0, WORLD_H / 2, -WORLD_D / 2);
+  backWall.receiveShadow = true;
   scene3D.add(backWall);
   currentRoomMeshes.push(backWall);
 
   // Left wall
   const lwGeom = new THREE.PlaneGeometry(WORLD_D, WORLD_H);
-  const lwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02 });
+  const lwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const leftWall = new THREE.Mesh(lwGeom, lwMat);
   leftWall.position.set(-WORLD_W / 2, WORLD_H / 2, 0);
   leftWall.rotation.y = Math.PI / 2;
+  leftWall.receiveShadow = true;
   scene3D.add(leftWall);
   currentRoomMeshes.push(leftWall);
 
   // Right wall
   const rwGeom = new THREE.PlaneGeometry(WORLD_D, WORLD_H);
-  const rwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02 });
+  const rwMat = new THREE.MeshStandardMaterial({ map: sideWallTex, roughness: 0.8, metalness: 0.02, side: THREE.DoubleSide });
   const rightWall = new THREE.Mesh(rwGeom, rwMat);
   rightWall.position.set(WORLD_W / 2, WORLD_H / 2, 0);
   rightWall.rotation.y = -Math.PI / 2;
+  rightWall.receiveShadow = true;
   scene3D.add(rightWall);
   currentRoomMeshes.push(rightWall);
 
-  // Ceiling
+  // Ceiling — visible from both sides (camera is above it)
   const ceilGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x1a2030, roughness: 0.95, metalness: 0.0 });
+  const ceilMat = new THREE.MeshStandardMaterial({
+    color: 0x1a2030, roughness: 0.95, metalness: 0.0, side: THREE.DoubleSide
+  });
   const ceiling = new THREE.Mesh(ceilGeom, ceilMat);
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = WORLD_H;
@@ -607,41 +615,60 @@ function createCharacterModel(type) {
   return group;
 }
 
+let currentLights = [];
+
 function setupLights() {
-  // Ambient light — dim fill
-  const ambient = new THREE.AmbientLight(0x1a2540, 0.4);
-  scene3D.add(ambient);
+  // Remove old lights
+  for (const l of currentLights) scene3D.remove(l);
+  currentLights = [];
+
+  function addLight(light) {
+    scene3D.add(light);
+    currentLights.push(light);
+    return light;
+  }
+
+  // Ambient light — moderate fill so room is never fully black
+  addLight(new THREE.AmbientLight(0x4a5a80, 1.2));
+
+  // Hemisphere light for natural fill (sky/ground)
+  addLight(new THREE.HemisphereLight(0x6080c0, 0x203040, 0.8));
 
   // Two ceiling spotlights with shadows
   const lightColors = { 1: 0xc8d4f0, 2: 0xf0dcc0, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  const spot1 = new THREE.SpotLight(lc, 40, 25, Math.PI / 4, 0.5, 1.5);
+  const spot1 = new THREE.SpotLight(lc, 500, 30, Math.PI / 3, 0.6, 1.2);
   spot1.position.set(-3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
   spot1.target.position.set(-3, 0, 2);
   spot1.castShadow = true;
   spot1.shadow.mapSize.set(1024, 1024);
   spot1.shadow.camera.near = 0.5;
-  spot1.shadow.camera.far = 20;
+  spot1.shadow.camera.far = 25;
   spot1.shadow.bias = -0.002;
-  scene3D.add(spot1);
+  addLight(spot1);
   scene3D.add(spot1.target);
 
-  const spot2 = new THREE.SpotLight(lc, 40, 25, Math.PI / 4, 0.5, 1.5);
+  const spot2 = new THREE.SpotLight(lc, 500, 30, Math.PI / 3, 0.6, 1.2);
   spot2.position.set(3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
   spot2.target.position.set(3, 0, 2);
   spot2.castShadow = true;
   spot2.shadow.mapSize.set(1024, 1024);
   spot2.shadow.camera.near = 0.5;
-  spot2.shadow.camera.far = 20;
+  spot2.shadow.camera.far = 25;
   spot2.shadow.bias = -0.002;
-  scene3D.add(spot2);
+  addLight(spot2);
   scene3D.add(spot2.target);
 
-  // Subtle fill light from front
-  const fill = new THREE.PointLight(0x304060, 3, 20);
+  // Fill light from front — brighter for visibility
+  const fill = new THREE.PointLight(0x506080, 80, 30);
   fill.position.set(0, 3, WORLD_D / 2 + 2);
-  scene3D.add(fill);
+  addLight(fill);
+
+  // Back wall fill to brighten the rear
+  const backFill = new THREE.PointLight(0x405070, 40, 20);
+  backFill.position.set(0, 4, -WORLD_D / 2 + 2);
+  addLight(backFill);
 }
 
 function initThreeJS() {
@@ -652,7 +679,7 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 1.0;
+  renderer3D.toneMappingExposure = 1.8;
 
   // Scene
   scene3D = new THREE.Scene();
@@ -663,10 +690,7 @@ function initThreeJS() {
   camera3D.position.set(0, 12, 14);
   camera3D.lookAt(0, 1, -2);
 
-  // Lights
-  setupLights();
-
-  // Room geometry
+  // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
 
   // Characters
