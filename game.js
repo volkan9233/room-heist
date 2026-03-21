@@ -2322,7 +2322,11 @@ function loadGLBModels() {
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const sf = targetHeight / size.y;
+    let sf = targetHeight / size.y;
+    // Safety clamp: if raw model is absurdly small/large, cap the scale factor
+    // Reasonable GLB models are 0.1–10 units tall; scale factor should be 0.1–50
+    if (sf > 50) sf = 50;
+    if (sf < 0.001) sf = 0.001;
     console.log('GLB raw size:', size.x.toFixed(4), size.y.toFixed(4), size.z.toFixed(4), '→ scale:', sf.toFixed(6));
 
     return {
@@ -2624,11 +2628,9 @@ function initThreeJS() {
   fxaaPass.uniforms['resolution'].value.set(1 / W, 1 / H);
   composer.addPass(fxaaPass);
 
-  // Characters — create procedural as fallback but hide until GLB replaces them
+  // Characters — start with procedural models visible, GLB will replace when loaded
   playerModel = createCharacterModel('player');
   guardModel = createCharacterModel('guard');
-  playerModel.visible = false;
-  guardModel.visible = false;
   scene3D.add(playerModel);
   scene3D.add(guardModel);
 
@@ -3163,6 +3165,12 @@ canvas.addEventListener('pointerdown', function(e) {
   if (!clickedId) return;
 
   if (player.currentHotspot) {
+    if (clickedId === player.currentHotspot) {
+      // Tapping the hotspot you're already at → interact (mobile E-key equivalent)
+      keys['e'] = true;
+      setTimeout(() => { keys['e'] = false; }, 100);
+      return;
+    }
     // Player is idle at a hotspot — start walking
     startWalkToDestination(clickedId);
   } else if (player.targetHotspot) {
