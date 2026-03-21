@@ -219,15 +219,15 @@ const ROOM1_HOTSPOTS = [
   // Mid row — westCrates routes west of crate box (u < 0.27)
   { id: 'r1_westCrates',  u: 0.22, v: 0.45, edges: ['r1_blCorner', 'r1_southCrates', 'r1_leftOfRack1'] },
   { id: 'r1_leftOfRack1', u: 0.10, v: 0.45, edges: ['r1_blCorner', 'r1_frontRack1', 'r1_westCrates'] },
-  { id: 'r1_southCrates', u: 0.35, v: 0.48, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
+  { id: 'r1_southCrates', u: 0.35, v: 0.46, edges: ['r1_westCrates', 'r1_midUpper', 'r1_eastOfCrates'] },
   { id: 'r1_midFloor',    u: 0.58, v: 0.60, edges: ['r1_behindCrates', 'r1_brCorner', 'r1_eastOfCrates'] },
   { id: 'r1_exitDoor',    u: 0.90, v: 0.55, edges: ['r1_brCorner', 'r1_eastOfCrates'] },
-  { id: 'r1_eastOfCrates',u: 0.55, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2'] },
-  // Upper row — frontRack1 moved south of rack1 bounding box
-  { id: 'r1_frontRack1',  u: 0.14, v: 0.40, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
+  { id: 'r1_eastOfCrates',u: 0.58, v: 0.45, edges: ['r1_midFloor', 'r1_exitDoor', 'r1_southCrates', 'r1_midUpper', 'r1_frontDesk', 'r1_frontRack2'] },
+  // Upper row — approach positions south of props with comfortable margin
+  { id: 'r1_frontRack1',  u: 0.14, v: 0.43, edges: ['r1_leftOfRack1', 'r1_midUpper'] },
   { id: 'r1_midUpper',    u: 0.32, v: 0.38, edges: ['r1_frontRack1', 'r1_southCrates', 'r1_eastOfCrates', 'r1_frontRack2'] },
-  { id: 'r1_frontRack2',  u: 0.48, v: 0.36, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
-  { id: 'r1_frontDesk',   u: 0.78, v: 0.34, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
+  { id: 'r1_frontRack2',  u: 0.48, v: 0.38, edges: ['r1_midUpper', 'r1_eastOfCrates', 'r1_frontDesk'] },
+  { id: 'r1_frontDesk',   u: 0.78, v: 0.36, edges: ['r1_frontRack2', 'r1_eastOfCrates'] },
 ];
 
 const ROOM2_HOTSPOTS = [
@@ -235,16 +235,16 @@ const ROOM2_HOTSPOTS = [
   { id: 'r2_backStart',    u: 0.22, v: 0.75, edges: ['r2_backCenter', 'r2_gapSouth', 'r2_behindBarrels', 'r2_exitArea'] },
   { id: 'r2_backCenter',   u: 0.22, v: 0.38, edges: ['r2_backStart', 'r2_frontBench', 'r2_behindBarrels'] },
   { id: 'r2_frontBench',   u: 0.22, v: 0.28, edges: ['r2_backCenter'] },
-  { id: 'r2_behindBarrels',u: 0.24, v: 0.56, edges: ['r2_backCenter', 'r2_backStart'] },
-  // Gap corridor
+  { id: 'r2_behindBarrels',u: 0.24, v: 0.59, edges: ['r2_backCenter', 'r2_backStart'] },
+  // Gap corridor — comfortable margin below partition (vMax=0.62)
   { id: 'r2_gapSouth',     u: 0.43, v: 0.75, edges: ['r2_backStart', 'r2_gapNorth', 'r2_frontStart'] },
-  { id: 'r2_gapNorth',     u: 0.43, v: 0.64, edges: ['r2_gapSouth'] },
+  { id: 'r2_gapNorth',     u: 0.43, v: 0.66, edges: ['r2_gapSouth'] },
   // Front area (right of partition)
   { id: 'r2_frontStart',   u: 0.85, v: 0.85, edges: ['r2_gapSouth', 'r2_frontLower', 'r2_exitArea'] },
   { id: 'r2_frontLower',   u: 0.72, v: 0.65, edges: ['r2_frontStart', 'r2_frontShelving', 'r2_westCrates'] },
   { id: 'r2_westCrates',   u: 0.52, v: 0.65, edges: ['r2_frontLower', 'r2_frontSpool'] },
   { id: 'r2_frontSpool',   u: 0.52, v: 0.38, edges: ['r2_westCrates', 'r2_frontCabinet', 'r2_frontShelving'] },
-  { id: 'r2_frontCabinet', u: 0.62, v: 0.30, edges: ['r2_frontSpool'] },
+  { id: 'r2_frontCabinet', u: 0.62, v: 0.33, edges: ['r2_frontSpool'] },
   { id: 'r2_frontShelving',u: 0.72, v: 0.45, edges: ['r2_frontLower', 'r2_frontSpool'] },
   { id: 'r2_exitArea',     u: 0.08, v: 0.62, edges: ['r2_backStart', 'r2_frontStart'] },
 ];
@@ -255,14 +255,14 @@ const ROOM3_HOTSPOTS = [
   { id: 'r3_nearLocker',  u: 0.83, v: 0.76, edges: ['r3_start', 'r3_southCenter', 'r3_westLocker'] },
   { id: 'r3_westLocker',  u: 0.70, v: 0.76, edges: ['r3_nearLocker', 'r3_southCenter', 'r3_gapSouth'] },
   { id: 'r3_southCenter', u: 0.50, v: 0.78, edges: ['r3_start', 'r3_nearLocker', 'r3_westLocker', 'r3_nearCrates', 'r3_exitDoor'] },
-  { id: 'r3_nearCrates',  u: 0.30, v: 0.76, edges: ['r3_southCenter', 'r3_exitDoor'] },
+  { id: 'r3_nearCrates',  u: 0.30, v: 0.78, edges: ['r3_southCenter', 'r3_exitDoor'] },
   { id: 'r3_exitDoor',    u: 0.08, v: 0.76, edges: ['r3_southCenter', 'r3_nearCrates'] },
   // Gap passage (right side, between corridors)
   { id: 'r3_gapSouth',    u: 0.70, v: 0.50, edges: ['r3_westLocker', 'r3_gapNorth'] },
   { id: 'r3_gapNorth',    u: 0.70, v: 0.36, edges: ['r3_gapSouth', 'r3_northEast'] },
-  // North corridor
+  // North corridor — approach positions south of props with comfortable margin
   { id: 'r3_northEast',   u: 0.62, v: 0.32, edges: ['r3_gapNorth', 'r3_frontRack'] },
-  { id: 'r3_frontRack',   u: 0.52, v: 0.32, edges: ['r3_northEast', 'r3_northCenter'] },
+  { id: 'r3_frontRack',   u: 0.52, v: 0.34, edges: ['r3_northEast', 'r3_northCenter'] },
   { id: 'r3_northCenter', u: 0.36, v: 0.32, edges: ['r3_frontRack', 'r3_frontTable'] },
   { id: 'r3_frontTable',  u: 0.20, v: 0.28, edges: ['r3_northCenter'] },
 ];
@@ -341,10 +341,31 @@ function startWalkToDestination(destinationId) {
   return true;
 }
 
-// Find closest hotspot to a screen-space click point
-function findClickedHotspot(screenX, screenY, maxDist) {
+// Return set of all hotspot IDs reachable via edges from startId
+function getReachableSet(startId) {
+  const reachable = new Set([startId]);
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const node = getHotspot(current);
+    if (!node) continue;
+    for (const neighborId of node.edges) {
+      if (!reachable.has(neighborId)) {
+        reachable.add(neighborId);
+        queue.push(neighborId);
+      }
+    }
+  }
+  return reachable;
+}
+
+// Find closest reachable hotspot to a screen-space click point.
+// reachableSet filters out unreachable nodes; maxDist caps screen distance.
+function findClickedHotspot(screenX, screenY, maxDist, reachableSet) {
   let bestId = null, bestDist = Infinity;
   for (const h of HOTSPOTS) {
+    // Skip hotspots the player can't reach
+    if (reachableSet && !reachableSet.has(h.id)) continue;
     const pos = floorToScreen(h.u, h.v);
     // Apply the same transform as render: scale and center
     const drawX = pos.x * scale + (W - 1280 * scale) / 2;
@@ -368,9 +389,20 @@ canvas.addEventListener('pointerdown', function(e) {
   const clickX = e.clientX;
   const clickY = e.clientY;
 
-  // Hit radius scales with screen size — 40px at 1280w baseline
-  const hitRadius = 40 * scale;
-  const clickedId = findClickedHotspot(clickX, clickY, hitRadius);
+  // Generous hit radius — covers most of the floor so clicks feel natural
+  const hitRadius = 100 * scale;
+
+  // Determine reachability from player's effective position
+  let fromId = player.currentHotspot;
+  if (!fromId && player.walkPath.length > 0) {
+    // Mid-walk: reachability from walk destination
+    fromId = player.walkPath[player.walkPath.length - 1];
+  } else if (!fromId && player.targetHotspot) {
+    fromId = player.targetHotspot;
+  }
+  const reachable = fromId ? getReachableSet(fromId) : null;
+
+  const clickedId = findClickedHotspot(clickX, clickY, hitRadius, reachable);
   if (!clickedId) return;
 
   if (player.currentHotspot) {
