@@ -695,16 +695,16 @@ function setupLights() {
   }
 
   // Ambient light — subtle fill, let spotlights do the work
-  addLight(new THREE.AmbientLight(0x2a3450, 0.6));
+  addLight(new THREE.AmbientLight(0x4a5a80, 1.2));
 
   // Hemisphere light for natural fill (sky/ground)
-  addLight(new THREE.HemisphereLight(0x405080, 0x101820, 0.4));
+  addLight(new THREE.HemisphereLight(0x6080b0, 0x303840, 0.8));
 
   // Two ceiling spotlights with shadows
   const lightColors = { 1: 0xc8d4f0, 2: 0xf0dcc0, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  const spot1 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
+  const spot1 = new THREE.SpotLight(lc, 1400, 35, Math.PI / 3.5, 0.7, 1.5);
   spot1.position.set(-3, WALL_H + 3, -WORLD_D / 2 + 1.5);
   spot1.target.position.set(-3, 0, 2);
   spot1.castShadow = true;
@@ -715,7 +715,7 @@ function setupLights() {
   addLight(spot1);
   scene3D.add(spot1.target);
 
-  const spot2 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
+  const spot2 = new THREE.SpotLight(lc, 1400, 35, Math.PI / 3.5, 0.7, 1.5);
   spot2.position.set(3, WALL_H + 3, -WORLD_D / 2 + 1.5);
   spot2.target.position.set(3, 0, 2);
   spot2.castShadow = true;
@@ -727,12 +727,12 @@ function setupLights() {
   scene3D.add(spot2.target);
 
   // Fill light from front — brighter for visibility
-  const fill = new THREE.PointLight(0x506080, 80, 30);
+  const fill = new THREE.PointLight(0x6080a0, 150, 35);
   fill.position.set(0, 3, WORLD_D / 2 + 2);
   addLight(fill);
 
   // Back wall fill to brighten the rear
-  const backFill = new THREE.PointLight(0x405070, 40, 20);
+  const backFill = new THREE.PointLight(0x506080, 80, 25);
   backFill.position.set(0, 4, -WORLD_D / 2 + 2);
   addLight(backFill);
 }
