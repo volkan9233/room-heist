@@ -408,11 +408,63 @@ function findClickedHotspot(screenX, screenY, maxDist, reachableSet) {
 canvas.addEventListener('pointerdown', function(e) {
   // Ignore if game is over or transitioning
   if (detected || won || roomTransitionTimer > 0) return;
-  // Ignore if player is hidden
-  if (playerHidden) return;
 
   const clickX = e.clientX;
   const clickY = e.clientY;
+
+  // Handle crafting panel clicks when open
+  if (inventoryOpen && inventory.length >= 2) {
+    const offsetX = (W - 1280 * scale) / 2;
+    const offsetY = (H - 720 * scale) / 2;
+    const panelW = 280 * scale;
+    const panelH = 200 * scale;
+    const px = 640 * scale + offsetX - panelW / 2;
+    const py = 360 * scale + offsetY - panelH / 2;
+
+    if (clickX >= px && clickX <= px + panelW && clickY >= py && clickY <= py + panelH) {
+      // Click is inside crafting panel — find which slot
+      const gridStartX = px + 20 * scale;
+      const gridStartY = py + 50 * scale;
+      const slotSize = 36 * scale;
+      const gap = 8 * scale;
+      const cols = 5;
+
+      for (let i = 0; i < inventory.length; i++) {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const sx = gridStartX + col * (slotSize + gap);
+        const sy = gridStartY + row * (slotSize + gap);
+        if (clickX >= sx && clickX <= sx + slotSize && clickY >= sy && clickY <= sy + slotSize) {
+          const idx = selectedForCraft.indexOf(i);
+          if (idx >= 0) {
+            selectedForCraft.splice(idx, 1);
+          } else if (selectedForCraft.length < 2) {
+            selectedForCraft.push(i);
+          }
+          // Try crafting when 2 items selected
+          if (selectedForCraft.length === 2) {
+            craftingSlots = [inventory[selectedForCraft[0]], inventory[selectedForCraft[1]]];
+            if (tryCraft()) {
+              selectedForCraft = [];
+            } else {
+              // Invalid combo — flash and reset
+              selectedForCraft = [];
+              craftingSlots = [null, null];
+            }
+          }
+          return;
+        }
+      }
+      return; // clicked inside panel but not on a slot
+    }
+    // Click outside panel — close it
+    inventoryOpen = false;
+    selectedForCraft = [];
+    return;
+  }
+
+  // Ignore movement if player is hidden
+  if (playerHidden) return;
 
   // Generous hit radius — covers most of the floor so clicks feel natural
   const hitRadius = 100 * scale;
@@ -449,6 +501,142 @@ let roomTransitionTimer = 0;
 let spoolKnocked = false;
 let spoolNoiseTimer = 0;
 let playerHidden = false;
+
+// ─── Inventory & Crafting System ─────────────────────────────────────────────
+const ITEMS = {
+  tape:      { name: 'Tape',       icon: '🔗', desc: 'Adhesive tape' },
+  can:       { name: 'Tin Can',    icon: '🥫', desc: 'Empty tin can' },
+  stone:     { name: 'Stone',      icon: '🪨', desc: 'Small stone' },
+  wire:      { name: 'Wire',       icon: '🔌', desc: 'Piece of wire' },
+  phone:     { name: 'Phone',      icon: '📱', desc: 'Old phone' },
+  chip:      { name: 'Chip',       icon: '💾', desc: 'Hacking chip' },
+  battery:   { name: 'Battery',    icon: '🔋', desc: 'Small battery' },
+  cloth:     { name: 'Cloth',      icon: '🧶', desc: 'Torn cloth' },
+  lockpick:  { name: 'Lockpick',   icon: '🔑', desc: 'Crude lockpick' },
+  noisemaker:{ name: 'Noisemaker', icon: '📢', desc: 'Distracts guards' },
+  jammer:    { name: 'Jammer',     icon: '📡', desc: 'Disables cameras' },
+  trap:      { name: 'Trap',       icon: '🪤', desc: 'Slows guard 5s' },
+};
+
+// Crafting recipes: [item1, item2] → result
+const RECIPES = [
+  { ingredients: ['can', 'stone'],   result: 'noisemaker' },
+  { ingredients: ['wire', 'stone'],  result: 'lockpick' },
+  { ingredients: ['phone', 'chip'],  result: 'jammer' },
+  { ingredients: ['tape', 'wire'],   result: 'trap' },
+];
+
+// Items placed in each room — { itemId, hotspot, picked }
+const ROOM_ITEMS = {
+  1: [
+    { itemId: 'can',   hotspot: 'r1_frontRack1', picked: false },
+    { itemId: 'stone', hotspot: 'r1_brCorner',   picked: false },
+    { itemId: 'wire',  hotspot: 'r1_midUpper',   picked: false },
+  ],
+  2: [
+    { itemId: 'tape',  hotspot: 'r2_frontCabinet', picked: false },
+    { itemId: 'phone', hotspot: 'r2_westCrates',   picked: false },
+    { itemId: 'chip',  hotspot: 'r2_frontBench',   picked: false },
+  ],
+  3: [
+    { itemId: 'battery', hotspot: 'r3_northEast',   picked: false },
+    { itemId: 'cloth',   hotspot: 'r3_frontRack',   picked: false },
+    { itemId: 'wire',    hotspot: 'r3_northCenter',  picked: false },
+  ],
+};
+
+const inventory = [];     // array of item IDs the player has
+let inventoryOpen = false;
+let craftingSlots = [null, null];  // two slots for combining
+let craftResult = null;
+let craftAnimTimer = 0;
+let itemPickupAnim = { active: false, itemId: null, timer: 0, x: 0, y: 0 };
+
+function getActiveRoomItems() {
+  return ROOM_ITEMS[currentRoom] || [];
+}
+
+function tryPickupItem() {
+  if (!player.currentHotspot) return false;
+  const items = getActiveRoomItems();
+  for (const item of items) {
+    if (!item.picked && item.hotspot === player.currentHotspot) {
+      item.picked = true;
+      inventory.push(item.itemId);
+      // Trigger pickup animation
+      const hs = getHotspot(item.hotspot);
+      if (hs) {
+        const pos = floorToScreen(hs.u, hs.v);
+        itemPickupAnim = { active: true, itemId: item.itemId, timer: 0.8, x: pos.x, y: pos.y };
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function tryCraft() {
+  if (!craftingSlots[0] || !craftingSlots[1]) return false;
+  for (const recipe of RECIPES) {
+    const [a, b] = recipe.ingredients;
+    if ((craftingSlots[0] === a && craftingSlots[1] === b) ||
+        (craftingSlots[0] === b && craftingSlots[1] === a)) {
+      // Remove ingredients from inventory
+      const idx1 = inventory.indexOf(craftingSlots[0]);
+      if (idx1 >= 0) inventory.splice(idx1, 1);
+      const idx2 = inventory.indexOf(craftingSlots[1]);
+      if (idx2 >= 0) inventory.splice(idx2, 1);
+      // Add result
+      inventory.push(recipe.result);
+      craftResult = recipe.result;
+      craftAnimTimer = 1.5;
+      craftingSlots = [null, null];
+      return true;
+    }
+  }
+  return false;
+}
+
+function useItem(itemId) {
+  const idx = inventory.indexOf(itemId);
+  if (idx < 0) return false;
+
+  if (itemId === 'noisemaker' && player.currentHotspot) {
+    // Create noise at player's position to lure guard
+    const hs = getHotspot(player.currentHotspot);
+    if (hs) {
+      inventory.splice(idx, 1);
+      guard.investigating = true;
+      guard.investigateTarget = { u: hs.u, v: hs.v };
+      guard.investigateWaitTimer = 4;
+      spoolNoiseTimer = 2.0;
+      return true;
+    }
+  }
+
+  if (itemId === 'trap' && player.currentHotspot) {
+    // Place trap at current position — guard slows when passing near
+    const hs = getHotspot(player.currentHotspot);
+    if (hs) {
+      inventory.splice(idx, 1);
+      placedTraps.push({ u: hs.u, v: hs.v, active: true, timer: 15 });
+      return true;
+    }
+  }
+
+  if (itemId === 'jammer') {
+    // Disable cameras for 10 seconds (future mechanic, for now: prevent detection for 10s)
+    inventory.splice(idx, 1);
+    jammerActiveTimer = 10;
+    return true;
+  }
+
+  return false;
+}
+
+let placedTraps = [];
+let jammerActiveTimer = 0;
+let guardSlowTimer = 0;
 
 // ─── Drawing helpers ─────────────────────────────────────────────────────────
 function s(x) { return x * scale; }
@@ -570,6 +758,7 @@ const AWARENESS_RADIUS_MOVING = 0.32; // mid-walk (more exposed)
 
 function guardAwareOfPlayer() {
   if (playerHidden) return false;
+  if (jammerActiveTimer > 0) return false;  // jammer blocks detection
 
   const midWalk = !player.currentHotspot && player.targetHotspot;
   const radius = midWalk ? AWARENESS_RADIUS_MOVING : AWARENESS_RADIUS;
@@ -4100,7 +4289,8 @@ function guardMoveToward(tu, tv, spd, dt) {
   const dv = tv - guard.v;
   const dist = Math.hypot(du, dv);
   if (dist < 0.01) return true; // arrived
-  const step = spd * dt;
+  const effectiveSpd = guardSlowTimer > 0 ? spd * 0.4 : spd;
+  const step = effectiveSpd * dt;
   const ratio = Math.min(step / dist, 1);
   guard.u += du * ratio;
   guard.v += dv * ratio;
@@ -4428,6 +4618,15 @@ function resetCurrentRoom() {
   guard.lastSeenV = 0;
   spoolKnocked = false;
   spoolNoiseTimer = 0;
+  // Reset room items
+  const roomItems = ROOM_ITEMS[currentRoom] || [];
+  for (const item of roomItems) item.picked = false;
+  // Keep inventory but clear active effects
+  placedTraps = [];
+  jammerActiveTimer = 0;
+  guardSlowTimer = 0;
+  inventoryOpen = false;
+  selectedForCraft = [];
 }
 
 const ROOM_CONFIGS = {
@@ -4475,6 +4674,14 @@ function switchToRoom(n) {
   spoolKnocked = false;
   spoolNoiseTimer = 0;
   roomTransitionTimer = 2.0;
+  // Reset items in new room
+  const newRoomItems = ROOM_ITEMS[n] || [];
+  for (const item of newRoomItems) item.picked = false;
+  placedTraps = [];
+  jammerActiveTimer = 0;
+  guardSlowTimer = 0;
+  inventoryOpen = false;
+  selectedForCraft = [];
 }
 
 function resetGame() {
@@ -4512,6 +4719,18 @@ function resetGame() {
   guard.lastSeenV = 0;
   spoolKnocked = false;
   spoolNoiseTimer = 0;
+  // Full reset of inventory and items
+  inventory.length = 0;
+  inventoryOpen = false;
+  selectedForCraft = [];
+  placedTraps = [];
+  jammerActiveTimer = 0;
+  guardSlowTimer = 0;
+  craftAnimTimer = 0;
+  craftResult = null;
+  for (const roomId in ROOM_ITEMS) {
+    for (const item of ROOM_ITEMS[roomId]) item.picked = false;
+  }
 }
 
 // ─── Character draw ──────────────────────────────────────────────────────────
@@ -4928,6 +5147,53 @@ function update(dt) {
     keys['e'] = false; keys['E'] = false; keys[' '] = false;
   }
 
+  // Item pickup — press E at hotspot with item
+  if (player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
+    if (tryPickupItem()) {
+      keys['e'] = false; keys['E'] = false; keys[' '] = false;
+    }
+  }
+
+  // Toggle inventory with Tab or I
+  if (framePressed['Tab'] || framePressed['i'] || framePressed['I']) {
+    inventoryOpen = !inventoryOpen;
+    selectedForCraft = [];
+  }
+
+  // Use selected item with U key
+  if (framePressed['u'] || framePressed['U']) {
+    if (inventoryOpen && selectedForCraft.length === 1) {
+      const itemId = inventory[selectedForCraft[0]];
+      if (useItem(itemId)) {
+        selectedForCraft = [];
+        if (inventory.length === 0) inventoryOpen = false;
+      }
+    }
+  }
+
+  // Update timers
+  if (itemPickupAnim.active) {
+    itemPickupAnim.timer -= dt;
+    if (itemPickupAnim.timer <= 0) itemPickupAnim.active = false;
+  }
+  if (craftAnimTimer > 0) craftAnimTimer -= dt;
+  if (jammerActiveTimer > 0) jammerActiveTimer -= dt;
+  if (guardSlowTimer > 0) guardSlowTimer -= dt;
+
+  // Update traps
+  for (const trap of placedTraps) {
+    if (trap.active) {
+      trap.timer -= dt;
+      if (trap.timer <= 0) { trap.active = false; continue; }
+      // Check if guard walks over trap
+      const td = Math.hypot(guard.u - trap.u, guard.v - trap.v);
+      if (td < 0.08) {
+        guardSlowTimer = 5;
+        trap.active = false;
+      }
+    }
+  }
+
   // Exit interaction — press E or Space at exit hotspot
   if (hasKeycard && player.currentHotspot && (keys['e'] || keys['E'] || keys[' '])) {
     const exitHotspots = {
@@ -4951,6 +5217,206 @@ function update(dt) {
 
   // Guard AI (includes state machine: patrol → alert → suspicious → patrol, or caught)
   updateGuard(dt);
+}
+
+// ─── Inventory UI drawing ────────────────────────────────────────────────────
+function drawFloorItems() {
+  const items = getActiveRoomItems();
+  for (const item of items) {
+    if (item.picked) continue;
+    const hs = getHotspot(item.hotspot);
+    if (!hs) continue;
+    const pos = floorToScreen(hs.u, hs.v);
+    const ix = s(pos.x);
+    const iy = s(pos.y) - s(20);
+    const bob = Math.sin(gameTime * 3 + hs.u * 10) * 3;
+
+    // Glow circle on floor
+    const glowR = s(12);
+    const glow = ctx.createRadialGradient(ix, iy + s(20), 0, ix, iy + s(20), glowR);
+    glow.addColorStop(0, 'rgba(255,220,80,0.25)');
+    glow.addColorStop(1, 'rgba(255,220,80,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(ix, iy + s(20), glowR, glowR * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Item icon background
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.arc(ix, iy + bob * scale, s(10), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,80,0.6)';
+    ctx.lineWidth = s(1.5);
+    ctx.stroke();
+
+    // Item icon (emoji)
+    const itemDef = ITEMS[item.itemId];
+    if (itemDef) {
+      ctx.font = `${s(12)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(itemDef.icon, ix, iy + bob * scale);
+    }
+  }
+}
+
+function drawPickupAnimation() {
+  if (!itemPickupAnim.active) return;
+  const t = 1 - itemPickupAnim.timer / 0.8;
+  const itemDef = ITEMS[itemPickupAnim.itemId];
+  if (!itemDef) return;
+  const ix = s(itemPickupAnim.x);
+  const iy = s(itemPickupAnim.y) - t * s(60);
+  const alpha = 1 - t;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `bold ${s(14)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd740';
+  ctx.fillText(`+ ${itemDef.name}`, ix, iy);
+  ctx.restore();
+}
+
+function drawInventoryHUD() {
+  // Mini inventory bar at bottom-right
+  if (inventory.length === 0 && !inventoryOpen) return;
+
+  const barX = s(1280 - 40 * Math.max(inventory.length, 1) - 10);
+  const barY = s(660);
+  const slotSize = s(32);
+  const gap = s(6);
+
+  // Background bar
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.beginPath();
+  ctx.roundRect(barX - s(6), barY - s(4), inventory.length * (slotSize + gap) + s(12), slotSize + s(8), s(6));
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = s(1);
+  ctx.stroke();
+
+  // Inventory label
+  ctx.font = `${s(9)}px monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText('[TAB] Inventory', barX - s(4), barY - s(8));
+
+  for (let i = 0; i < inventory.length; i++) {
+    const itemDef = ITEMS[inventory[i]];
+    if (!itemDef) continue;
+    const sx = barX + i * (slotSize + gap);
+
+    // Slot background
+    ctx.fillStyle = 'rgba(40,40,60,0.8)';
+    ctx.beginPath();
+    ctx.roundRect(sx, barY, slotSize, slotSize, s(4));
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,80,0.3)';
+    ctx.lineWidth = s(1);
+    ctx.stroke();
+
+    // Icon
+    ctx.font = `${s(16)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(itemDef.icon, sx + slotSize / 2, barY + slotSize / 2);
+  }
+
+  // Crafting panel (when inventory is open)
+  if (inventoryOpen && inventory.length >= 2) {
+    drawCraftingPanel();
+  }
+}
+
+let craftHoverSlot = -1;
+let selectedForCraft = [];
+
+function drawCraftingPanel() {
+  const panelW = s(280);
+  const panelH = s(200);
+  const px = s(640) - panelW / 2;
+  const py = s(360) - panelH / 2;
+
+  // Panel background
+  ctx.fillStyle = 'rgba(10,10,20,0.9)';
+  ctx.beginPath();
+  ctx.roundRect(px, py, panelW, panelH, s(8));
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,220,80,0.3)';
+  ctx.lineWidth = s(1.5);
+  ctx.stroke();
+
+  // Title
+  ctx.font = `bold ${s(14)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd740';
+  ctx.fillText('CRAFTING', px + panelW / 2, py + s(22));
+
+  ctx.font = `${s(10)}px monospace`;
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText('Click two items to combine', px + panelW / 2, py + s(38));
+
+  // Inventory grid
+  const gridStartX = px + s(20);
+  const gridStartY = py + s(50);
+  const slotSize = s(36);
+  const gap = s(8);
+  const cols = 5;
+
+  for (let i = 0; i < inventory.length; i++) {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const sx = gridStartX + col * (slotSize + gap);
+    const sy = gridStartY + row * (slotSize + gap);
+
+    const isSelected = selectedForCraft.includes(i);
+
+    ctx.fillStyle = isSelected ? 'rgba(255,180,0,0.3)' : 'rgba(40,40,60,0.8)';
+    ctx.beginPath();
+    ctx.roundRect(sx, sy, slotSize, slotSize, s(4));
+    ctx.fill();
+    ctx.strokeStyle = isSelected ? '#ffd740' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = isSelected ? s(2) : s(1);
+    ctx.stroke();
+
+    const itemDef = ITEMS[inventory[i]];
+    if (itemDef) {
+      ctx.font = `${s(18)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(itemDef.icon, sx + slotSize / 2, sy + slotSize / 2);
+    }
+  }
+
+  // Craft result animation
+  if (craftAnimTimer > 0 && craftResult) {
+    const itemDef = ITEMS[craftResult];
+    if (itemDef) {
+      const alpha = Math.min(craftAnimTimer / 0.5, 1);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `bold ${s(16)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#40ff40';
+      ctx.fillText(`Crafted: ${itemDef.icon} ${itemDef.name}!`, px + panelW / 2, py + panelH - s(20));
+      ctx.restore();
+    }
+  }
+
+  // "Use" hint for usable items
+  if (selectedForCraft.length === 1) {
+    const selItem = inventory[selectedForCraft[0]];
+    if (selItem === 'noisemaker' || selItem === 'trap' || selItem === 'jammer') {
+      ctx.font = `${s(10)}px monospace`;
+      ctx.fillStyle = '#80e0ff';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Press [U] to use ${ITEMS[selItem].name}`, px + panelW / 2, py + panelH - s(8));
+    }
+  }
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
@@ -5025,6 +5491,22 @@ function render() {
 
   // Guard vision cone (on floor, below sprites)
   drawGuardVision();
+
+  // Collectible items on the floor
+  drawFloorItems();
+
+  // Placed traps visualization
+  for (const trap of placedTraps) {
+    if (!trap.active) continue;
+    const tp = floorToScreen(trap.u, trap.v);
+    const tGlow = ctx.createRadialGradient(s(tp.x), s(tp.y), 0, s(tp.x), s(tp.y), s(15));
+    tGlow.addColorStop(0, 'rgba(255,100,0,0.3)');
+    tGlow.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = tGlow;
+    ctx.beginPath();
+    ctx.ellipse(s(tp.x), s(tp.y), s(15), s(8), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Depth-sorted: objects + player + guard
   const sortable = [];
@@ -5145,6 +5627,17 @@ function render() {
     if (currentRoom === 3 && !playerHidden && hs === 'r3_nearLocker') {
       drawPrompt('[E] Hide in locker', '#ffc040', player.u, player.v - 0.06);
     }
+
+    // Item pickup prompt
+    const roomItems = getActiveRoomItems();
+    for (const item of roomItems) {
+      if (!item.picked && item.hotspot === hs) {
+        const itemDef = ITEMS[item.itemId];
+        if (itemDef) {
+          drawPrompt(`[E] Pick up ${itemDef.name}`, '#ffd740', player.u, player.v - 0.10);
+        }
+      }
+    }
   }
 
   // Objective status (bottom-left)
@@ -5192,6 +5685,28 @@ function render() {
 
   // Atmospheric post-processing
   drawAtmosphere();
+
+  // Item pickup animation
+  drawPickupAnimation();
+
+  // Inventory HUD
+  drawInventoryHUD();
+
+  // Jammer active indicator
+  if (jammerActiveTimer > 0) {
+    ctx.font = `bold ${s(12)}px monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = `rgba(0,200,255,${0.5 + Math.sin(gameTime * 4) * 0.3})`;
+    ctx.fillText(`JAMMER: ${Math.ceil(jammerActiveTimer)}s`, s(1250), s(30));
+  }
+
+  // Guard slow indicator
+  if (guardSlowTimer > 0) {
+    ctx.font = `bold ${s(12)}px monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = `rgba(255,150,0,${0.5 + Math.sin(gameTime * 4) * 0.3})`;
+    ctx.fillText(`TRAP ACTIVE: ${Math.ceil(guardSlowTimer)}s`, s(1250), s(48));
+  }
 
   // Room transition label
   if (roomTransitionTimer > 0 && !detected && !won) {
