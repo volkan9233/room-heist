@@ -593,41 +593,41 @@ function guardCanSeePlayer() { return guardAwareOfPlayer(); }
 
 // Per-room colour palettes — gives each room a distinct visual identity
 const ROOM_PALETTES = {
-  1: { // Server Room: cool, clean corporate — slight blue undertone
-    backWall:  ['#4a4f5a', '#424752', '#3a3f4a'],
-    leftWall:  ['#323844', '#383e4a', '#3e444e'],
-    rightWall: ['#3e444e', '#383e4a', '#343a46'],
-    floor:     ['#484d58', '#424752', '#3c414a'],
-    tileGroove: 'rgba(0,0,20,0.10)',
-    tileHighlight: 'rgba(180,190,220,0.03)',
-    seamDark:  'rgba(0,0,20,0.10)',
-    seamLight: 'rgba(200,210,240,0.03)',
-    baseboard: '#2a2e38',
-    baseHighlight: '#5e6270',
-  },
-  2: { // Maintenance Workshop: warm brownish grays — industrial, worn
-    backWall:  ['#524c44', '#4a443e', '#423c38'],
-    leftWall:  ['#3a3632', '#423e38', '#4a4640'],
-    rightWall: ['#4a4640', '#423e38', '#3e3a36'],
-    floor:     ['#4e4840', '#48423c', '#423e38'],
-    tileGroove: 'rgba(40,20,0,0.10)',
-    tileHighlight: 'rgba(220,200,170,0.03)',
-    seamDark:  'rgba(40,20,0,0.09)',
-    seamLight: 'rgba(220,200,170,0.03)',
-    baseboard: '#302c28',
-    baseHighlight: '#625c54',
-  },
-  3: { // Server Closet: cool blue-shifted grays — tight, technical
-    backWall:  ['#464e5a', '#3e4652', '#38404c'],
-    leftWall:  ['#343c4a', '#3a4250', '#404854'],
-    rightWall: ['#404854', '#3a4250', '#363e4c'],
-    floor:     ['#444c58', '#3e4650', '#384048'],
-    tileGroove: 'rgba(0,10,40,0.12)',
-    tileHighlight: 'rgba(160,180,220,0.03)',
-    seamDark:  'rgba(0,10,40,0.11)',
+  1: { // Server Room: dark, cold corporate — deep blue shadows
+    backWall:  ['#2e3340', '#282d38', '#222730'],
+    leftWall:  ['#1e2430', '#242a36', '#2a303a'],
+    rightWall: ['#2a303a', '#242a36', '#202630'],
+    floor:     ['#303540', '#2a2f3a', '#242934'],
+    tileGroove: 'rgba(0,0,30,0.18)',
+    tileHighlight: 'rgba(140,160,200,0.04)',
+    seamDark:  'rgba(0,0,30,0.15)',
     seamLight: 'rgba(160,180,220,0.03)',
-    baseboard: '#262e38',
-    baseHighlight: '#565e6c',
+    baseboard: '#181c26',
+    baseHighlight: '#3e4250',
+  },
+  2: { // Maintenance Workshop: dark warm tones — gritty industrial
+    backWall:  ['#3a3430', '#322c28', '#2a2420'],
+    leftWall:  ['#262220', '#2e2a26', '#342e2a'],
+    rightWall: ['#342e2a', '#2e2a26', '#282420'],
+    floor:     ['#38322c', '#302c26', '#2a2620'],
+    tileGroove: 'rgba(40,20,0,0.16)',
+    tileHighlight: 'rgba(200,180,140,0.03)',
+    seamDark:  'rgba(40,20,0,0.14)',
+    seamLight: 'rgba(200,180,140,0.03)',
+    baseboard: '#1e1a16',
+    baseHighlight: '#4a4438',
+  },
+  3: { // Server Closet: deep blue-black — claustrophobic tech dungeon
+    backWall:  ['#283040', '#222a38', '#1e2430'],
+    leftWall:  ['#1a2234', '#202840', '#262e44'],
+    rightWall: ['#262e44', '#202840', '#1c2436'],
+    floor:     ['#2c3442', '#26303c', '#202a36'],
+    tileGroove: 'rgba(0,10,50,0.18)',
+    tileHighlight: 'rgba(120,150,200,0.04)',
+    seamDark:  'rgba(0,10,50,0.16)',
+    seamLight: 'rgba(120,150,200,0.03)',
+    baseboard: '#141c28',
+    baseHighlight: '#3a4254',
   },
 };
 
@@ -4954,6 +4954,65 @@ function update(dt) {
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
+// ─── Atmospheric post-processing ────────────────────────────────────────────
+function drawAtmosphere() {
+  // Light pools from ceiling fixtures onto floor
+  const { floorTL, floorTR, floorBL, floorBR, ceilTL, ceilTR } = ROOM;
+  const lt = LIGHT_TINTS[currentRoom] || LIGHT_TINTS[1];
+
+  // Two ceiling lights cast elliptical pools on the floor
+  for (const t of [0.3, 0.7]) {
+    const lightU = t;
+    const lightV = 0.15; // near the back wall (light hits upper-mid floor)
+    const poolPos = floorToScreen(lightU, lightV);
+    const poolGrad = ctx.createRadialGradient(
+      s(poolPos.x), s(poolPos.y), 0,
+      s(poolPos.x), s(poolPos.y), s(140)
+    );
+    poolGrad.addColorStop(0, `rgba(${lt.glow},0.07)`);
+    poolGrad.addColorStop(0.4, `rgba(${lt.glow},0.03)`);
+    poolGrad.addColorStop(1, `rgba(${lt.glow},0)`);
+    ctx.fillStyle = poolGrad;
+    ctx.beginPath();
+    ctx.ellipse(s(poolPos.x), s(poolPos.y), s(140), s(80), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Proximity danger tint — red haze when guard is close
+  const du = player.u - guard.u;
+  const dv = player.v - guard.v;
+  const dist = Math.hypot(du, dv);
+  if (dist < 0.35 && !detected && !won && !playerHidden) {
+    const intensity = Math.max(0, 1 - dist / 0.35) * 0.15;
+    ctx.fillStyle = `rgba(200,0,0,${intensity.toFixed(3)})`;
+    ctx.fillRect(0, 0, s(1280), s(720));
+  }
+
+  // Vignette overlay (darkens edges for cinematic feel)
+  const vigW = s(1280), vigH = s(720);
+  const vigGrad = ctx.createRadialGradient(
+    vigW / 2, vigH / 2, Math.min(vigW, vigH) * 0.3,
+    vigW / 2, vigH / 2, Math.max(vigW, vigH) * 0.7
+  );
+  vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vigGrad.addColorStop(0.6, 'rgba(0,0,0,0.05)');
+  vigGrad.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, vigW, vigH);
+
+  // Subtle film grain (noise texture — changes each frame for life)
+  ctx.save();
+  ctx.globalAlpha = 0.025;
+  for (let i = 0; i < 60; i++) {
+    const gx = Math.random() * 1280;
+    const gy = Math.random() * 720;
+    const gs = 2 + Math.random() * 4;
+    ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
+    ctx.fillRect(s(gx), s(gy), s(gs), s(gs));
+  }
+  ctx.restore();
+}
+
 function render() {
   ctx.fillStyle = '#0a0a0f';
   ctx.fillRect(0, 0, W, H);
@@ -5130,6 +5189,9 @@ function render() {
     ctx.font = `${s(18)}px monospace`;
     ctx.fillText('Press R to play again', s(640), s(390));
   }
+
+  // Atmospheric post-processing
+  drawAtmosphere();
 
   // Room transition label
   if (roomTransitionTimer > 0 && !detected && !won) {
