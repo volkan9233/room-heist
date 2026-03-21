@@ -97,8 +97,8 @@ function createFloorTexture(palIdx) {
   const tc = document.createElement('canvas');
   tc.width = 1024; tc.height = 1024;
   const t = tc.getContext('2d');
-  // Base concrete color with subtle variation
-  const bases = { 1: [58,66,80], 2: [68,60,52], 3: [52,64,80] };
+  // Base concrete color — darker for more contrast with lights
+  const bases = { 1: [42,48,58], 2: [52,46,40], 3: [38,48,60] };
   const b = bases[palIdx] || bases[1];
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
   t.fillRect(0, 0, 1024, 1024);
@@ -151,7 +151,7 @@ function createWallTexture(palIdx, w, h) {
   tc.width = w || 1024; tc.height = h || 512;
   const t = tc.getContext('2d');
   const cw = tc.width, ch = tc.height;
-  const bases = { 1: [56,68,80], 2: [72,64,58], 3: [48,60,80] };
+  const bases = { 1: [38,48,62], 2: [55,48,42], 3: [34,44,58] };
   const b = bases[palIdx] || bases[1];
   // Base color
   t.fillStyle = `rgb(${b[0]},${b[1]},${b[2]})`;
@@ -242,7 +242,7 @@ function createRoom3D(roomNum) {
 
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -767,17 +767,17 @@ function setupLights() {
     return light;
   }
 
-  // Ambient light — moderate fill so room is never fully black
-  addLight(new THREE.AmbientLight(0x4a5a80, 1.2));
+  // Ambient light — subtle fill, let spotlights do the work
+  addLight(new THREE.AmbientLight(0x2a3450, 0.5));
 
   // Hemisphere light for natural fill (sky/ground)
-  addLight(new THREE.HemisphereLight(0x6080c0, 0x203040, 0.8));
+  addLight(new THREE.HemisphereLight(0x405080, 0x101820, 0.4));
 
   // Two ceiling spotlights with shadows
   const lightColors = { 1: 0xc8d4f0, 2: 0xf0dcc0, 3: 0xb0c0e0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  const spot1 = new THREE.SpotLight(lc, 500, 30, Math.PI / 3, 0.6, 1.2);
+  const spot1 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
   spot1.position.set(-3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
   spot1.target.position.set(-3, 0, 2);
   spot1.castShadow = true;
@@ -788,7 +788,7 @@ function setupLights() {
   addLight(spot1);
   scene3D.add(spot1.target);
 
-  const spot2 = new THREE.SpotLight(lc, 500, 30, Math.PI / 3, 0.6, 1.2);
+  const spot2 = new THREE.SpotLight(lc, 800, 30, Math.PI / 3.5, 0.7, 1.5);
   spot2.position.set(3, WORLD_H - 0.2, -WORLD_D / 2 + 1.5);
   spot2.target.position.set(3, 0, 2);
   spot2.castShadow = true;
@@ -818,7 +818,7 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 1.5;
+  renderer3D.toneMappingExposure = 1.2;
 
   // Scene
   scene3D = new THREE.Scene();
@@ -827,9 +827,9 @@ function initThreeJS() {
 
   // Camera — front-elevated view looking into the room
   // Room: 20w x 15d x 6h, centered at origin, floor at y=0
-  camera3D = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
+  camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
   camera3D.position.set(0, 7, 11);
-  camera3D.lookAt(0, 2, -1);
+  camera3D.lookAt(0, 0, -3);
 
   // Room geometry (also sets up lights)
   createRoom3D(currentRoom);
