@@ -657,98 +657,205 @@ function createExitDoor3D(roomNum) {
   const doorW = 1.8, doorH = 2.6;
   const wallX = isRight ? WORLD_W / 2 : -WORLD_W / 2;
   const doorX = isRight ? wallX - 0.01 : wallX + 0.01;
-  // Center door on wall, aligned with exit hotspot
   const doorZ = isRight ? 0.75 : WORLD_D * 0.1;
   const rotY = isRight ? -Math.PI / 2 : Math.PI / 2;
   const inset = isRight ? -1 : 1;
 
-  // Heavy security door frame — thick steel surround
-  const frameGeom = new THREE.BoxGeometry(0.2, doorH + 0.3, doorW + 0.3);
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a3e48, roughness: 0.35, metalness: 0.6 });
-  const frame = new THREE.Mesh(frameGeom, frameMat);
-  frame.position.set(doorX + inset * 0.08, doorH / 2, doorZ);
-  scene3D.add(frame); currentRoomMeshes.push(frame);
+  // Heavy security door frame — thick steel surround with layered depth
+  const frameOuter = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, doorH + 0.35, doorW + 0.35),
+    new THREE.MeshStandardMaterial({ color: 0x353a45, roughness: 0.35, metalness: 0.60 })
+  );
+  frameOuter.position.set(doorX + inset * 0.09, doorH / 2, doorZ);
+  frameOuter.castShadow = true;
+  scene3D.add(frameOuter); currentRoomMeshes.push(frameOuter);
+  // Inner frame recess
+  const frameInner = new THREE.Mesh(
+    new THREE.BoxGeometry(0.18, doorH + 0.10, doorW + 0.10),
+    new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.40, metalness: 0.55 })
+  );
+  frameInner.position.set(doorX + inset * 0.06, doorH / 2, doorZ);
+  scene3D.add(frameInner); currentRoomMeshes.push(frameInner);
 
-  // Door surface — heavy reinforced steel
-  const doorGeom = new THREE.PlaneGeometry(doorW, doorH);
-  const doorMat = new THREE.MeshStandardMaterial({ color: 0x606872, roughness: 0.4, metalness: 0.5 });
-  const door = new THREE.Mesh(doorGeom, doorMat);
-  door.position.set(doorX, doorH / 2, doorZ);
-  door.rotation.y = rotY;
-  scene3D.add(door); currentRoomMeshes.push(door);
+  // Door surface — heavy reinforced steel with panel detail
+  const doorMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(doorW, doorH),
+    new THREE.MeshStandardMaterial({ color: 0x505a65, roughness: 0.38, metalness: 0.52 })
+  );
+  doorMesh.position.set(doorX, doorH / 2, doorZ);
+  doorMesh.rotation.y = rotY;
+  doorMesh.castShadow = true;
+  scene3D.add(doorMesh); currentRoomMeshes.push(doorMesh);
 
-  // Door reinforcement panels — two horizontal bars
-  for (const barY of [doorH * 0.3, doorH * 0.7]) {
+  // Door inset panel (creates recessed depth illusion)
+  const panelInset = new THREE.Mesh(
+    new THREE.PlaneGeometry(doorW * 0.85, doorH * 0.80),
+    new THREE.MeshStandardMaterial({ color: 0x484e58, roughness: 0.42, metalness: 0.48 })
+  );
+  panelInset.position.set(doorX + inset * 0.005, doorH * 0.48, doorZ);
+  panelInset.rotation.y = rotY;
+  scene3D.add(panelInset); currentRoomMeshes.push(panelInset);
+
+  // Reinforcement bars — three horizontal steel strips
+  for (const barY of [doorH * 0.22, doorH * 0.50, doorH * 0.78]) {
     const bar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.12, doorW * 0.85),
-      new THREE.MeshStandardMaterial({ color: 0x505868, roughness: 0.3, metalness: 0.6 })
+      new THREE.BoxGeometry(0.04, 0.10, doorW * 0.88),
+      new THREE.MeshStandardMaterial({ color: 0x606a75, roughness: 0.28, metalness: 0.62 })
     );
     bar.position.set(doorX + inset * 0.03, barY, doorZ);
+    bar.castShadow = true;
     scene3D.add(bar); currentRoomMeshes.push(bar);
   }
 
-  // Door handle — industrial lever
-  const handleBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.2, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0x8a8e98, roughness: 0.25, metalness: 0.7 })
+  // Hinge hardware (3 heavy hinges)
+  const hingeZ = doorZ + (isRight ? -doorW * 0.48 : doorW * 0.48);
+  for (const hy of [doorH * 0.15, doorH * 0.50, doorH * 0.85]) {
+    // Hinge plate
+    const hingePlate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.14, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x707880, roughness: 0.25, metalness: 0.70 })
+    );
+    hingePlate.position.set(doorX + inset * 0.04, hy, hingeZ);
+    scene3D.add(hingePlate); currentRoomMeshes.push(hingePlate);
+    // Hinge pin
+    const hingePin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.16, 8),
+      new THREE.MeshStandardMaterial({ color: 0x909498, roughness: 0.20, metalness: 0.75 })
+    );
+    hingePin.position.set(doorX + inset * 0.06, hy, hingeZ);
+    scene3D.add(hingePin); currentRoomMeshes.push(hingePin);
+  }
+
+  // Door handle — heavy industrial lever with escutcheon plate
+  const handleZ = doorZ + (isRight ? doorW * 0.30 : -doorW * 0.30);
+  // Escutcheon plate
+  const escutcheon = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.28, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x707880, roughness: 0.22, metalness: 0.72 })
   );
-  const handleZ = doorZ + (isRight ? doorW * 0.3 : -doorW * 0.3);
-  handleBase.position.set(doorX + inset * 0.05, doorH * 0.45, handleZ);
-  scene3D.add(handleBase); currentRoomMeshes.push(handleBase);
+  escutcheon.position.set(doorX + inset * 0.05, doorH * 0.45, handleZ);
+  scene3D.add(escutcheon); currentRoomMeshes.push(escutcheon);
+  // Handle bar (heavy)
   const handleBar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.04, 0.25),
-    new THREE.MeshStandardMaterial({ color: 0xa0a4b0, roughness: 0.2, metalness: 0.7 })
+    new THREE.BoxGeometry(0.035, 0.035, 0.28),
+    new THREE.MeshStandardMaterial({ color: 0xa0a4b0, roughness: 0.18, metalness: 0.75 })
   );
-  handleBar.position.set(doorX + inset * 0.06, doorH * 0.45, handleZ - 0.12);
+  handleBar.position.set(doorX + inset * 0.07, doorH * 0.45, handleZ - 0.10);
+  handleBar.castShadow = true;
   scene3D.add(handleBar); currentRoomMeshes.push(handleBar);
+  // Handle return (vertical grip end)
+  const handleReturn = new THREE.Mesh(
+    new THREE.BoxGeometry(0.03, 0.06, 0.03),
+    new THREE.MeshStandardMaterial({ color: 0xa0a4b0, roughness: 0.18, metalness: 0.75 })
+  );
+  handleReturn.position.set(doorX + inset * 0.07, doorH * 0.45, handleZ - 0.25);
+  scene3D.add(handleReturn); currentRoomMeshes.push(handleReturn);
 
-  // Card reader panel next to door
-  const readerZ = doorZ + (isRight ? -doorW * 0.6 : doorW * 0.6);
-  const readerMat = new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.4, metalness: 0.3 });
-  const reader = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.15), readerMat);
-  reader.position.set(doorX + inset * 0.04, doorH * 0.45, readerZ);
-  scene3D.add(reader); currentRoomMeshes.push(reader);
-  // Card slot on reader
+  // Card reader / access control panel next to door
+  const readerZ = doorZ + (isRight ? -doorW * 0.58 : doorW * 0.58);
+  // Reader housing
+  const readerHousing = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.30, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.40, metalness: 0.35 })
+  );
+  readerHousing.position.set(doorX + inset * 0.04, doorH * 0.45, readerZ);
+  scene3D.add(readerHousing); currentRoomMeshes.push(readerHousing);
+  // Reader face plate (slightly lighter)
+  const readerFace = new THREE.Mesh(
+    new THREE.BoxGeometry(0.02, 0.24, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x353a45, roughness: 0.35, metalness: 0.30 })
+  );
+  readerFace.position.set(doorX + inset * 0.075, doorH * 0.45, readerZ);
+  scene3D.add(readerFace); currentRoomMeshes.push(readerFace);
+  // Card slot (darker recess)
   const slot = new THREE.Mesh(
-    new THREE.BoxGeometry(0.02, 0.02, 0.1),
-    new THREE.MeshStandardMaterial({ color: 0x1a1a20, roughness: 0.5 })
+    new THREE.BoxGeometry(0.015, 0.015, 0.10),
+    new THREE.MeshStandardMaterial({ color: 0x101015, roughness: 0.60 })
   );
-  slot.position.set(doorX + inset * 0.08, doorH * 0.45, readerZ);
+  slot.position.set(doorX + inset * 0.085, doorH * 0.44, readerZ);
   scene3D.add(slot); currentRoomMeshes.push(slot);
-
-  // EXIT sign — illuminated
-  const signGeom = new THREE.PlaneGeometry(0.7, 0.22);
-  const signCanvas = document.createElement('canvas');
-  signCanvas.width = 140; signCanvas.height = 48;
-  const sc = signCanvas.getContext('2d');
-  sc.fillStyle = '#1a1a1a';
-  sc.fillRect(0, 0, 140, 48);
-  sc.strokeStyle = '#444';
-  sc.lineWidth = 2;
-  sc.strokeRect(1, 1, 138, 46);
-  sc.fillStyle = '#e04040';
-  sc.font = 'bold 32px monospace';
-  sc.textAlign = 'center';
-  sc.fillText('EXIT', 70, 36);
-  const signTex = new THREE.CanvasTexture(signCanvas);
-  const signMat = new THREE.MeshStandardMaterial({ map: signTex, emissive: 0xe04040, emissiveIntensity: 0.5 });
-  const sign = new THREE.Mesh(signGeom, signMat);
-  sign.position.set(doorX, doorH + 0.3, doorZ);
-  sign.rotation.y = rotY;
-  scene3D.add(sign); currentRoomMeshes.push(sign);
-
-  // Status light — larger, more visible
-  const exitLight = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xe04040, emissive: 0xe04040, emissiveIntensity: 1.0 })
+  // Reader LED indicator
+  const readerLED = new THREE.Mesh(
+    new THREE.BoxGeometry(0.01, 0.02, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0xe04040, emissive: 0xe04040, emissiveIntensity: 0.8 })
   );
-  exitLight.position.set(doorX + inset * 0.1, doorH - 0.2, doorZ);
+  readerLED.position.set(doorX + inset * 0.085, doorH * 0.50, readerZ);
+  readerLED.name = 'readerLED';
+  scene3D.add(readerLED); currentRoomMeshes.push(readerLED);
+  // Keypad buttons (3x3 grid on reader)
+  for (let kr = 0; kr < 3; kr++) {
+    for (let kc = 0; kc < 3; kc++) {
+      const key = new THREE.Mesh(
+        new THREE.BoxGeometry(0.01, 0.02, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0x505860, roughness: 0.45, metalness: 0.30 })
+      );
+      key.position.set(
+        doorX + inset * 0.085,
+        doorH * 0.38 + kr * 0.028,
+        readerZ + (kc - 1) * 0.028
+      );
+      scene3D.add(key); currentRoomMeshes.push(key);
+    }
+  }
+
+  // EXIT sign — illuminated with housing
+  // Sign housing
+  const signHousing = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.10, 0.45),
+    new THREE.MeshStandardMaterial({ color: 0x2a2e35, roughness: 0.40, metalness: 0.50 })
+  );
+  signHousing.position.set(doorX + inset * 0.02, doorH + 0.30, doorZ);
+  scene3D.add(signHousing); currentRoomMeshes.push(signHousing);
+  // Sign face (canvas-rendered)
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 180; signCanvas.height = 48;
+  const sc = signCanvas.getContext('2d');
+  sc.fillStyle = '#151820';
+  sc.fillRect(0, 0, 180, 48);
+  sc.strokeStyle = '#333';
+  sc.lineWidth = 2;
+  sc.strokeRect(1, 1, 178, 46);
+  sc.fillStyle = '#d03030';
+  sc.font = 'bold 28px monospace';
+  sc.textAlign = 'center';
+  sc.fillText('EXIT', 90, 34);
+  // Arrow
+  sc.fillStyle = '#d03030';
+  sc.font = 'bold 22px monospace';
+  sc.fillText('\u25B6', 150, 32);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  const signFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.65, 0.20),
+    new THREE.MeshStandardMaterial({ map: signTex, emissive: 0xc03030, emissiveIntensity: 0.4 })
+  );
+  signFace.position.set(doorX + inset * 0.04, doorH + 0.30, doorZ);
+  signFace.rotation.y = rotY;
+  scene3D.add(signFace); currentRoomMeshes.push(signFace);
+
+  // Status light — recessed in frame
+  const exitLight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xd03030, emissive: 0xd03030, emissiveIntensity: 0.8 })
+  );
+  exitLight.position.set(doorX + inset * 0.10, doorH - 0.20, doorZ);
   exitLight.name = 'exitLight';
   scene3D.add(exitLight); currentRoomMeshes.push(exitLight);
 
+  // Floor warning stripes near door threshold
+  const stripeW = doorW + 0.4;
+  for (let si = 0; si < 3; si++) {
+    const stripe = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.06, stripeW),
+      new THREE.MeshStandardMaterial({ color: 0xc0a020, roughness: 0.70, metalness: 0.05, side: THREE.DoubleSide })
+    );
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(doorX + inset * (0.35 + si * 0.10), 0.005, doorZ);
+    scene3D.add(stripe); currentRoomMeshes.push(stripe);
+  }
+
   // Red/green glow light on floor near door
-  const doorGlow = new THREE.PointLight(0xe04040, 5, 4);
-  doorGlow.position.set(doorX + inset * 0.5, 0.5, doorZ);
+  const doorGlow = new THREE.PointLight(0xd03030, 3, 3);
+  doorGlow.position.set(doorX + inset * 0.5, 0.4, doorZ);
   doorGlow.name = 'exitGlowLight';
   scene3D.add(doorGlow); currentRoomMeshes.push(doorGlow);
 }
@@ -774,136 +881,620 @@ function addBox(x, y, z, w, h, d, color, opts) {
 
 function createFurniture3D(roomNum) {
   if (roomNum === 1) {
-    // ─── Desk — rich dark wood with warm tones ───
-    addBox(5.5, 0.9, -4, 5, 0.14, 2.0, 0x6b4830, { roughness: 0.55, metalness: 0.05 }); // dark wood surface
-    addBox(5.5, 0.88, -4, 5.05, 0.04, 2.05, 0x4a3320, { roughness: 0.6 }); // edge trim
-    addBox(3.3, 0.45, -4, 0.15, 0.9, 1.6, 0x5a3a25, { roughness: 0.6 }); // left panel leg
-    addBox(7.7, 0.45, -4, 0.15, 0.9, 1.6, 0x5a3a25, { roughness: 0.6 }); // right panel leg
-    addBox(5.5, 0.45, -4.9, 5, 0.78, 0.08, 0x4a3220, { roughness: 0.6 }); // back panel (dark wood)
-    // Desk drawer unit — dark wood
-    addBox(4.0, 0.45, -4, 1.0, 0.8, 1.4, 0x5a3a25, { roughness: 0.6 });
-    addBox(4.0, 0.65, -3.28, 0.5, 0.03, 0.02, 0xc0a060, { metalness: 0.6 }); // brass handle
-    addBox(4.0, 0.35, -3.28, 0.5, 0.03, 0.02, 0xc0a060, { metalness: 0.6 }); // brass handle
-    // Monitor — warm-toned screen
-    addBox(7.0, 1.45, -4.2, 1.2, 0.8, 0.06, 0x1a1a1a, { metalness: 0.3, roughness: 0.3 });
-    addBox(7.0, 1.47, -4.17, 1.05, 0.62, 0.02, 0x183060, { emissive: 0x2040a0, emissiveIntensity: 0.6 });
-    addBox(7.0, 1.0, -4.1, 0.12, 0.12, 0.4, 0x2a2a30, { metalness: 0.4 });
-    addBox(7.0, 0.96, -4.0, 0.35, 0.02, 0.22, 0x2a2a30, { metalness: 0.4 });
-    // Keyboard + mouse
-    addBox(6.3, 0.97, -3.4, 0.6, 0.02, 0.2, 0x2a2a2a, { roughness: 0.6 });
-    addBox(7.1, 0.97, -3.4, 0.12, 0.02, 0.08, 0x2a2a2a, { roughness: 0.6 });
-    // Desk lamp — warm brass + cream shade
-    const lampBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.12, 0.04, 12),
-      new THREE.MeshStandardMaterial({ color: 0xb8963c, metalness: 0.7, roughness: 0.25 })
-    );
-    lampBase.position.set(4.8, 0.98, -4.3);
+    // ─── Industrial workstation desk — steel frame + grey laminate top ───
+    // Desk surface — dark grey laminate with beveled edge
+    addBox(5.5, 0.90, -4, 5, 0.10, 2.0, 0x505860, { roughness: 0.50, metalness: 0.08 });
+    // Front edge trim (aluminium)
+    addBox(5.5, 0.90, -2.98, 5.02, 0.04, 0.04, 0x808890, { roughness: 0.25, metalness: 0.65 });
+    // Back edge trim
+    addBox(5.5, 0.90, -4.98, 5.02, 0.04, 0.04, 0x808890, { roughness: 0.25, metalness: 0.65 });
+    // Steel frame legs — tubular square steel
+    addBox(3.3, 0.43, -4, 0.08, 0.86, 0.08, 0x3a3e48, { roughness: 0.35, metalness: 0.65 });
+    addBox(7.7, 0.43, -4, 0.08, 0.86, 0.08, 0x3a3e48, { roughness: 0.35, metalness: 0.65 });
+    // Cross braces (steel tube under desk)
+    addBox(5.5, 0.10, -4, 4.3, 0.06, 0.06, 0x3a3e48, { roughness: 0.35, metalness: 0.60 });
+    addBox(5.5, 0.10, -4.8, 4.3, 0.06, 0.06, 0x3a3e48, { roughness: 0.35, metalness: 0.60 });
+    // Back modesty panel (perforated steel look)
+    addBox(5.5, 0.50, -4.95, 5.0, 0.70, 0.04, 0x353a42, { roughness: 0.40, metalness: 0.50 });
+    // Perforation detail (horizontal slots in modesty panel)
+    for (let py = 0.25; py < 0.70; py += 0.12) {
+      addBox(5.5, py, -4.92, 4.0, 0.02, 0.01, 0x252a30, { roughness: 0.50, metalness: 0.40 });
+    }
+    // Drawer pedestal — steel cabinet
+    addBox(4.0, 0.45, -4, 1.0, 0.80, 1.4, 0x404850, { roughness: 0.40, metalness: 0.50 });
+    // Drawer face lines
+    addBox(4.0, 0.60, -3.28, 0.80, 0.01, 0.01, 0x353a42, { roughness: 0.45, metalness: 0.45 });
+    addBox(4.0, 0.35, -3.28, 0.80, 0.01, 0.01, 0x353a42, { roughness: 0.45, metalness: 0.45 });
+    // Steel bar handles
+    addBox(4.0, 0.65, -3.28, 0.40, 0.02, 0.03, 0x808890, { roughness: 0.20, metalness: 0.70 });
+    addBox(4.0, 0.40, -3.28, 0.40, 0.02, 0.03, 0x808890, { roughness: 0.20, metalness: 0.70 });
+    // Drawer lock cylinder
+    addBox(4.35, 0.50, -3.27, 0.04, 0.04, 0.02, 0x606870, { roughness: 0.25, metalness: 0.70 });
+
+    // --- Monitor (dual-screen workstation) ---
+    // Monitor 1 — main
+    addBox(7.0, 1.45, -4.2, 1.2, 0.8, 0.05, 0x18181e, { metalness: 0.35, roughness: 0.25 });
+    // Thin bezel
+    addBox(7.0, 1.45, -4.17, 1.22, 0.82, 0.01, 0x101014, { roughness: 0.20, metalness: 0.40 });
+    // Screen (cool blue data display)
+    addBox(7.0, 1.47, -4.16, 1.05, 0.62, 0.01, 0x0a1830, { emissive: 0x1830608, emissiveIntensity: 0.5 });
+    // Screen data lines (faint horizontal scanlines)
+    for (let sy = 1.22; sy < 1.70; sy += 0.08) {
+      addBox(7.0, sy, -4.155, 0.95, 0.005, 0.005, 0x2050a0, { emissive: 0x2050a0, emissiveIntensity: 0.3 });
+    }
+    // Monitor arm / stand
+    addBox(7.0, 1.0, -4.1, 0.10, 0.10, 0.35, 0x2a2a32, { metalness: 0.50, roughness: 0.30 });
+    addBox(7.0, 0.96, -4.0, 0.30, 0.02, 0.20, 0x2a2a32, { metalness: 0.50, roughness: 0.30 });
+
+    // Monitor 2 — secondary (angled slightly)
+    addBox(5.6, 1.35, -4.25, 0.85, 0.55, 0.04, 0x18181e, { metalness: 0.35, roughness: 0.25 });
+    addBox(5.6, 1.36, -4.22, 0.72, 0.42, 0.01, 0x0a1825, { emissive: 0x102040, emissiveIntensity: 0.35 });
+    addBox(5.6, 1.03, -4.15, 0.08, 0.08, 0.25, 0x2a2a32, { metalness: 0.50, roughness: 0.30 });
+
+    // Keyboard (mechanical, industrial)
+    addBox(6.3, 0.97, -3.5, 0.65, 0.03, 0.22, 0x252830, { roughness: 0.55, metalness: 0.10 });
+    // Key surface
+    addBox(6.3, 0.985, -3.5, 0.58, 0.01, 0.18, 0x2a2e35, { roughness: 0.60, metalness: 0.05 });
+    // Mouse
+    addBox(7.1, 0.97, -3.5, 0.08, 0.025, 0.12, 0x252830, { roughness: 0.40, metalness: 0.10 });
+    // Mouse pad
+    addBox(7.1, 0.955, -3.5, 0.25, 0.005, 0.22, 0x1a1a20, { roughness: 0.90, metalness: 0.0 });
+
+    // --- Industrial articulated desk lamp (brushed aluminium) ---
+    const lampBaseMat = new THREE.MeshStandardMaterial({ color: 0x707880, metalness: 0.60, roughness: 0.30 });
+    const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.03, 12), lampBaseMat);
+    lampBase.position.set(4.8, 0.96, -4.3);
+    lampBase.castShadow = true;
     scene3D.add(lampBase); currentRoomMeshes.push(lampBase);
-    const lampArm = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6),
-      new THREE.MeshStandardMaterial({ color: 0xb8963c, metalness: 0.7, roughness: 0.25 })
+    // Pivot joint
+    const lampPivot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x606870, metalness: 0.65, roughness: 0.25 })
     );
-    lampArm.position.set(4.8, 1.23, -4.3);
-    scene3D.add(lampArm); currentRoomMeshes.push(lampArm);
-    const lampShade = new THREE.Mesh(
-      new THREE.ConeGeometry(0.18, 0.15, 12, 1, true),
-      new THREE.MeshStandardMaterial({ color: 0xf0e8d0, emissive: 0xffe0a0, emissiveIntensity: 0.4, roughness: 0.8, side: THREE.DoubleSide })
+    lampPivot.position.set(4.8, 0.99, -4.3);
+    scene3D.add(lampPivot); currentRoomMeshes.push(lampPivot);
+    // Lower arm segment
+    const lampArm1 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.018, 0.35, 8),
+      lampBaseMat
     );
-    lampShade.position.set(4.8, 1.52, -4.3);
-    scene3D.add(lampShade); currentRoomMeshes.push(lampShade);
-    // Warm desk lamp light
-    const lampLight = new THREE.PointLight(0xffe0a0, 8, 5);
-    lampLight.position.set(4.8, 1.5, -4.3);
+    lampArm1.position.set(4.8, 1.17, -4.30);
+    lampArm1.rotation.z = 0.10;
+    lampArm1.castShadow = true;
+    scene3D.add(lampArm1); currentRoomMeshes.push(lampArm1);
+    // Mid-joint
+    const lampJoint = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x606870, metalness: 0.65, roughness: 0.25 })
+    );
+    lampJoint.position.set(4.82, 1.35, -4.30);
+    scene3D.add(lampJoint); currentRoomMeshes.push(lampJoint);
+    // Upper arm segment (angled forward)
+    const lampArm2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.013, 0.015, 0.28, 8),
+      lampBaseMat
+    );
+    lampArm2.position.set(4.84, 1.47, -4.25);
+    lampArm2.rotation.z = -0.15;
+    lampArm2.rotation.x = 0.3;
+    lampArm2.castShadow = true;
+    scene3D.add(lampArm2); currentRoomMeshes.push(lampArm2);
+    // Lamp head — conical aluminium shade
+    const lampHead = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12, 0.10, 12, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x808890, metalness: 0.55, roughness: 0.30, side: THREE.DoubleSide })
+    );
+    lampHead.position.set(4.86, 1.58, -4.18);
+    lampHead.rotation.x = 0.3;
+    lampHead.castShadow = true;
+    scene3D.add(lampHead); currentRoomMeshes.push(lampHead);
+    // Lamp bulb glow (inside shade)
+    const lampBulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xd0d8e0, emissive: 0xc0d0e8, emissiveIntensity: 0.8, roughness: 0.1 })
+    );
+    lampBulb.position.set(4.86, 1.55, -4.18);
+    scene3D.add(lampBulb); currentRoomMeshes.push(lampBulb);
+    // Cool desk lamp light
+    const lampLight = new THREE.PointLight(0xc8d8f0, 4, 4);
+    lampLight.position.set(4.86, 1.52, -4.18);
     scene3D.add(lampLight); currentRoomMeshes.push(lampLight);
-    // Coffee mug — ceramic
-    const mugGeom = new THREE.CylinderGeometry(0.05, 0.055, 0.1, 10);
-    const mugMat = new THREE.MeshStandardMaterial({ color: 0xd4c4a0, roughness: 0.5 });
+
+    // --- Coffee mug (dark ceramic, facility-standard) ---
+    const mugGeom = new THREE.CylinderGeometry(0.045, 0.050, 0.10, 10);
+    const mugMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.55, metalness: 0.05 });
     const mug = new THREE.Mesh(mugGeom, mugMat);
-    mug.position.set(5.6, 1.02, -3.4);
+    mug.position.set(5.6, 1.01, -3.4);
+    mug.castShadow = true;
     scene3D.add(mug); currentRoomMeshes.push(mug);
+    // Mug handle
+    const mugHandle = new THREE.Mesh(
+      new THREE.TorusGeometry(0.03, 0.008, 6, 8, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.55, metalness: 0.05 })
+    );
+    mugHandle.position.set(5.65, 1.01, -3.4);
+    mugHandle.rotation.y = Math.PI / 2;
+    scene3D.add(mugHandle); currentRoomMeshes.push(mugHandle);
 
-    // ─── Server rack 1 — detailed with proper shelves ───
-    addBox(-2, 1.5, -6.8, 2.2, 3.0, 1.0, 0x303840, { metalness: 0.55, roughness: 0.35 }); // main body
-    addBox(-2, 0.3, -6.8, 2.3, 0.06, 1.05, 0x404850); // base platform
-    // Rack unit panels
-    addBox(-2, 2.6, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    addBox(-2, 1.9, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    addBox(-2, 1.2, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    // LED indicators — green/amber/blue
-    addBox(-2.5, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 1.0 });
-    addBox(-2.3, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
-    addBox(-2.1, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
-    addBox(-1.5, 2.7, -6.25, 0.06, 0.06, 0.02, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.5 });
-    addBox(-2.5, 2.0, -6.25, 0.06, 0.06, 0.02, 0x4090ff, { emissive: 0x4090ff, emissiveIntensity: 0.7 });
-    addBox(-2.3, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
-    addBox(-1.5, 1.3, -6.25, 0.06, 0.06, 0.02, 0xff3000, { emissive: 0xff3000, emissiveIntensity: 0.5 });
+    // --- Clipboard / documents on desk ---
+    addBox(5.0, 0.97, -3.6, 0.25, 0.01, 0.35, 0xd0d4d0, { roughness: 0.80, metalness: 0.0 });
+    // Clipboard clip
+    addBox(5.0, 0.98, -3.42, 0.08, 0.015, 0.02, 0x808890, { roughness: 0.25, metalness: 0.65 });
+    // Pen
+    const penGeom = new THREE.CylinderGeometry(0.008, 0.008, 0.18, 6);
+    const pen = new THREE.Mesh(penGeom, new THREE.MeshStandardMaterial({ color: 0x1a1a28, roughness: 0.3, metalness: 0.2 }));
+    pen.position.set(5.2, 0.97, -3.3);
+    pen.rotation.z = Math.PI / 2;
+    pen.rotation.y = 0.3;
+    scene3D.add(pen); currentRoomMeshes.push(pen);
 
-    // ─── Server rack 2 — matching ───
-    addBox(1.5, 1.5, -6.8, 2.2, 3.0, 1.0, 0x303840, { metalness: 0.55, roughness: 0.35 });
-    addBox(1.5, 0.3, -6.8, 2.3, 0.06, 1.05, 0x404850);
-    addBox(1.5, 2.6, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    addBox(1.5, 1.9, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    addBox(1.5, 1.2, -6.28, 1.9, 0.5, 0.04, 0x252a32, { metalness: 0.4 });
-    addBox(1.0, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 1.0 });
-    addBox(1.2, 2.7, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.8 });
-    addBox(2.0, 2.7, -6.25, 0.06, 0.06, 0.02, 0x4090ff, { emissive: 0x4090ff, emissiveIntensity: 0.7 });
-    addBox(1.0, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.6 });
-    addBox(1.2, 2.0, -6.25, 0.06, 0.06, 0.02, 0x00ff40, { emissive: 0x00ff40, emissiveIntensity: 0.5 });
-
-    // ─── Supply crates — match collider (u:0.27-0.42, v:0.50-0.67 → x:-3.1, z:1.3) ───
-    addBox(-3.1, 0.5, 1.3, 3.0, 1.0, 2.5, 0xa08848, { roughness: 0.8 }); // bottom crate
-    addBox(-3.1, 0.02, 1.3, 3.05, 0.04, 2.55, 0x6a5838); // bottom band
-    addBox(-3.1, 0.98, 1.3, 3.05, 0.04, 2.55, 0x6a5838); // top band
-    addBox(-3.1, 1.25, 1.3, 2.4, 0.8, 2.0, 0x907838, { roughness: 0.8 }); // top crate
-    addBox(-3.1, 0.87, 1.3, 2.45, 0.04, 2.05, 0x5a4828); // top crate band
-
-    // ─── Wall-mounted cable tray along back wall ───
-    addBox(5, 2.2, -7.2, 8, 0.06, 0.35, 0x505860, { metalness: 0.5, roughness: 0.35 });
-    addBox(5, 2.27, -7.15, 7.5, 0.1, 0.18, 0x2a2a35, { roughness: 0.8 }); // cable bundle
-    // Vertical cable run down to desk
-    addBox(7.8, 1.5, -7.1, 0.08, 1.4, 0.08, 0x2a2a35, { roughness: 0.8 });
-
-    // ─── Wall panel / access terminal on right wall ───
-    addBox(9.95, 1.5, 0, 0.06, 0.7, 0.5, 0x3a4048, { metalness: 0.4, roughness: 0.4 });
-    addBox(9.92, 1.6, 0, 0.02, 0.18, 0.12, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.6 });
-    addBox(9.92, 1.35, 0, 0.02, 0.18, 0.12, 0xe04040, { emissive: 0xe04040, emissiveIntensity: 0.3 });
-
-    // ─── Floor baseboards — industrial metal trim ───
-    addBox(0, 0.06, -WORLD_D / 2 + 0.06, WORLD_W, 0.12, 0.12, 0x3a3e48, { roughness: 0.4, metalness: 0.5 }); // back
-    addBox(-WORLD_W / 2 + 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a3e48, { roughness: 0.4, metalness: 0.5 }); // left
-    addBox(WORLD_W / 2 - 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a3e48, { roughness: 0.4, metalness: 0.5 }); // right
-
-    // ─── Ventilation grate on back wall ───
-    addBox(-7, 2.5, -7.45, 1.2, 0.4, 0.06, 0x3a3e48, { metalness: 0.5, roughness: 0.3 });
-    // Grate slats
-    for (let vi = 0; vi < 5; vi++) {
-      addBox(-7, 2.5 - 0.14 + vi * 0.07, -7.42, 1.0, 0.01, 0.02, 0x505860, { metalness: 0.4 });
+    // ─── Server rack 1 — full 42U rack with detail ───
+    // Main cabinet body
+    addBox(-2, 1.5, -6.8, 2.2, 3.0, 1.0, 0x282e38, { metalness: 0.55, roughness: 0.35 });
+    // Side panel seams (visible edge of side panel)
+    addBox(-3.08, 1.5, -6.8, 0.02, 2.90, 0.96, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    addBox(-0.92, 1.5, -6.8, 0.02, 2.90, 0.96, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    // Base platform with leveling feet
+    addBox(-2, 0.08, -6.8, 2.30, 0.06, 1.05, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
+    addBox(-2.9, 0.03, -7.2, 0.08, 0.06, 0.08, 0x505560, { metalness: 0.60, roughness: 0.30 });
+    addBox(-1.1, 0.03, -7.2, 0.08, 0.06, 0.08, 0x505560, { metalness: 0.60, roughness: 0.30 });
+    // Top cap
+    addBox(-2, 2.98, -6.8, 2.24, 0.04, 1.04, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    // Vertical mounting rails (visible through front)
+    addBox(-2.85, 1.5, -6.30, 0.04, 2.80, 0.04, 0x505a65, { metalness: 0.60, roughness: 0.25 });
+    addBox(-1.15, 1.5, -6.30, 0.04, 2.80, 0.04, 0x505a65, { metalness: 0.60, roughness: 0.25 });
+    // Rack unit panels (1U/2U devices with varied depths)
+    addBox(-2, 2.65, -6.40, 1.65, 0.10, 0.25, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 2.45, -6.35, 1.65, 0.20, 0.35, 0x222830, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 2.10, -6.38, 1.65, 0.18, 0.30, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 1.80, -6.42, 1.65, 0.25, 0.22, 0x202630, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 1.45, -6.35, 1.65, 0.30, 0.35, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 1.05, -6.38, 1.65, 0.20, 0.30, 0x222830, { metalness: 0.45, roughness: 0.35 });
+    addBox(-2, 0.75, -6.35, 1.65, 0.28, 0.35, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    // Front panel handle recesses
+    addBox(-2.60, 2.45, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(-1.40, 2.45, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(-2.60, 1.45, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(-1.40, 1.45, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    // Ventilation slots on upper device
+    for (let vi = 0; vi < 4; vi++) {
+      addBox(-2 + (vi - 1.5) * 0.30, 2.70, -6.27, 0.18, 0.01, 0.01, 0x151a22, { roughness: 0.50 });
+    }
+    // LED indicators — status lights on each device
+    addBox(-2.60, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(-2.45, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    addBox(-1.50, 2.67, -6.25, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.4 });
+    addBox(-2.60, 2.47, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
+    addBox(-2.45, 2.47, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
+    addBox(-2.60, 1.82, -6.29, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    addBox(-1.50, 1.47, -6.14, 0.04, 0.04, 0.01, 0xff3020, { emissive: 0xff3020, emissiveIntensity: 0.4 });
+    addBox(-2.60, 1.07, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
+    addBox(-2.60, 0.77, -6.14, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
+    addBox(-2.45, 0.77, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    // Cable management bar behind rack
+    addBox(-2, 1.5, -7.25, 0.10, 2.80, 0.08, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
+    // Cables running down the back
+    for (let ci = 0; ci < 3; ci++) {
+      const cc = [0x2a3540, 0x20282e, 0x303845][ci];
+      addBox(-2 + (ci - 1) * 0.15, 1.5, -7.28, 0.04, 2.60, 0.04, cc, { roughness: 0.80, metalness: 0.0 });
     }
 
-    // ─── Ceiling light fixture housings — industrial fluorescent ───
-    addBox(-3, WALL_H - 0.05, 0, 1.2, 0.08, 0.4, 0xc0c8d0, { emissive: 0xd0dce8, emissiveIntensity: 0.4 });
-    addBox(5, WALL_H - 0.05, -2, 1.2, 0.08, 0.4, 0xc0c8d0, { emissive: 0xd0dce8, emissiveIntensity: 0.4 });
+    // ─── Server rack 2 — matching with slight variation ───
+    addBox(1.5, 1.5, -6.8, 2.2, 3.0, 1.0, 0x282e38, { metalness: 0.55, roughness: 0.35 });
+    addBox(0.42, 1.5, -6.8, 0.02, 2.90, 0.96, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    addBox(2.58, 1.5, -6.8, 0.02, 2.90, 0.96, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    addBox(1.5, 0.08, -6.8, 2.30, 0.06, 1.05, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
+    addBox(0.6, 0.03, -7.2, 0.08, 0.06, 0.08, 0x505560, { metalness: 0.60, roughness: 0.30 });
+    addBox(2.4, 0.03, -7.2, 0.08, 0.06, 0.08, 0x505560, { metalness: 0.60, roughness: 0.30 });
+    addBox(1.5, 2.98, -6.8, 2.24, 0.04, 1.04, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    // Mounting rails
+    addBox(0.65, 1.5, -6.30, 0.04, 2.80, 0.04, 0x505a65, { metalness: 0.60, roughness: 0.25 });
+    addBox(2.35, 1.5, -6.30, 0.04, 2.80, 0.04, 0x505a65, { metalness: 0.60, roughness: 0.25 });
+    // Rack devices
+    addBox(1.5, 2.65, -6.38, 1.65, 0.12, 0.30, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(1.5, 2.40, -6.35, 1.65, 0.25, 0.35, 0x222830, { metalness: 0.45, roughness: 0.35 });
+    addBox(1.5, 2.00, -6.40, 1.65, 0.30, 0.26, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(1.5, 1.60, -6.35, 1.65, 0.25, 0.35, 0x202630, { metalness: 0.45, roughness: 0.35 });
+    addBox(1.5, 1.20, -6.38, 1.65, 0.30, 0.30, 0x1e2228, { metalness: 0.45, roughness: 0.35 });
+    addBox(1.5, 0.82, -6.35, 1.65, 0.22, 0.35, 0x222830, { metalness: 0.45, roughness: 0.35 });
+    // Handle recesses
+    addBox(0.90, 2.40, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(2.10, 2.40, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(0.90, 1.60, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    addBox(2.10, 1.60, -6.16, 0.10, 0.04, 0.02, 0x606870, { metalness: 0.60, roughness: 0.25 });
+    // LEDs
+    addBox(0.90, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.8 });
+    addBox(1.05, 2.67, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
+    addBox(2.10, 2.67, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
+    addBox(0.90, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
+    addBox(1.05, 2.42, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.4 });
+    addBox(0.90, 2.02, -6.27, 0.04, 0.04, 0.01, 0xff8000, { emissive: 0xff8000, emissiveIntensity: 0.4 });
+    addBox(0.90, 1.62, -6.14, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.5 });
+    addBox(0.90, 1.22, -6.25, 0.04, 0.04, 0.01, 0x4080ff, { emissive: 0x4080ff, emissiveIntensity: 0.5 });
+    addBox(1.05, 1.22, -6.25, 0.04, 0.04, 0.01, 0x00dd40, { emissive: 0x00dd40, emissiveIntensity: 0.6 });
+    // Cable management
+    addBox(1.5, 1.5, -7.25, 0.10, 2.80, 0.08, 0x3a4048, { metalness: 0.50, roughness: 0.35 });
+    for (let ci = 0; ci < 3; ci++) {
+      const cc = [0x303845, 0x2a3540, 0x252e38][ci];
+      addBox(1.5 + (ci - 1) * 0.15, 1.5, -7.28, 0.04, 2.60, 0.04, cc, { roughness: 0.80, metalness: 0.0 });
+    }
 
-    // ─── Wheeled office chair at desk ───
-    const chairGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.5, 8);
-    const chairMat = new THREE.MeshStandardMaterial({ color: 0x2a2a35, roughness: 0.7 });
-    const chairSeat = new THREE.Mesh(chairGeom, chairMat);
-    chairSeat.position.set(6.5, 0.45, -3.0);
+    // ─── Heavy cargo containers — match collider (u:0.27-0.42, v:0.50-0.67 → x:-3.1, z:1.3) ───
+    // Bottom container — large reinforced steel case
+    addBox(-3.1, 0.50, 1.3, 3.0, 1.0, 2.5, 0x404850, { roughness: 0.45, metalness: 0.55 });
+    // Bottom container recessed front panel
+    addBox(-3.1, 0.50, 2.50, 2.70, 0.80, 0.03, 0x383e48, { roughness: 0.40, metalness: 0.50 });
+    // Bottom container recessed side panels
+    addBox(-4.55, 0.50, 1.3, 0.03, 0.80, 2.20, 0x383e48, { roughness: 0.40, metalness: 0.50 });
+    addBox(-1.65, 0.50, 1.3, 0.03, 0.80, 2.20, 0x383e48, { roughness: 0.40, metalness: 0.50 });
+    // Corner reinforcements — steel angle brackets (bottom container)
+    for (const cx of [-4.50, -1.70]) {
+      for (const cz of [0.10, 2.50]) {
+        addBox(cx, 0.50, cz, 0.10, 1.02, 0.10, 0x505a65, { roughness: 0.30, metalness: 0.65 });
+      }
+    }
+    // Bottom container base rail (rubber bumper strip)
+    addBox(-3.1, 0.02, 1.3, 3.05, 0.04, 2.55, 0x1a1a1e, { roughness: 0.90, metalness: 0.0 });
+    // Bottom container top lip
+    addBox(-3.1, 1.00, 1.3, 3.05, 0.04, 2.55, 0x505a65, { roughness: 0.30, metalness: 0.60 });
+    // Bottom container — horizontal seam lines
+    addBox(-3.1, 0.35, 2.52, 2.50, 0.02, 0.01, 0x303840, { roughness: 0.35, metalness: 0.55 });
+    addBox(-3.1, 0.65, 2.52, 2.50, 0.02, 0.01, 0x303840, { roughness: 0.35, metalness: 0.55 });
+    // Latch hardware on front face
+    addBox(-3.80, 0.50, 2.55, 0.12, 0.08, 0.04, 0x808890, { roughness: 0.20, metalness: 0.75 });
+    addBox(-2.40, 0.50, 2.55, 0.12, 0.08, 0.04, 0x808890, { roughness: 0.20, metalness: 0.75 });
+    // Hazard warning label strip (yellow/black)
+    addBox(-3.1, 0.88, 2.53, 1.40, 0.06, 0.01, 0xc8a820, { roughness: 0.60, metalness: 0.05 });
+    // Stenciled label area (dark patch)
+    addBox(-3.1, 0.25, 2.53, 0.80, 0.20, 0.01, 0x282c32, { roughness: 0.70, metalness: 0.10 });
+
+    // Top container — slightly smaller, stacked
+    addBox(-3.1, 1.30, 1.3, 2.4, 0.60, 2.0, 0x3a4248, { roughness: 0.42, metalness: 0.52 });
+    // Top container front recessed panel
+    addBox(-3.1, 1.30, 2.25, 2.10, 0.42, 0.03, 0x343a42, { roughness: 0.38, metalness: 0.48 });
+    // Top container corner reinforcements
+    for (const cx of [-4.25, -1.95]) {
+      for (const cz of [0.35, 2.25]) {
+        addBox(cx, 1.30, cz, 0.08, 0.62, 0.08, 0x505a65, { roughness: 0.30, metalness: 0.65 });
+      }
+    }
+    // Top container lid seam
+    addBox(-3.1, 1.60, 1.3, 2.44, 0.02, 2.04, 0x505a65, { roughness: 0.30, metalness: 0.60 });
+    // Top container lid handles (recessed)
+    addBox(-3.55, 1.62, 2.26, 0.20, 0.03, 0.04, 0x707880, { roughness: 0.25, metalness: 0.70 });
+    addBox(-2.65, 1.62, 2.26, 0.20, 0.03, 0.04, 0x707880, { roughness: 0.25, metalness: 0.70 });
+    // Top container small status tag
+    addBox(-3.5, 1.40, 2.27, 0.15, 0.10, 0.01, 0xc0c8d0, { roughness: 0.40, metalness: 0.20 });
+
+    // ─── Wall-mounted cable tray along back wall (upgraded) ───
+    // Tray body — perforated steel
+    addBox(5, 2.20, -7.20, 8.0, 0.06, 0.40, 0x454e58, { metalness: 0.55, roughness: 0.30 });
+    // Tray side lips
+    addBox(5, 2.27, -7.01, 8.0, 0.10, 0.03, 0x505a65, { metalness: 0.55, roughness: 0.28 });
+    addBox(5, 2.27, -7.39, 8.0, 0.10, 0.03, 0x505a65, { metalness: 0.55, roughness: 0.28 });
+    // Cable bundles (varied sizes, bundled with ties)
+    addBox(5, 2.25, -7.12, 7.8, 0.08, 0.12, 0x202830, { roughness: 0.85, metalness: 0.0 });
+    addBox(5, 2.25, -7.28, 7.5, 0.06, 0.08, 0x1a2535, { roughness: 0.82, metalness: 0.0 });
+    // Cable ties (every ~1.5m)
+    for (let ct = -2; ct < 9; ct += 1.5) {
+      addBox(ct, 2.26, -7.15, 0.02, 0.10, 0.22, 0xd0d4d8, { roughness: 0.50, metalness: 0.10 });
+    }
+    // Tray mounting brackets
+    for (const bx of [1, 5, 9]) {
+      addBox(bx, 2.40, -7.30, 0.08, 0.30, 0.06, 0x404a55, { metalness: 0.55, roughness: 0.30 });
+    }
+    // Vertical cable run down to desk
+    addBox(7.8, 1.50, -7.10, 0.10, 1.40, 0.10, 0x252e35, { roughness: 0.80, metalness: 0.0 });
+    // Cable conduit on left wall (vertical run from tray to floor)
+    addBox(-9.90, 1.50, -4, 0.10, 2.80, 0.10, 0x404a55, { metalness: 0.50, roughness: 0.35 });
+    addBox(-9.88, 2.80, -4, 0.06, 0.08, 0.08, 0x505a65, { metalness: 0.55, roughness: 0.30 }); // bracket
+    addBox(-9.88, 0.50, -4, 0.06, 0.08, 0.08, 0x505a65, { metalness: 0.55, roughness: 0.30 }); // bracket
+
+    // ─── Wall panel / access terminal on right wall (upgraded) ───
+    // Housing
+    addBox(9.95, 1.50, 0, 0.06, 0.80, 0.55, 0x2a3038, { metalness: 0.45, roughness: 0.38 });
+    // Face plate
+    addBox(9.93, 1.50, 0, 0.02, 0.70, 0.48, 0x353a45, { metalness: 0.40, roughness: 0.35 });
+    // Small screen/readout
+    addBox(9.92, 1.65, 0, 0.01, 0.15, 0.25, 0x0a1520, { emissive: 0x102030, emissiveIntensity: 0.35 });
+    // Status LEDs
+    addBox(9.92, 1.48, 0.12, 0.01, 0.04, 0.04, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.5 });
+    addBox(9.92, 1.48, 0, 0.01, 0.04, 0.04, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.4 });
+    addBox(9.92, 1.48, -0.12, 0.01, 0.04, 0.04, 0xd04040, { emissive: 0xd04040, emissiveIntensity: 0.3 });
+    // Keyswitch below screen
+    addBox(9.93, 1.38, 0, 0.02, 0.06, 0.06, 0x606870, { metalness: 0.60, roughness: 0.25 });
+
+    // ─── Floor baseboards — industrial metal trim ───
+    addBox(0, 0.06, -WORLD_D / 2 + 0.06, WORLD_W, 0.12, 0.12, 0x3a3e48, { roughness: 0.40, metalness: 0.50 });
+    addBox(-WORLD_W / 2 + 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a3e48, { roughness: 0.40, metalness: 0.50 });
+    addBox(WORLD_W / 2 - 0.06, 0.06, 0, 0.12, 0.12, WORLD_D, 0x3a3e48, { roughness: 0.40, metalness: 0.50 });
+
+    // ─── Ventilation grate on back wall (upgraded with housing) ───
+    addBox(-7, 2.50, -7.45, 1.30, 0.50, 0.06, 0x3a3e48, { metalness: 0.50, roughness: 0.30 });
+    addBox(-7, 2.50, -7.42, 1.25, 0.45, 0.03, 0x2a2e35, { metalness: 0.45, roughness: 0.35 });
+    for (let vi = 0; vi < 7; vi++) {
+      addBox(-7, 2.50 - 0.18 + vi * 0.06, -7.40, 1.10, 0.008, 0.015, 0x505860, { metalness: 0.45, roughness: 0.30 });
+    }
+    // Second vent on left wall
+    addBox(-9.95, 1.80, 3, 0.06, 0.40, 0.80, 0x3a3e48, { metalness: 0.50, roughness: 0.30 });
+    for (let vi = 0; vi < 5; vi++) {
+      addBox(-9.92, 1.80 - 0.12 + vi * 0.06, 3, 0.015, 0.008, 0.65, 0x505860, { metalness: 0.45, roughness: 0.30 });
+    }
+
+    // ─── Ceiling light fixture housings — industrial fluorescent (upgraded) ───
+    // Fixture 1
+    addBox(-3, WALL_H - 0.02, 0, 1.30, 0.04, 0.45, 0x404850, { metalness: 0.50, roughness: 0.30 });
+    addBox(-3, WALL_H - 0.05, 0, 1.20, 0.03, 0.35, 0xd0d8e0, { emissive: 0xd0dce8, emissiveIntensity: 0.35 });
+    // Fixture end caps
+    addBox(-3.64, WALL_H - 0.04, 0, 0.04, 0.06, 0.42, 0x505860, { metalness: 0.50, roughness: 0.30 });
+    addBox(-2.36, WALL_H - 0.04, 0, 0.04, 0.06, 0.42, 0x505860, { metalness: 0.50, roughness: 0.30 });
+    // Fixture 2
+    addBox(5, WALL_H - 0.02, -2, 1.30, 0.04, 0.45, 0x404850, { metalness: 0.50, roughness: 0.30 });
+    addBox(5, WALL_H - 0.05, -2, 1.20, 0.03, 0.35, 0xd0d8e0, { emissive: 0xd0dce8, emissiveIntensity: 0.35 });
+    addBox(4.36, WALL_H - 0.04, -2, 0.04, 0.06, 0.42, 0x505860, { metalness: 0.50, roughness: 0.30 });
+    addBox(5.64, WALL_H - 0.04, -2, 0.04, 0.06, 0.42, 0x505860, { metalness: 0.50, roughness: 0.30 });
+    // Third fixture (near containers)
+    addBox(-4, WALL_H - 0.02, 2, 1.00, 0.04, 0.40, 0x404850, { metalness: 0.50, roughness: 0.30 });
+    addBox(-4, WALL_H - 0.05, 2, 0.90, 0.03, 0.30, 0xd0d8e0, { emissive: 0xd0dce8, emissiveIntensity: 0.30 });
+
+    // ─── Wheeled office chair at desk (upgraded) ───
+    // Seat cushion
+    const chairSeatGeom = new THREE.CylinderGeometry(0.23, 0.25, 0.08, 10);
+    const chairSeatMat = new THREE.MeshStandardMaterial({ color: 0x25282e, roughness: 0.75, metalness: 0.0 });
+    const chairSeat = new THREE.Mesh(chairSeatGeom, chairSeatMat);
+    chairSeat.position.set(6.5, 0.48, -3.0);
+    chairSeat.castShadow = true;
     scene3D.add(chairSeat); currentRoomMeshes.push(chairSeat);
-    // Chair back
+    // Seat base (plastic shell)
+    const chairShell = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.22, 0.04, 10),
+      new THREE.MeshStandardMaterial({ color: 0x1e2025, roughness: 0.55, metalness: 0.10 })
+    );
+    chairShell.position.set(6.5, 0.43, -3.0);
+    scene3D.add(chairShell); currentRoomMeshes.push(chairShell);
+    // Chair back (mesh back look)
     const chairBack = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.55, 0.06),
-      new THREE.MeshStandardMaterial({ color: 0x303540, roughness: 0.6 })
+      new THREE.BoxGeometry(0.42, 0.50, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x282c32, roughness: 0.65, metalness: 0.05 })
     );
-    chairBack.position.set(6.5, 0.85, -2.75);
+    chairBack.position.set(6.5, 0.80, -2.78);
+    chairBack.castShadow = true;
     scene3D.add(chairBack); currentRoomMeshes.push(chairBack);
-    // Chair base/stem
-    const chairStem = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 0.3, 6),
-      new THREE.MeshStandardMaterial({ color: 0x505060, metalness: 0.6 })
+    // Chair back frame
+    const chairFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.44, 0.52, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x3a3e48, roughness: 0.40, metalness: 0.40 })
     );
-    chairStem.position.set(6.5, 0.15, -3.0);
+    chairFrame.position.set(6.5, 0.80, -2.76);
+    scene3D.add(chairFrame); currentRoomMeshes.push(chairFrame);
+    // Lumbar support bump
+    const lumbar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.30, 0.10, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0x25282e, roughness: 0.70 })
+    );
+    lumbar.position.set(6.5, 0.62, -2.78);
+    scene3D.add(lumbar); currentRoomMeshes.push(lumbar);
+    // Armrests
+    for (const side of [-1, 1]) {
+      const armrest = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.04, 0.20),
+        new THREE.MeshStandardMaterial({ color: 0x2a2e35, roughness: 0.50, metalness: 0.15 })
+      );
+      armrest.position.set(6.5 + side * 0.22, 0.58, -2.92);
+      scene3D.add(armrest); currentRoomMeshes.push(armrest);
+      // Armrest support
+      const armSupport = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.12, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0x3a3e48, roughness: 0.35, metalness: 0.45 })
+      );
+      armSupport.position.set(6.5 + side * 0.22, 0.52, -2.85);
+      scene3D.add(armSupport); currentRoomMeshes.push(armSupport);
+    }
+    // Gas lift cylinder
+    const chairStem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.30, 8),
+      new THREE.MeshStandardMaterial({ color: 0x505560, metalness: 0.60, roughness: 0.25 })
+    );
+    chairStem.position.set(6.5, 0.28, -3.0);
     scene3D.add(chairStem); currentRoomMeshes.push(chairStem);
+    // 5-star base
+    for (let ci = 0; ci < 5; ci++) {
+      const angle = (ci / 5) * Math.PI * 2;
+      const castorArm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.02, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0x404550, metalness: 0.55, roughness: 0.30 })
+      );
+      castorArm.position.set(6.5 + Math.sin(angle) * 0.10, 0.12, -3.0 + Math.cos(angle) * 0.10);
+      castorArm.rotation.y = -angle;
+      scene3D.add(castorArm); currentRoomMeshes.push(castorArm);
+      // Castor wheel
+      const castor = new THREE.Mesh(
+        new THREE.SphereGeometry(0.025, 6, 6),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.60, metalness: 0.10 })
+      );
+      castor.position.set(6.5 + Math.sin(angle) * 0.22, 0.03, -3.0 + Math.cos(angle) * 0.22);
+      scene3D.add(castor); currentRoomMeshes.push(castor);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ─── FACILITY ENVIRONMENTAL DETAIL ───
+    // ═══════════════════════════════════════════════════════
+
+    // ─── Containment cylinder / specimen tank on left wall ───
+    const tankMat = new THREE.MeshStandardMaterial({
+      color: 0x406060, roughness: 0.10, metalness: 0.15, transparent: true, opacity: 0.45
+    });
+    const tankGlass = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.45, 0.45, 1.8, 16, 1, true),
+      tankMat
+    );
+    tankGlass.position.set(-8.5, 1.2, -5.5);
+    tankGlass.castShadow = true;
+    scene3D.add(tankGlass); currentRoomMeshes.push(tankGlass);
+    // Tank base plate (heavy steel)
+    const tankBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.52, 0.55, 0.12, 16),
+      new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.35, metalness: 0.60 })
+    );
+    tankBase.position.set(-8.5, 0.06, -5.5);
+    tankBase.castShadow = true;
+    scene3D.add(tankBase); currentRoomMeshes.push(tankBase);
+    // Tank top cap
+    const tankTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.50, 0.52, 0.10, 16),
+      new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.35, metalness: 0.60 })
+    );
+    tankTop.position.set(-8.5, 2.10, -5.5);
+    scene3D.add(tankTop); currentRoomMeshes.push(tankTop);
+    // Internal glow (subtle blue-green liquid effect)
+    const tankInner = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.40, 0.40, 1.6, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x205848, emissive: 0x184838, emissiveIntensity: 0.4,
+        roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.30
+      })
+    );
+    tankInner.position.set(-8.5, 1.2, -5.5);
+    scene3D.add(tankInner); currentRoomMeshes.push(tankInner);
+    // Small entity/specimen silhouette inside (abstract organic form)
+    const specimen = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x304840, emissive: 0x203830, emissiveIntensity: 0.3,
+        roughness: 0.30, metalness: 0.0, transparent: true, opacity: 0.55
+      })
+    );
+    specimen.position.set(-8.5, 1.1, -5.5);
+    specimen.scale.set(1.0, 1.4, 0.8);
+    scene3D.add(specimen); currentRoomMeshes.push(specimen);
+    // Tank mounting bolts
+    for (let bi = 0; bi < 6; bi++) {
+      const bAngle = (bi / 6) * Math.PI * 2;
+      const bolt = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.04, 6),
+        new THREE.MeshStandardMaterial({ color: 0x606870, roughness: 0.25, metalness: 0.70 })
+      );
+      bolt.position.set(
+        -8.5 + Math.cos(bAngle) * 0.50,
+        0.12,
+        -5.5 + Math.sin(bAngle) * 0.50
+      );
+      scene3D.add(bolt); currentRoomMeshes.push(bolt);
+    }
+    // Tank label plate
+    addBox(-8.5, 0.25, -5.05, 0.30, 0.12, 0.01, 0xc8c8d0, { roughness: 0.40, metalness: 0.25 });
+    // Tank subtle glow light
+    const tankLight = new THREE.PointLight(0x308060, 1.5, 3);
+    tankLight.position.set(-8.5, 1.0, -5.5);
+    scene3D.add(tankLight); currentRoomMeshes.push(tankLight);
+
+    // ─── Wall-mounted fire extinguisher on left wall ───
+    const extBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.40, 10),
+      new THREE.MeshStandardMaterial({ color: 0xc02020, roughness: 0.45, metalness: 0.30 })
+    );
+    extBody.position.set(-9.88, 1.0, 5.0);
+    scene3D.add(extBody); currentRoomMeshes.push(extBody);
+    // Extinguisher bracket
+    addBox(-9.94, 1.0, 5.0, 0.04, 0.15, 0.20, 0x505860, { metalness: 0.55, roughness: 0.30 });
+    // Nozzle
+    const extNozzle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.03, 0.06, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.35, metalness: 0.50 })
+    );
+    extNozzle.position.set(-9.88, 1.23, 5.0);
+    scene3D.add(extNozzle); currentRoomMeshes.push(extNozzle);
+
+    // ─── Warning / containment signage on back wall ───
+    // CAUTION sign near tank
+    const cautionCanvas = document.createElement('canvas');
+    cautionCanvas.width = 128; cautionCanvas.height = 64;
+    const cCtx = cautionCanvas.getContext('2d');
+    cCtx.fillStyle = '#c8a020';
+    cCtx.fillRect(0, 0, 128, 64);
+    cCtx.fillStyle = '#1a1a1a';
+    cCtx.fillRect(4, 4, 120, 56);
+    cCtx.fillStyle = '#c8a020';
+    cCtx.font = 'bold 16px monospace';
+    cCtx.textAlign = 'center';
+    cCtx.fillText('CAUTION', 64, 28);
+    cCtx.font = '10px monospace';
+    cCtx.fillText('BIOLOGICAL HAZARD', 64, 44);
+    cCtx.fillText('AUTHORIZED ONLY', 64, 56);
+    const cautionTex = new THREE.CanvasTexture(cautionCanvas);
+    const cautionSign = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.50, 0.25),
+      new THREE.MeshStandardMaterial({ map: cautionTex, roughness: 0.50 })
+    );
+    cautionSign.position.set(-7, 1.8, -7.48);
+    scene3D.add(cautionSign); currentRoomMeshes.push(cautionSign);
+
+    // RESTRICTED AREA sign near door
+    const restrictCanvas = document.createElement('canvas');
+    restrictCanvas.width = 160; restrictCanvas.height = 48;
+    const rCtx = restrictCanvas.getContext('2d');
+    rCtx.fillStyle = '#c03030';
+    rCtx.fillRect(0, 0, 160, 48);
+    rCtx.fillStyle = '#f0f0f0';
+    rCtx.font = 'bold 14px monospace';
+    rCtx.textAlign = 'center';
+    rCtx.fillText('RESTRICTED AREA', 80, 22);
+    rCtx.font = '9px monospace';
+    rCtx.fillText('CLEARANCE LEVEL 3 REQUIRED', 80, 38);
+    const restrictTex = new THREE.CanvasTexture(restrictCanvas);
+    const restrictSign = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.55, 0.18),
+      new THREE.MeshStandardMaterial({ map: restrictTex, roughness: 0.50 })
+    );
+    restrictSign.position.set(9.98, 2.0, 0.75);
+    restrictSign.rotation.y = -Math.PI / 2;
+    scene3D.add(restrictSign); currentRoomMeshes.push(restrictSign);
+
+    // ─── Floor cable covers / conduit runs ───
+    // Cable cover strip from racks to desk (runs along floor)
+    addBox(2.5, 0.02, -6.5, 5.0, 0.04, 0.15, 0x404850, { metalness: 0.50, roughness: 0.35 });
+    addBox(5.0, 0.02, -5.2, 0.15, 0.04, 2.8, 0x404850, { metalness: 0.50, roughness: 0.35 });
+
+    // ─── Horizontal pipe run along left wall (utility conduit) ───
+    const pipeConduit = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, WORLD_D - 2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x505a65, roughness: 0.30, metalness: 0.55 })
+    );
+    pipeConduit.rotation.x = Math.PI / 2;
+    pipeConduit.position.set(-9.70, 2.80, 0);
+    pipeConduit.castShadow = true;
+    scene3D.add(pipeConduit); currentRoomMeshes.push(pipeConduit);
+    // Pipe brackets
+    for (let pb = -5; pb <= 5; pb += 2.5) {
+      const bracket = new THREE.Mesh(
+        new THREE.TorusGeometry(0.08, 0.015, 6, 8, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0x606870, roughness: 0.30, metalness: 0.60 })
+      );
+      bracket.position.set(-9.70, 2.80, pb);
+      bracket.rotation.y = Math.PI / 2;
+      bracket.rotation.x = Math.PI / 2;
+      scene3D.add(bracket); currentRoomMeshes.push(bracket);
+    }
+
+    // ─── Small monitoring console on back wall (between racks) ───
+    // Console body
+    addBox(-0.25, 0.60, -7.20, 1.00, 1.20, 0.45, 0x2a3038, { metalness: 0.45, roughness: 0.40 });
+    // Console top surface
+    addBox(-0.25, 1.22, -7.10, 1.05, 0.04, 0.50, 0x353a45, { metalness: 0.50, roughness: 0.30 });
+    // Console screen
+    addBox(-0.25, 0.95, -6.96, 0.75, 0.45, 0.02, 0x0a1520, { emissive: 0x0a2030, emissiveIntensity: 0.30 });
+    // Screen bezel
+    addBox(-0.25, 0.95, -6.95, 0.80, 0.50, 0.01, 0x18181e, { metalness: 0.35, roughness: 0.25 });
+    // Data readout lines on screen
+    for (let dl = 0; dl < 4; dl++) {
+      addBox(-0.25, 0.80 + dl * 0.10, -6.94, 0.60, 0.005, 0.005, 0x2060a0, { emissive: 0x2060a0, emissiveIntensity: 0.25 });
+    }
+    // Console button row
+    for (let bi = 0; bi < 5; bi++) {
+      addBox(-0.55 + bi * 0.15, 1.20, -6.88, 0.06, 0.02, 0.06, 0x404850, { metalness: 0.40, roughness: 0.35 });
+    }
+    // Power LED on console
+    addBox(0.20, 1.20, -6.88, 0.03, 0.03, 0.01, 0x20a040, { emissive: 0x20a040, emissiveIntensity: 0.5 });
     // ─── Keycard — FLOATING above desk, impossible to miss ───
     const kcGroup = new THREE.Group();
     // Card body — bright orange, large
@@ -1005,80 +1596,294 @@ function createFurniture3D(roomNum) {
 function createCharacterModel(type) {
   const group = new THREE.Group();
   const isGuard = type === 'guard';
-  const torsoColor = isGuard ? 0x555560 : 0x4a78b8;
-  const legColor = isGuard ? 0x3a3a42 : 0x2e4068;
-  const skinColor = 0xe4b080;
 
-  // Legs
-  const legGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 6);
-  const legMat = new THREE.MeshStandardMaterial({ color: legColor, roughness: 0.7 });
-  const leftLeg = new THREE.Mesh(legGeom, legMat);
-  leftLeg.position.set(-0.12, 0.3, 0);
-  leftLeg.name = 'leftLeg';
-  group.add(leftLeg);
-  const rightLeg = new THREE.Mesh(legGeom, legMat);
-  rightLeg.position.set(0.12, 0.3, 0);
-  rightLeg.name = 'rightLeg';
-  group.add(rightLeg);
+  // --- Material palette ---
+  const uniformDark  = isGuard ? 0x35383f : 0x2a3548;
+  const uniformMain  = isGuard ? 0x484c55 : 0x3a5078;
+  const uniformLight = isGuard ? 0x5a5e68 : 0x4a6090;
+  const beltColor    = isGuard ? 0x2a2820 : 0x282c35;
+  const bootColor    = 0x1a1a1e;
+  const skinColor    = 0xd4a070;
+  const gearMetal    = 0x606870;
 
-  // Torso
-  const torsoGeom = new THREE.BoxGeometry(0.45, 0.65, 0.25);
-  const torsoMat = new THREE.MeshStandardMaterial({ color: torsoColor, roughness: 0.6 });
-  const torso = new THREE.Mesh(torsoGeom, torsoMat);
-  torso.position.y = 0.92;
+  const fabricMat = new THREE.MeshStandardMaterial({ color: uniformMain, roughness: 0.85, metalness: 0.0 });
+  const fabricDarkMat = new THREE.MeshStandardMaterial({ color: uniformDark, roughness: 0.82, metalness: 0.0 });
+  const fabricLightMat = new THREE.MeshStandardMaterial({ color: uniformLight, roughness: 0.80, metalness: 0.02 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.7, metalness: 0.0 });
+  const bootMat = new THREE.MeshStandardMaterial({ color: bootColor, roughness: 0.6, metalness: 0.05 });
+  const beltMat = new THREE.MeshStandardMaterial({ color: beltColor, roughness: 0.5, metalness: 0.15 });
+  const metalMat = new THREE.MeshStandardMaterial({ color: gearMetal, roughness: 0.3, metalness: 0.7 });
+
+  // --- Boots (tactical, thick sole + upper) ---
+  const soleMat = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.9, metalness: 0.0 });
+  for (const side of [-1, 1]) {
+    // Sole
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.26), soleMat);
+    sole.position.set(side * 0.12, 0.02, 0.02);
+    sole.castShadow = true;
+    group.add(sole);
+    // Boot upper
+    const bootUpper = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.22), bootMat);
+    bootUpper.position.set(side * 0.12, 0.13, 0.01);
+    bootUpper.castShadow = true;
+    group.add(bootUpper);
+    // Boot collar trim
+    const bootCollar = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.23), fabricDarkMat);
+    bootCollar.position.set(side * 0.12, 0.22, 0.01);
+    group.add(bootCollar);
+  }
+
+  // --- Legs (tactical pants, tapered) ---
+  const legGeom = new THREE.CylinderGeometry(0.08, 0.10, 0.48, 8);
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(legGeom, fabricDarkMat);
+    leg.position.set(side * 0.12, 0.46, 0);
+    leg.name = side < 0 ? 'leftLeg' : 'rightLeg';
+    leg.castShadow = true;
+    group.add(leg);
+    // Knee pad
+    const kneePad = new THREE.Mesh(
+      new THREE.BoxGeometry(0.10, 0.08, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5, metalness: 0.1 })
+    );
+    kneePad.position.set(side * 0.12, 0.42, 0.07);
+    group.add(kneePad);
+    // Cargo pocket on outer side
+    const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.10, 0.08), fabricMat);
+    pocket.position.set(side * 0.19, 0.52, 0);
+    group.add(pocket);
+  }
+
+  // --- Belt / waist separation ---
+  const beltMesh = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.28), beltMat);
+  beltMesh.position.y = 0.72;
+  beltMesh.castShadow = true;
+  group.add(beltMesh);
+  // Belt buckle
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.03), metalMat);
+  buckle.position.set(0, 0.72, 0.14);
+  group.add(buckle);
+
+  if (isGuard) {
+    // Guard utility pouches on belt
+    const pouch1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.06), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
+    pouch1.position.set(-0.18, 0.72, 0.12);
+    group.add(pouch1);
+    const pouch2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.09, 0.05), new THREE.MeshStandardMaterial({ color: 0x2e3028, roughness: 0.7 }));
+    pouch2.position.set(0.20, 0.72, 0.10);
+    group.add(pouch2);
+    // Radio on belt
+    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.10, 0.03), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.4, metalness: 0.3 }));
+    radio.position.set(0.22, 0.75, -0.10);
+    group.add(radio);
+  } else {
+    // Player: compact belt pouch (tools)
+    const toolPouch = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.05), new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.6 }));
+    toolPouch.position.set(0.18, 0.72, 0.11);
+    group.add(toolPouch);
+  }
+
+  // --- Torso (main body, slightly tapered) ---
+  const torsoGeom = new THREE.BoxGeometry(0.44, 0.52, 0.24);
+  const torso = new THREE.Mesh(torsoGeom, fabricMat);
+  torso.position.y = 1.0;
   torso.castShadow = true;
   group.add(torso);
 
-  // Arms
-  const armGeom = new THREE.CylinderGeometry(0.07, 0.07, 0.5, 6);
-  const armMat = new THREE.MeshStandardMaterial({ color: torsoColor, roughness: 0.6 });
-  const leftArm = new THREE.Mesh(armGeom, armMat);
-  leftArm.position.set(-0.30, 0.85, 0);
-  leftArm.name = 'leftArm';
-  group.add(leftArm);
-  const rightArm = new THREE.Mesh(armGeom, armMat);
-  rightArm.position.set(0.30, 0.85, 0);
-  rightArm.name = 'rightArm';
-  group.add(rightArm);
+  // Chest panel / vest overlay
+  const vestGeom = new THREE.BoxGeometry(0.40, 0.38, 0.03);
+  const vestMat = isGuard
+    ? new THREE.MeshStandardMaterial({ color: 0x3a3e45, roughness: 0.65, metalness: 0.05 })
+    : new THREE.MeshStandardMaterial({ color: 0x303848, roughness: 0.70, metalness: 0.02 });
+  const vest = new THREE.Mesh(vestGeom, vestMat);
+  vest.position.set(0, 1.05, 0.13);
+  group.add(vest);
+  // Vest back panel
+  const vestBack = new THREE.Mesh(vestGeom, vestMat);
+  vestBack.position.set(0, 1.05, -0.13);
+  group.add(vestBack);
 
-  // Neck
-  const neckGeom = new THREE.CylinderGeometry(0.06, 0.08, 0.12, 6);
-  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.8 });
+  if (isGuard) {
+    // Guard shoulder epaulettes
+    for (const side of [-1, 1]) {
+      const epaulette = new THREE.Mesh(
+        new THREE.BoxGeometry(0.10, 0.03, 0.14),
+        new THREE.MeshStandardMaterial({ color: 0x505560, roughness: 0.5, metalness: 0.2 })
+      );
+      epaulette.position.set(side * 0.22, 1.27, 0);
+      group.add(epaulette);
+    }
+    // Guard chest badge / ID
+    const badge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.01), metalMat);
+    badge.position.set(-0.10, 1.12, 0.155);
+    group.add(badge);
+    // Name tag
+    const nameTag = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.04, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0xd0d4d8, roughness: 0.3, metalness: 0.4 })
+    );
+    nameTag.position.set(0.08, 1.12, 0.155);
+    group.add(nameTag);
+  } else {
+    // Player: shoulder strap / harness detail
+    const strap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.48, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.5, metalness: 0.1 })
+    );
+    strap.position.set(-0.12, 1.0, 0.13);
+    strap.rotation.z = 0.15;
+    group.add(strap);
+    const strap2 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.48, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x252830, roughness: 0.5, metalness: 0.1 })
+    );
+    strap2.position.set(0.12, 1.0, 0.13);
+    strap2.rotation.z = -0.15;
+    group.add(strap2);
+  }
+
+  // --- Collar / neck zone ---
+  const collarGeom = new THREE.BoxGeometry(0.32, 0.06, 0.20);
+  const collar = new THREE.Mesh(collarGeom, fabricLightMat);
+  collar.position.y = 1.28;
+  group.add(collar);
+
+  // --- Arms (upper + forearm, slight taper) ---
+  for (const side of [-1, 1]) {
+    // Upper arm
+    const upperArm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.065, 0.075, 0.30, 8),
+      fabricMat
+    );
+    upperArm.position.set(side * 0.29, 1.10, 0);
+    upperArm.name = side < 0 ? 'leftArm' : 'rightArm';
+    upperArm.castShadow = true;
+    group.add(upperArm);
+    // Forearm (rolled sleeve look)
+    const forearm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.055, 0.065, 0.24, 8),
+      fabricDarkMat
+    );
+    forearm.position.set(side * 0.29, 0.85, 0);
+    forearm.castShadow = true;
+    group.add(forearm);
+    // Hand
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 8, 6),
+      skinMat
+    );
+    hand.position.set(side * 0.29, 0.72, 0);
+    group.add(hand);
+
+    if (isGuard) {
+      // Guard arm band
+      const armBand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.077, 0.077, 0.03, 8),
+        new THREE.MeshStandardMaterial({ color: 0x808590, roughness: 0.35, metalness: 0.3 })
+      );
+      armBand.position.set(side * 0.29, 0.97, 0);
+      group.add(armBand);
+    }
+  }
+
+  // Guard holds flashlight in right hand
+  if (isGuard) {
+    const flashlight = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.025, 0.16, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.3, metalness: 0.6 })
+    );
+    flashlight.position.set(0.29, 0.68, 0.04);
+    flashlight.rotation.x = Math.PI / 2;
+    group.add(flashlight);
+    const flashlightLens = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 0.01, 8),
+      new THREE.MeshStandardMaterial({ color: 0xe0e8f0, emissive: 0xc0d0e0, emissiveIntensity: 0.3, roughness: 0.1, metalness: 0.0 })
+    );
+    flashlightLens.position.set(0.29, 0.68, 0.13);
+    flashlightLens.rotation.x = Math.PI / 2;
+    group.add(flashlightLens);
+  }
+
+  // --- Neck ---
+  const neckGeom = new THREE.CylinderGeometry(0.055, 0.07, 0.10, 8);
   const neck = new THREE.Mesh(neckGeom, skinMat);
-  neck.position.y = 1.30;
+  neck.position.y = 1.34;
   group.add(neck);
 
-  // Head
-  const headGeom = new THREE.SphereGeometry(0.18, 12, 10);
+  // --- Head (slightly elongated sphere) ---
+  const headGeom = new THREE.SphereGeometry(0.17, 16, 12);
   const head = new THREE.Mesh(headGeom, skinMat);
-  head.position.y = 1.52;
+  head.position.y = 1.50;
+  head.scale.y = 1.1;
   head.castShadow = true;
   group.add(head);
 
-  // Hair/beret
+  // Ears
+  for (const side of [-1, 1]) {
+    const ear = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 6),
+      skinMat
+    );
+    ear.position.set(side * 0.16, 1.49, 0);
+    ear.scale.set(0.5, 0.8, 0.7);
+    group.add(ear);
+  }
+
+  // --- Headgear ---
   if (isGuard) {
-    const beretGeom = new THREE.SphereGeometry(0.19, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-    const beretMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
-    const beret = new THREE.Mesh(beretGeom, beretMat);
-    beret.position.y = 1.54;
-    group.add(beret);
+    // Security cap — proper flat-top cap with visor
+    const capBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.19, 0.12, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.75, metalness: 0.0 })
+    );
+    capBody.position.y = 1.60;
+    group.add(capBody);
+    // Cap top
+    const capTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.17, 0.18, 0.02, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.75 })
+    );
+    capTop.position.y = 1.67;
+    group.add(capTop);
+    // Visor
+    const visor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.02, 0.10),
+      new THREE.MeshStandardMaterial({ color: 0x151820, roughness: 0.4, metalness: 0.15 })
+    );
+    visor.position.set(0, 1.56, 0.14);
+    visor.rotation.x = -0.2;
+    group.add(visor);
+    // Cap badge (small metal emblem)
+    const capBadge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.04, 0.01),
+      new THREE.MeshStandardMaterial({ color: 0xc0a830, roughness: 0.2, metalness: 0.8 })
+    );
+    capBadge.position.set(0, 1.60, 0.19);
+    group.add(capBadge);
   } else {
-    const hairGeom = new THREE.SphereGeometry(0.19, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    const hairMat = new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.9 });
+    // Player: short tactical hair, no headgear — stealth operative look
+    const hairGeom = new THREE.SphereGeometry(0.18, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x1a1818, roughness: 0.95 });
     const hair = new THREE.Mesh(hairGeom, hairMat);
-    hair.position.y = 1.55;
+    hair.position.y = 1.54;
     group.add(hair);
   }
 
-  // Shoes
-  const shoeGeom = new THREE.BoxGeometry(0.14, 0.06, 0.22);
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
-  const ls = new THREE.Mesh(shoeGeom, shoeMat);
-  ls.position.set(-0.12, 0.03, 0.03);
-  group.add(ls);
-  const rs = new THREE.Mesh(shoeGeom, shoeMat);
-  rs.position.set(0.12, 0.03, 0.03);
-  group.add(rs);
+  // --- Eyes (simple but intentional) ---
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.02, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.2 })
+    );
+    eye.position.set(side * 0.06, 1.51, 0.15);
+    group.add(eye);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.012, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.1 })
+    );
+    pupil.position.set(side * 0.06, 1.51, 0.165);
+    group.add(pupil);
+  }
 
   group.castShadow = true;
   return group;
