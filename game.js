@@ -351,20 +351,18 @@ function createCornerShadows() {
     const t = tc.getContext('2d');
     const grad = t.createRadialGradient(128, 128, 0, 128, 128, 180);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(0.3, 'rgba(0,0,0,0.15)');
-    grad.addColorStop(0.6, 'rgba(0,0,0,0.35)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+    grad.addColorStop(0.3, 'rgba(0,0,0,0.1)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.25)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.4)');
     t.fillStyle = grad;
     t.fillRect(0, 0, 128, 128);
     return new THREE.CanvasTexture(tc);
   }
 
-  // Floor corner shadows (4 corners)
+  // Floor corner shadows (back corners only — front corners removed for clean cutaway)
   const corners = [
     { x: -hw, z: -hd },  // back-left
     { x: hw, z: -hd },   // back-right
-    { x: -hw, z: hd },   // front-left
-    { x: hw, z: hd },    // front-right
   ];
 
   for (const corner of corners) {
@@ -424,19 +422,7 @@ function createCornerShadows() {
   scene3D.add(rightEdge);
   currentRoomMeshes.push(rightEdge);
 
-  // Wall-ceiling corner darkness (subtle ambient occlusion)
-  const ceilEdgeTc = document.createElement('canvas');
-  ceilEdgeTc.width = 256; ceilEdgeTc.height = 64;
-  const ceilCtx = ceilEdgeTc.getContext('2d');
-  const ceilGrad = ceilCtx.createLinearGradient(0, 64, 0, 0);
-  ceilGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
-  ceilGrad.addColorStop(0.4, 'rgba(0,0,0,0.1)');
-  ceilGrad.addColorStop(1, 'rgba(0,0,0,0)');
-  ceilCtx.fillStyle = ceilGrad;
-  ceilCtx.fillRect(0, 0, 256, 64);
-  const ceilEdgeTex = new THREE.CanvasTexture(ceilEdgeTc);
-
-  // Ceiling shadow removed — cutaway diorama, no ceiling
+  // Ceiling removed — cutaway diorama presentation
 }
 
 function createCeilingLights3D() {
@@ -709,7 +695,7 @@ function setupLights() {
   }
 
   // Ambient light — subtle fill, let spotlights do the work
-  addLight(new THREE.AmbientLight(0x2a3450, 0.5));
+  addLight(new THREE.AmbientLight(0x2a3450, 0.6));
 
   // Hemisphere light for natural fill (sky/ground)
   addLight(new THREE.HemisphereLight(0x405080, 0x101820, 0.4));
@@ -763,8 +749,8 @@ function initThreeJS() {
 
   // Scene
   scene3D = new THREE.Scene();
-  scene3D.background = new THREE.Color(0x080c14);
-  scene3D.fog = new THREE.FogExp2(0x080c14, 0.02);
+  scene3D.background = new THREE.Color(0x0e1420);
+  scene3D.fog = new THREE.FogExp2(0x0e1420, 0.015);
 
   // Camera — cutaway diorama view: frames the playable floor, not the room volume
   camera3D = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
