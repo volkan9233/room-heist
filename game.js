@@ -647,6 +647,18 @@ function createRoom3D(roomNum) {
   scene3D.add(rightWall);
   currentRoomMeshes.push(rightWall);
 
+  // Ceiling — caps the room, eliminates dark void above walls
+  const ceilMat = new THREE.MeshStandardMaterial({
+    color: rn === 3 ? 0x0c1420 : 0x141a24,
+    roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide
+  });
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WORLD_D), ceilMat);
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set(0, WALL_H, 0);
+  ceiling.receiveShadow = true;
+  scene3D.add(ceiling);
+  currentRoomMeshes.push(ceiling);
+
   // ─── 3D MODEL OVERLAYS — intentional staging ──────────────────────────────
   if (envModelsLoaded) {
     const colScale = WALL_H / 5; // Columns are 5 units tall, scale to WALL_H
@@ -2617,7 +2629,7 @@ function setupLights() {
 
   // Main ceiling spotlight 1 — illuminates left-center play area
   const spot1 = new THREE.SpotLight(lc, 55, 35, Math.PI / 3.5, 0.7, 1.2);
-  spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
+  spot1.position.set(-3, WALL_H - 0.1, -WORLD_D / 2 + 1);
   spot1.target.position.set(-2, 0, 0);
   spot1.castShadow = true;
   spot1.shadow.mapSize.set(2048, 2048);
@@ -2629,7 +2641,7 @@ function setupLights() {
 
   // Main ceiling spotlight 2 — illuminates right play area
   const spot2 = new THREE.SpotLight(lc, 45, 35, Math.PI / 3.5, 0.7, 1.2);
-  spot2.position.set(5, WALL_H + 4, -WORLD_D / 2 + 1);
+  spot2.position.set(5, WALL_H - 0.1, -WORLD_D / 2 + 1);
   spot2.target.position.set(3, 0, -1);
   spot2.castShadow = true;
   spot2.shadow.mapSize.set(2048, 2048);
@@ -2641,15 +2653,15 @@ function setupLights() {
 
   // Back wall dedicated spotlight — reads the back set
   const backSpot = new THREE.SpotLight(lc, 35, 30, Math.PI / 2.5, 0.6, 1.2);
-  backSpot.position.set(0, WALL_H + 2, -WORLD_D / 2 + 3);
-  backSpot.target.position.set(0, 1.5, -WORLD_D / 2 + 0.3);
+  backSpot.position.set(0, WALL_H - 0.1, -WORLD_D / 2 + 3);
+  backSpot.target.position.set(0, 2.0, -WORLD_D / 2 + 0.3);
   addLight(backSpot);
   scene3D.add(backSpot.target);
 
   if (currentRoom === 1) {
     // Ceiling wash — controlled, not flooding the floor
     const ceilWash = new THREE.PointLight(0xc0d0e8, 8, 18);
-    ceilWash.position.set(0, WALL_H + 1, 1);
+    ceilWash.position.set(0, WALL_H - 0.5, 1);
     addLight(ceilWash);
 
     // Desk area cool fill — subtle
@@ -2697,7 +2709,7 @@ function setupLights() {
 
     // Ambient cyan ceiling wash
     const cyanCeil = new THREE.PointLight(0x004060, 10, 25);
-    cyanCeil.position.set(0, WALL_H + 1, 0);
+    cyanCeil.position.set(0, WALL_H - 0.3, 0);
     addLight(cyanCeil);
 
     // Subtle rim lights along walls (cool blue)
@@ -2739,7 +2751,7 @@ function initThreeJS() {
   // Camera — premium fixed-camera stealth room shot
   // Lower, closer: back wall reads as stage set, characters have presence
   camera3D = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
-  camera3D.position.set(0.3, 4.8, 12);
+  camera3D.position.set(0.3, 3.5, 12);
   camera3D.lookAt(0, 1.0, -1.5);
 
   // Build initial room (procedural fallback until all assets load)
