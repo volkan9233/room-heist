@@ -80,47 +80,20 @@ function createSciFiMaterial(type, roomNum) {
 
 function preloadEnvironmentModels() {
   return new Promise((resolve) => {
-    // glTF models (Quaternius modular kit — will use custom materials)
+    // glTF models — only structural pieces actually placed in rooms
     const gltfModels = {
       column_pipes: 'Column_Pipes',
       column_support: 'Column_MetalSupport',
       column_simple: 'Column_Simple',
-      column_hollow: 'Column_Hollow',
-      column_round: 'Column_Round',
-      door_dark: 'Door_DarkMetal',
-      door_frame: 'Door_Frame_Square',
-      door_simple: 'Door_Simple',
-      prop_computer: 'assets/models/Prop_Computer',
-      prop_crate: 'assets/models/Prop_Crate3',
-      prop_barrel: 'assets/models/Prop_Barrel_Large',
       prop_vent: 'assets/models/Prop_Vent_Big',
       prop_vent_small: 'assets/models/Prop_Vent_Small',
-      prop_vent_wide: 'assets/models/Prop_Vent_Wide',
-      prop_light_wide: 'assets/models/Prop_Light_Wide',
-      prop_light_small: 'assets/models/Prop_Light_Small',
-      prop_light_corner: 'assets/models/Prop_Light_Corner',
-      prop_light_floor: 'assets/models/Prop_Light_Floor',
-      prop_cable1: 'assets/models/Prop_Cable_1',
-      prop_cable3: 'assets/models/Prop_Cable_3',
-      prop_chest: 'assets/models/Prop_Chest',
-      prop_clamp: 'assets/models/Prop_Clamp',
-      prop_access: 'assets/models/Prop_AccessPoint',
-      prop_fan: 'assets/models/Prop_Fan_Small',
-      prop_pipe_holder: 'assets/models/Prop_PipeHolder',
-      prop_item_holder: 'assets/models/Prop_ItemHolder',
-      prop_rail2: 'assets/models/Prop_Rail_2',
-      prop_rail3: 'assets/models/Prop_Rail_3',
     };
 
-    // GLB models (embedded textures — keep original materials!)
+    // GLB models — only the ones used as replacements for procedural objects
     const glbModels = {
-      glb_electrical_box: 'industrial_electrical_box.glb',
-      glb_hologram_table: 'lumen_hologram_table.glb',
       glb_monitoring: 'monitoring_station%202.glb',
-      glb_wardrobe: 'rusty_industrial_wardrobe.glb',
       glb_capsule: 'sci-fi_capsule.glb',
-      glb_crate: 'sci-fi_crate.glb',
-      glb_door: 'sci-fi_door_loops.glb',
+      glb_hologram_table: 'lumen_hologram_table.glb',
     };
 
     let loaded = 0;
@@ -676,36 +649,8 @@ function createRoom3D(roomNum) {
     placeModel('prop_vent', -6, 1.8, -hd + 0.15, 0, 0.6, 'trim', rn);   // back wall, left section
     placeModel('prop_vent_small', hw - 0.15, 2.0, -4, -Math.PI / 2, 0.5, 'trim', rn); // right wall
 
-    // ── ROOM-SPECIFIC GLB STAGING (intentional, functional placement) ──
-    if (rn === 1) {
-      // Room 1: Secure office / workstation
-      // Back-left: server/monitoring area (behind existing server racks)
-      placeModel('glb_monitoring', -7, 0, -6.8, 0, 1.0, null, rn);
-      // Right wall near back: electrical infrastructure
-      placeModel('glb_electrical_box', hw - 0.3, 0, -5.5, -Math.PI / 2, 0.9, null, rn);
-      // Left wall mid: storage locker (cover object for stealth)
-      placeModel('glb_wardrobe', -hw + 0.4, 0, -1, Math.PI / 2, 0.85, null, rn);
-    }
-    if (rn === 2) {
-      // Room 2: Storage / loading area
-      // Back-left: supply crates (stacked, cover objects)
-      placeModel('glb_crate', -7, 0, -6, 0.15, 0.8, null, rn);
-      // Back-right: equipment storage
-      placeModel('glb_wardrobe', hw - 0.4, 0, -5, -Math.PI / 2, 0.9, null, rn);
-      // Left wall: electrical panel
-      placeModel('glb_electrical_box', -hw + 0.3, 0, -3, Math.PI / 2, 0.9, null, rn);
-      // Center back: workstation
-      placeModel('glb_monitoring', 1, 0, -6.8, 0, 0.9, null, rn);
-    }
-    if (rn === 3) {
-      // Room 3: Research lab / containment
-      // Center-back: specimen containment (the focal point)
-      placeModel('glb_capsule', 0, 0, -4.5, 0, 0.9, null, rn);
-      // Left of center: holographic control station
-      placeModel('glb_hologram_table', -5, 0, -4, 0.1, 1.0, null, rn);
-      // Right back: data monitoring
-      placeModel('glb_monitoring', 6, 0, -6.5, Math.PI, 0.9, null, rn);
-    }
+    // GLB replacements are now handled in createFurniture3D
+    // where they replace specific procedural objects at their exact positions
   }
 
   // Baseboard trim (always present — clean edge between floor and walls)
@@ -1062,7 +1007,14 @@ function addBox(x, y, z, w, h, d, color, opts) {
 
 function createFurniture3D(roomNum) {
   if (roomNum === 1) {
-    // ─── Industrial workstation desk — steel frame + grey laminate top ───
+    // ─── Workstation desk area ───
+    // If GLB monitoring station is loaded, it replaces the procedural desk
+    if (envModelsLoaded && envModels['glb_monitoring']) {
+      // GLB monitoring station replaces procedural desk at desk position
+      // Desk center was (5.5, 0, -4), facing forward (toward chair at z=-3)
+      placeModel('glb_monitoring', 5.5, 0, -4.2, Math.PI, 1.1, null, 1);
+    } else {
+    // Fallback: procedural desk
     // Desk surface — dark grey laminate with beveled edge
     addBox(5.5, 0.90, -4, 5, 0.10, 2.0, 0x505860, { roughness: 0.50, metalness: 0.08 });
     // Front edge trim (aluminium)
@@ -1208,6 +1160,7 @@ function createFurniture3D(roomNum) {
     pen.rotation.z = Math.PI / 2;
     pen.rotation.y = 0.3;
     scene3D.add(pen); currentRoomMeshes.push(pen);
+    } // end procedural desk fallback
 
     // ─── Server rack 1 — full 42U rack with detail ───
     // Main cabinet body
@@ -1845,7 +1798,16 @@ function createFurniture3D(roomNum) {
     floorRing2.position.set(0, 0.016, -2);
     scene3D.add(floorRing2); currentRoomMeshes.push(floorRing2);
 
-    // ─── CENTRAL CONTAINMENT CHAMBER — Glowing cryo pod ─────────────
+    // ─── CENTRAL CONTAINMENT CHAMBER ─────────────
+    if (envModelsLoaded && envModels['glb_capsule']) {
+      // GLB capsule replaces procedural containment pod at center (0, 0, -2)
+      placeModel('glb_capsule', 0, 0, -2, 0, 1.2, null, 3);
+      // Keep the pod glow light for atmosphere
+      const podLight = new THREE.PointLight(0x00e5ff, 12, 8);
+      podLight.position.set(0, 1.5, -2);
+      scene3D.add(podLight); currentRoomMeshes.push(podLight);
+    } else {
+    // Fallback: procedural cryo pod
     // Base platform (octagonal-ish, dark metal)
     const podBaseGeom = new THREE.CylinderGeometry(1.8, 2.0, 0.25, 8);
     const podBaseMat = new THREE.MeshStandardMaterial({
@@ -1923,6 +1885,7 @@ function createFurniture3D(roomNum) {
     const podLight = new THREE.PointLight(cyanGlow, 15, 10);
     podLight.position.set(0, 1.5, -2);
     scene3D.add(podLight); currentRoomMeshes.push(podLight);
+    } // end procedural containment chamber fallback
 
     // ─── GATE 07 — Circular door mechanism on back wall ─────────────
     // Door frame (back wall, right-center)
@@ -1992,7 +1955,12 @@ function createFurniture3D(roomNum) {
     gateLight.position.set(gateX, 1.5, gateZ + 1);
     scene3D.add(gateLight); currentRoomMeshes.push(gateLight);
 
-    // ─── CONTROL CONSOLE — Left side, angled desk with screens ──────
+    // ─── CONTROL CONSOLE — Left side ──────
+    if (envModelsLoaded && envModels['glb_hologram_table']) {
+      // GLB hologram table replaces procedural console at (-7, 0, -4.5)
+      placeModel('glb_hologram_table', -7, 0, -4.5, 0, 1.2, null, 3);
+    } else {
+    // Fallback: procedural console
     // Console base (angled front)
     addBox(-7, 0.55, -4.5, 4, 1.1, 2.5, darkMetal, { metalness: 0.6, roughness: 0.3 });
     // Console top surface
@@ -2023,6 +1991,7 @@ function createFurniture3D(roomNum) {
       addBox(bx, 1.14, -4.0, 0.15, 0.03, 0.15, 0x0a0e15,
         { emissive: bi % 2 === 0 ? cyanGlow : 0x00ff88, emissiveIntensity: 0.5 });
     }
+    } // end procedural console fallback
 
     // ─── HOLOGRAPHIC DISPLAY — Floating transparent screen ──────────
     // Holo projector base (right side of room, near wall)
