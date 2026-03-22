@@ -116,7 +116,7 @@ function preloadEnvironmentModels() {
     const glbModels = {
       glb_electrical_box: 'industrial_electrical_box.glb',
       glb_hologram_table: 'lumen_hologram_table.glb',
-      glb_monitoring: 'monitoring_station 2.glb',
+      glb_monitoring: 'monitoring_station%202.glb',
       glb_wardrobe: 'rusty_industrial_wardrobe.glb',
       glb_capsule: 'sci-fi_capsule.glb',
       glb_crate: 'sci-fi_crate.glb',
@@ -125,11 +125,22 @@ function preloadEnvironmentModels() {
 
     let loaded = 0;
     const total = Object.keys(gltfModels).length + Object.keys(glbModels).length;
+    let resolved = false;
 
     function onLoad() {
       loaded++;
-      if (loaded >= total) { envModelsLoaded = true; resolve(); }
+      if (!resolved && loaded >= total) { resolved = true; envModelsLoaded = true; resolve(); }
     }
+
+    // Safety timeout — resolve after 15s even if some models fail
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        envModelsLoaded = true;
+        console.warn('Env model loading timed out, loaded', loaded, '/', total);
+        resolve();
+      }
+    }, 15000);
 
     // Load glTF models (will get custom materials applied)
     for (const [key, path] of Object.entries(gltfModels)) {
@@ -2497,6 +2508,11 @@ function loadGLBModels() {
     if (playerLoaded && guardLoaded) {
       assetsReady = true;
       console.log('All GLB assets loaded — scene ready');
+      // Now load environment models in background (after game is playable)
+      preloadEnvironmentModels().then(() => {
+        console.log('Environment models loaded — rebuilding room');
+        createRoom3D(currentRoom);
+      });
     }
   }
 
@@ -2755,13 +2771,8 @@ function initThreeJS() {
   camera3D.position.set(0.5, 6.5, 15);
   camera3D.lookAt(0, 0.3, -0.5);
 
-  // Preload environment models, then build room
-  // Start with fallback room immediately, replace when models load
+  // Build room with procedural fallback first (models load later)
   createRoom3D(currentRoom);
-  preloadEnvironmentModels().then(() => {
-    console.log('Environment models loaded — rebuilding room with modular pieces');
-    createRoom3D(currentRoom);
-  });
 
   // Post-processing pipeline
   composer = new EffectComposer(renderer3D);
