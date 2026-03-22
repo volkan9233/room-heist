@@ -2535,7 +2535,11 @@ function loadGLBModels() {
     buildGLBModel('player');
     playerLoaded = true;
     checkAllLoaded();
-  }, undefined, (err) => console.warn('Could not load scientist GLB:', err));
+  }, undefined, (err) => {
+    console.warn('Could not load scientist GLB:', err);
+    playerLoaded = true;
+    checkAllLoaded();
+  });
 
   // Load demon creature model (guard character) — larger, imposing
   gltfLoader.load('demon_creature.glb', (gltf) => {
@@ -2543,7 +2547,19 @@ function loadGLBModels() {
     buildGLBModel('guard');
     guardLoaded = true;
     checkAllLoaded();
-  }, undefined, (err) => console.warn('Could not load demon GLB:', err));
+  }, undefined, (err) => {
+    console.warn('Could not load demon GLB:', err);
+    guardLoaded = true;
+    checkAllLoaded();
+  });
+
+  // Global safety timeout — never hang on loading screen forever
+  setTimeout(() => {
+    if (!assetsReady) {
+      console.warn('Global load timeout — forcing game start');
+      assetsReady = true;
+    }
+  }, 20000);
 }
 
 // Build GLB model directly into the scene (no procedural swap)
