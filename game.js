@@ -2616,7 +2616,7 @@ function setupLights() {
   const lc = lightColors[currentRoom] || lightColors[1];
 
   // Main ceiling spotlight 1 — illuminates left-center play area
-  const spot1 = new THREE.SpotLight(lc, 45, 35, Math.PI / 3.5, 0.7, 1.2);
+  const spot1 = new THREE.SpotLight(lc, 55, 35, Math.PI / 3.5, 0.7, 1.2);
   spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
   spot1.target.position.set(-2, 0, 0);
   spot1.castShadow = true;
@@ -2648,7 +2648,7 @@ function setupLights() {
 
   if (currentRoom === 1) {
     // Ceiling wash — controlled, not flooding the floor
-    const ceilWash = new THREE.PointLight(0xc0d0e8, 5, 18);
+    const ceilWash = new THREE.PointLight(0xc0d0e8, 8, 18);
     ceilWash.position.set(0, WALL_H + 1, 1);
     addLight(ceilWash);
 
@@ -2710,7 +2710,7 @@ function setupLights() {
   }
 
   // Fill light from front — subtle, prevents silhouette crush
-  const fill = new THREE.PointLight(0x506890, 6, 30);
+  const fill = new THREE.PointLight(0x506890, 10, 30);
   fill.position.set(2, 3.5, WORLD_D / 2 + 2);
   addLight(fill);
 
@@ -2728,19 +2728,19 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 0.62;
+  renderer3D.toneMappingExposure = 0.72;
   renderer3D.outputColorSpace = THREE.SRGBColorSpace;
 
   // Scene — dark industrial atmosphere
   scene3D = new THREE.Scene();
   scene3D.background = new THREE.Color(0x0a0c12);
-  scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
+  scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.007);
 
   // Camera — premium fixed-camera stealth room shot
   // Lower, closer: back wall reads as stage set, characters have presence
   camera3D = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
   camera3D.position.set(0.3, 4.8, 12);
-  camera3D.lookAt(0, 0.6, -1.5);
+  camera3D.lookAt(0, 1.0, -1.5);
 
   // Build initial room (procedural fallback until all assets load)
   createRoom3D(currentRoom);
@@ -2766,8 +2766,8 @@ function initThreeJS() {
   const vignetteShader = {
     uniforms: {
       tDiffuse: { value: null },
-      darkness: { value: 0.55 },
-      offset: { value: 1.3 },
+      darkness: { value: 0.45 },
+      offset: { value: 1.35 },
     },
     vertexShader: `
       varying vec2 vUv;
