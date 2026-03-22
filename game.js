@@ -44,6 +44,159 @@ const gltfLoader = new GLTFLoader();
 const WORLD_W = 20, WORLD_D = 15, WORLD_H = 6;
 const WALL_H = 3; // Cutaway wall height for diorama presentation
 
+// ─── Environment Model Cache ─────────────────────────────────────────────────
+const envModels = {};
+let envModelsLoaded = false;
+
+// Sci-fi material palettes per room
+const sciFiPalettes = {
+  1: { wall: 0x2a3040, wallAlt: 0x1e2530, floor: 0x1a1e28, trim: 0x3a4050, accent: 0x4080ff, column: 0x252d3a },
+  2: { wall: 0x2d2520, wallAlt: 0x1e1a15, floor: 0x15120e, trim: 0x3a3025, accent: 0xff6020, column: 0x2a2218 },
+  3: { wall: 0x151a25, wallAlt: 0x101520, floor: 0x0c0e18, trim: 0x202838, accent: 0x00ffcc, column: 0x181e2a }
+};
+
+function createSciFiMaterial(type, roomNum) {
+  const pal = sciFiPalettes[roomNum] || sciFiPalettes[1];
+  const configs = {
+    wall: { color: pal.wall, roughness: 0.55, metalness: 0.6 },
+    wallAlt: { color: pal.wallAlt, roughness: 0.5, metalness: 0.65 },
+    floor: { color: pal.floor, roughness: 0.7, metalness: 0.3 },
+    trim: { color: pal.trim, roughness: 0.4, metalness: 0.7 },
+    column: { color: pal.column, roughness: 0.35, metalness: 0.75 },
+    door: { color: 0x2a2a30, roughness: 0.3, metalness: 0.8 },
+    prop: { color: pal.wallAlt, roughness: 0.5, metalness: 0.5 },
+    accent: { color: pal.accent, roughness: 0.2, metalness: 0.9, emissive: pal.accent, emissiveIntensity: 0.3 }
+  };
+  const cfg = configs[type] || configs.wall;
+  return new THREE.MeshStandardMaterial({
+    color: cfg.color,
+    roughness: cfg.roughness,
+    metalness: cfg.metalness,
+    emissive: cfg.emissive || 0x000000,
+    emissiveIntensity: cfg.emissiveIntensity || 0,
+    side: THREE.DoubleSide
+  });
+}
+
+function preloadEnvironmentModels() {
+  return new Promise((resolve) => {
+    // glTF models (Quaternius modular kit — will use custom materials)
+    const gltfModels = {
+      column_pipes: 'Column_Pipes',
+      column_support: 'Column_MetalSupport',
+      column_simple: 'Column_Simple',
+      column_hollow: 'Column_Hollow',
+      column_round: 'Column_Round',
+      door_dark: 'Door_DarkMetal',
+      door_frame: 'Door_Frame_Square',
+      door_simple: 'Door_Simple',
+      prop_computer: 'assets/models/Prop_Computer',
+      prop_crate: 'assets/models/Prop_Crate3',
+      prop_barrel: 'assets/models/Prop_Barrel_Large',
+      prop_vent: 'assets/models/Prop_Vent_Big',
+      prop_vent_small: 'assets/models/Prop_Vent_Small',
+      prop_vent_wide: 'assets/models/Prop_Vent_Wide',
+      prop_light_wide: 'assets/models/Prop_Light_Wide',
+      prop_light_small: 'assets/models/Prop_Light_Small',
+      prop_light_corner: 'assets/models/Prop_Light_Corner',
+      prop_light_floor: 'assets/models/Prop_Light_Floor',
+      prop_cable1: 'assets/models/Prop_Cable_1',
+      prop_cable3: 'assets/models/Prop_Cable_3',
+      prop_chest: 'assets/models/Prop_Chest',
+      prop_clamp: 'assets/models/Prop_Clamp',
+      prop_access: 'assets/models/Prop_AccessPoint',
+      prop_fan: 'assets/models/Prop_Fan_Small',
+      prop_pipe_holder: 'assets/models/Prop_PipeHolder',
+      prop_item_holder: 'assets/models/Prop_ItemHolder',
+      prop_rail2: 'assets/models/Prop_Rail_2',
+      prop_rail3: 'assets/models/Prop_Rail_3',
+    };
+
+    // GLB models (embedded textures — keep original materials!)
+    const glbModels = {
+      glb_electrical_box: 'industrial_electrical_box.glb',
+      glb_hologram_table: 'lumen_hologram_table.glb',
+      glb_monitoring: 'monitoring_station 2.glb',
+      glb_wardrobe: 'rusty_industrial_wardrobe.glb',
+      glb_capsule: 'sci-fi_capsule.glb',
+      glb_crate: 'sci-fi_crate.glb',
+      glb_door: 'sci-fi_door_loops.glb',
+    };
+
+    let loaded = 0;
+    const total = Object.keys(gltfModels).length + Object.keys(glbModels).length;
+
+    function onLoad() {
+      loaded++;
+      if (loaded >= total) { envModelsLoaded = true; resolve(); }
+    }
+
+    // Load glTF models (will get custom materials applied)
+    for (const [key, path] of Object.entries(gltfModels)) {
+      gltfLoader.load(path + '.gltf', (gltf) => {
+        envModels[key] = gltf.scene;
+        onLoad();
+      }, undefined, () => {
+        console.warn('Env model not found:', key);
+        onLoad();
+      });
+    }
+
+    // Load GLB models (keep their embedded textures)
+    for (const [key, path] of Object.entries(glbModels)) {
+      gltfLoader.load(path, (gltf) => {
+        const model = gltf.scene;
+        // Auto-scale GLB models to reasonable size
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 5) {
+          const s = 2.5 / maxDim;
+          model.scale.setScalar(s);
+        }
+        // Enable shadows
+        model.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        envModels[key] = model;
+        onLoad();
+      }, undefined, () => {
+        console.warn('GLB model not found:', key);
+        onLoad();
+      });
+    }
+  });
+}
+
+function placeModel(key, x, y, z, rotY, scaleXYZ, materialType, roomNum) {
+  const template = envModels[key];
+  if (!template) return null;
+  const clone = template.clone();
+  clone.position.set(x, y, z);
+  if (rotY) clone.rotation.y = rotY;
+  if (scaleXYZ) {
+    if (typeof scaleXYZ === 'number') clone.scale.setScalar(scaleXYZ);
+    else if (Array.isArray(scaleXYZ)) clone.scale.set(scaleXYZ[0], scaleXYZ[1], scaleXYZ[2]);
+  }
+  // GLB models (prefix 'glb_') keep their embedded textures
+  const isGLB = key.startsWith('glb_');
+  clone.traverse(child => {
+    if (child.isMesh) {
+      if (!isGLB) {
+        child.material = createSciFiMaterial(materialType || 'wall', roomNum || 1);
+      }
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  scene3D.add(clone);
+  currentRoomMeshes.push(clone);
+  return clone;
+}
+
 function resize() {
   W = window.innerWidth;
   H = window.innerHeight;
@@ -411,8 +564,10 @@ function createRoom3D(roomNum) {
   setupLights();
 
   const rn = roomNum || 1;
+  const hw = WORLD_W / 2; // 10
+  const hd = WORLD_D / 2; // 7.5
 
-  // Extract textures and generate PBR maps from canvas data
+  // ─── PROCEDURAL WALLS & FLOOR (textured base surfaces) ──────────────────────
   const floorResult = createFloorTexture(rn);
   const floorTex = floorResult.texture;
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
@@ -439,13 +594,9 @@ function createRoom3D(roomNum) {
   // Floor
   const floorGeom = new THREE.PlaneGeometry(WORLD_W, WORLD_D);
   const floorMat = new THREE.MeshStandardMaterial({
-    map: floorTex,
-    normalMap: floorNormal,
-    normalScale: new THREE.Vector2(0.8, 0.8),
-    roughnessMap: floorRough,
-    roughness: rn === 3 ? 0.6 : 1.0,
-    metalness: rn === 3 ? 0.15 : (rn === 1 ? 0.03 : 0.02),
-    side: THREE.DoubleSide
+    map: floorTex, normalMap: floorNormal, normalScale: new THREE.Vector2(0.8, 0.8),
+    roughnessMap: floorRough, roughness: rn === 3 ? 0.6 : 1.0,
+    metalness: rn === 3 ? 0.15 : (rn === 1 ? 0.03 : 0.02), side: THREE.DoubleSide
   });
   const floor = new THREE.Mesh(floorGeom, floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -453,105 +604,134 @@ function createRoom3D(roomNum) {
   scene3D.add(floor);
   currentRoomMeshes.push(floor);
 
-  // Walls — low cutaway height (stage-set borders, not full enclosure)
   // Back wall
-  const bwGeom = new THREE.PlaneGeometry(WORLD_W, WALL_H);
   const bwMat = new THREE.MeshStandardMaterial({
-    map: wallTex,
-    normalMap: wallNormal,
-    normalScale: new THREE.Vector2(1.0, 1.0),
-    roughnessMap: wallRough,
-    roughness: rn === 3 ? 0.4 : 1.0,
-    metalness: rn === 3 ? 0.4 : 0.02,
+    map: wallTex, normalMap: wallNormal, normalScale: new THREE.Vector2(1.0, 1.0),
+    roughnessMap: wallRough, roughness: rn === 3 ? 0.4 : 1.0, metalness: rn === 3 ? 0.4 : 0.02,
     side: THREE.DoubleSide
   });
-  const backWall = new THREE.Mesh(bwGeom, bwMat);
-  backWall.position.set(0, WALL_H / 2, -WORLD_D / 2);
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_W, WALL_H), bwMat);
+  backWall.position.set(0, WALL_H / 2, -hd);
   backWall.receiveShadow = true;
   scene3D.add(backWall);
   currentRoomMeshes.push(backWall);
 
-  // Left wall
-  const lwGeom = new THREE.PlaneGeometry(WORLD_D, WALL_H);
-  const lwMat = new THREE.MeshStandardMaterial({
-    map: sideWallTex,
-    normalMap: sideWallNormal,
-    normalScale: new THREE.Vector2(1.0, 1.0),
-    roughnessMap: sideWallRough,
-    roughness: rn === 3 ? 0.4 : 1.0,
-    metalness: rn === 3 ? 0.4 : 0.02,
+  // Side walls
+  const swMat = new THREE.MeshStandardMaterial({
+    map: sideWallTex, normalMap: sideWallNormal, normalScale: new THREE.Vector2(1.0, 1.0),
+    roughnessMap: sideWallRough, roughness: rn === 3 ? 0.4 : 1.0, metalness: rn === 3 ? 0.4 : 0.02,
     side: THREE.DoubleSide
   });
-  const leftWall = new THREE.Mesh(lwGeom, lwMat);
-  leftWall.position.set(-WORLD_W / 2, WALL_H / 2, 0);
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_D, WALL_H), swMat);
+  leftWall.position.set(-hw, WALL_H / 2, 0);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.receiveShadow = true;
   scene3D.add(leftWall);
   currentRoomMeshes.push(leftWall);
 
-  // Right wall
-  const rwGeom = new THREE.PlaneGeometry(WORLD_D, WALL_H);
-  const rwMat = new THREE.MeshStandardMaterial({
-    map: sideWallTex,
-    normalMap: sideWallNormal,
-    normalScale: new THREE.Vector2(1.0, 1.0),
-    roughnessMap: sideWallRough,
-    roughness: rn === 3 ? 0.4 : 1.0,
-    metalness: rn === 3 ? 0.4 : 0.02,
-    side: THREE.DoubleSide
-  });
-  const rightWall = new THREE.Mesh(rwGeom, rwMat);
-  rightWall.position.set(WORLD_W / 2, WALL_H / 2, 0);
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_D, WALL_H), swMat.clone());
+  rightWall.position.set(hw, WALL_H / 2, 0);
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.receiveShadow = true;
   scene3D.add(rightWall);
   currentRoomMeshes.push(rightWall);
 
-  // Ceiling removed — cutaway diorama presentation
+  // ─── 3D MODEL OVERLAYS (Quaternius modular pieces on top of walls) ──────────
+  if (envModelsLoaded) {
+    const colScale = WALL_H / 5; // Columns are 5 units tall, scale to WALL_H
 
-  // Horizontal pipe near ceiling on back wall
-  const pipeGeom = new THREE.CylinderGeometry(0.08, 0.08, WORLD_W - 2, 8);
-  const pipeMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.4, metalness: 0.6 });
-  const pipe = new THREE.Mesh(pipeGeom, pipeMat);
-  pipe.rotation.z = Math.PI / 2;
-  pipe.position.set(0, WALL_H - 0.3, -WORLD_D / 2 + 0.15);
-  pipe.castShadow = true;
-  scene3D.add(pipe);
-  currentRoomMeshes.push(pipe);
+    // ── CORNER COLUMNS ──
+    const colKey = rn === 3 ? 'column_simple' : 'column_pipes';
+    placeModel(colKey, -hw + 0.3, 0, -hd + 0.3, 0, colScale, 'column', rn);
+    placeModel(colKey, hw - 0.3, 0, -hd + 0.3, Math.PI / 2, colScale, 'column', rn);
+    placeModel(colKey, -hw + 0.3, 0, hd - 0.3, -Math.PI / 2, colScale, 'column', rn);
+    placeModel(colKey, hw - 0.3, 0, hd - 0.3, Math.PI, colScale, 'column', rn);
 
-  // Pipe brackets
-  const bracketGeom = new THREE.BoxGeometry(0.05, 0.3, 0.15);
-  const bracketMat = new THREE.MeshStandardMaterial({ color: 0x4a5060, roughness: 0.5, metalness: 0.5 });
-  for (const bx of [-6, -2, 2, 6]) {
-    const bracket = new THREE.Mesh(bracketGeom, bracketMat);
-    bracket.position.set(bx, WALL_H - 0.3, -WORLD_D / 2 + 0.1);
-    scene3D.add(bracket);
-    currentRoomMeshes.push(bracket);
+    // ── MID-WALL SUPPORT COLUMNS ──
+    placeModel('column_support', -hw + 0.2, 0, -2, 0, colScale, 'column', rn);
+    placeModel('column_support', hw - 0.2, 0, -2, Math.PI, colScale, 'column', rn);
+    placeModel('column_support', -4, 0, -hd + 0.2, Math.PI / 2, colScale, 'column', rn);
+    placeModel('column_support', 4, 0, -hd + 0.2, Math.PI / 2, colScale, 'column', rn);
+
+    // ── WALL-MOUNTED VENTS ──
+    placeModel('prop_vent', -6, 1.6, -hd + 0.2, 0, 0.7, 'trim', rn);
+    placeModel('prop_vent_small', 6, 2.0, -hd + 0.2, 0, 0.7, 'trim', rn);
+    placeModel('prop_vent_small', -hw + 0.2, 1.8, -5, Math.PI / 2, 0.6, 'trim', rn);
+    placeModel('prop_vent', hw - 0.2, 1.4, 1, -Math.PI / 2, 0.6, 'trim', rn);
+
+    // ── WALL-MOUNTED LIGHTS ──
+    placeModel('prop_light_wide', -2, 2.6, -hd + 0.15, 0, 0.5, 'accent', rn);
+    placeModel('prop_light_wide', 2, 2.6, -hd + 0.15, 0, 0.5, 'accent', rn);
+    placeModel('prop_light_small', -hw + 0.15, 2.4, -3, Math.PI / 2, 0.5, 'accent', rn);
+    placeModel('prop_light_small', hw - 0.15, 2.4, -3, -Math.PI / 2, 0.5, 'accent', rn);
+    placeModel('prop_light_corner', -hw + 0.2, 2.5, -hd + 0.2, 0, 0.5, 'accent', rn);
+    placeModel('prop_light_corner', hw - 0.2, 2.5, -hd + 0.2, Math.PI / 2, 0.5, 'accent', rn);
+
+    // ── CABLES & PIPES ──
+    placeModel('prop_cable1', -hw + 0.15, 1.2, -5.5, Math.PI / 2, 0.45, 'trim', rn);
+    placeModel('prop_cable3', -hw + 0.15, 0.6, 3, Math.PI / 2, 0.45, 'trim', rn);
+    placeModel('prop_pipe_holder', -5, 2.7, -hd + 0.15, 0, 0.4, 'trim', rn);
+    placeModel('prop_pipe_holder', 5, 2.7, -hd + 0.15, 0, 0.4, 'trim', rn);
+    placeModel('prop_clamp', 0, 2.8, -hd + 0.15, 0, 0.4, 'trim', rn);
+
+    // ── ACCESS PANELS ──
+    placeModel('prop_access', hw - 0.15, 1.2, -1, -Math.PI / 2, 0.6, 'prop', rn);
+    placeModel('prop_fan', -hw + 0.2, 0.8, 4.5, Math.PI / 2, 0.5, 'trim', rn);
+
+    // ── FLOOR PROPS (scattered detail) ──
+    placeModel('prop_crate', -7.5, 0, -5.5, 0.3, 0.6, 'prop', rn);
+    placeModel('prop_crate', -6.5, 0, -6.2, -0.15, 0.45, 'prop', rn);
+    placeModel('prop_barrel', 7.5, 0, -5.8, 0, 0.6, 'prop', rn);
+    placeModel('prop_chest', -8.5, 0, 2.5, 0.1, 0.55, 'prop', rn);
+    placeModel('prop_item_holder', 8.5, 0, -3.5, Math.PI, 0.6, 'prop', rn);
+
+    // ── ROOM-SPECIFIC GLB MODELS (with embedded textures) ──
+    if (rn === 1) {
+      // Room 1: Industrial/Office — monitoring station, electrical box, wardrobe
+      placeModel('glb_monitoring', -8, 0, -6.5, 0, 1.2, null, rn);
+      placeModel('glb_electrical_box', hw - 0.5, 0, -5, -Math.PI / 2, 1.0, null, rn);
+      placeModel('glb_wardrobe', -hw + 0.5, 0, 4, Math.PI / 2, 0.9, null, rn);
+      placeModel('glb_crate', 6, 0, 3, 0.4, 0.8, null, rn);
+    }
+    if (rn === 2) {
+      // Room 2: Storage/Warehouse — crates, wardrobe, electrical box
+      placeModel('glb_crate', -6, 0, -5.5, 0.2, 0.9, null, rn);
+      placeModel('glb_crate', -4.5, 0, -6, -0.3, 0.7, null, rn);
+      placeModel('glb_wardrobe', -hw + 0.5, 0, -3, Math.PI / 2, 1.0, null, rn);
+      placeModel('glb_electrical_box', hw - 0.5, 0, 2, -Math.PI / 2, 1.0, null, rn);
+      placeModel('glb_monitoring', 5, 0, -6.5, 0, 1.0, null, rn);
+    }
+    if (rn === 3) {
+      // Room 3: Sci-fi Lab — capsule, hologram table, floor lights
+      placeModel('glb_capsule', 0, 0, -4, 0, 1.0, null, rn);
+      placeModel('glb_hologram_table', -5, 0, -3, 0, 1.2, null, rn);
+      placeModel('glb_monitoring', 6, 0, -6, Math.PI, 1.0, null, rn);
+      placeModel('glb_electrical_box', -hw + 0.5, 0, 0, Math.PI / 2, 0.8, null, rn);
+      placeModel('prop_light_floor', -4, 0, -5.5, 0, 0.45, 'accent', rn);
+      placeModel('prop_light_floor', 4, 0, -5.5, 0, 0.45, 'accent', rn);
+      placeModel('prop_light_floor', 0, 0, 2, 0, 0.45, 'accent', rn);
+    }
+  } else {
+    // Fallback pipes & baseboard when models aren't loaded
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.4, metalness: 0.6 });
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, WORLD_W - 2, 8), pipeMat);
+    pipe.rotation.z = Math.PI / 2;
+    pipe.position.set(0, WALL_H - 0.3, -hd + 0.15);
+    pipe.castShadow = true;
+    scene3D.add(pipe); currentRoomMeshes.push(pipe);
+
+    const bbMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.6, metalness: 0.3 });
+    const bbBack = new THREE.Mesh(new THREE.BoxGeometry(WORLD_W, 0.15, 0.08), bbMat);
+    bbBack.position.set(0, 0.075, -hd + 0.04);
+    scene3D.add(bbBack); currentRoomMeshes.push(bbBack);
+    const bbLGeom = new THREE.BoxGeometry(0.08, 0.15, WORLD_D);
+    const bbL = new THREE.Mesh(bbLGeom, bbMat);
+    bbL.position.set(-hw + 0.04, 0.075, 0);
+    scene3D.add(bbL); currentRoomMeshes.push(bbL);
+    const bbR = new THREE.Mesh(bbLGeom, bbMat);
+    bbR.position.set(hw - 0.04, 0.075, 0);
+    scene3D.add(bbR); currentRoomMeshes.push(bbR);
   }
-
-  // Vertical pipe on left wall
-  const vpGeom = new THREE.CylinderGeometry(0.06, 0.06, WALL_H, 8);
-  const vp = new THREE.Mesh(vpGeom, pipeMat);
-  vp.position.set(-WORLD_W / 2 + 0.15, WALL_H / 2, -WORLD_D / 2 + 2);
-  scene3D.add(vp);
-  currentRoomMeshes.push(vp);
-
-  // Baseboard strips
-  const bbGeom = new THREE.BoxGeometry(WORLD_W, 0.15, 0.08);
-  const bbMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.6, metalness: 0.3 });
-  const bbBack = new THREE.Mesh(bbGeom, bbMat);
-  bbBack.position.set(0, 0.075, -WORLD_D / 2 + 0.04);
-  scene3D.add(bbBack);
-  currentRoomMeshes.push(bbBack);
-  const bbLGeom = new THREE.BoxGeometry(0.08, 0.15, WORLD_D);
-  const bbL = new THREE.Mesh(bbLGeom, bbMat);
-  bbL.position.set(-WORLD_W / 2 + 0.04, 0.075, 0);
-  scene3D.add(bbL);
-  currentRoomMeshes.push(bbL);
-  const bbR = new THREE.Mesh(bbLGeom, bbMat);
-  bbR.position.set(WORLD_W / 2 - 0.04, 0.075, 0);
-  scene3D.add(bbR);
-  currentRoomMeshes.push(bbR);
 
   // Corner shadows — dark gradient planes in room corners for depth
   createCornerShadows();
@@ -2575,8 +2755,13 @@ function initThreeJS() {
   camera3D.position.set(0.5, 6.5, 15);
   camera3D.lookAt(0, 0.3, -0.5);
 
-  // Room geometry (also sets up lights)
+  // Preload environment models, then build room
+  // Start with fallback room immediately, replace when models load
   createRoom3D(currentRoom);
+  preloadEnvironmentModels().then(() => {
+    console.log('Environment models loaded — rebuilding room with modular pieces');
+    createRoom3D(currentRoom);
+  });
 
   // Post-processing pipeline
   composer = new EffectComposer(renderer3D);
