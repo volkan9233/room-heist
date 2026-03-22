@@ -647,102 +647,75 @@ function createRoom3D(roomNum) {
   scene3D.add(rightWall);
   currentRoomMeshes.push(rightWall);
 
-  // ─── 3D MODEL OVERLAYS (Quaternius modular pieces on top of walls) ──────────
+  // ─── 3D MODEL OVERLAYS — intentional staging ──────────────────────────────
   if (envModelsLoaded) {
     const colScale = WALL_H / 5; // Columns are 5 units tall, scale to WALL_H
-
-    // ── CORNER COLUMNS ──
     const colKey = rn === 3 ? 'column_simple' : 'column_pipes';
+
+    // ── STRUCTURAL COLUMNS (define room edges, read as architecture) ──
+    // Back corners only — front corners not needed (cutaway camera)
     placeModel(colKey, -hw + 0.3, 0, -hd + 0.3, 0, colScale, 'column', rn);
     placeModel(colKey, hw - 0.3, 0, -hd + 0.3, Math.PI / 2, colScale, 'column', rn);
-    placeModel(colKey, -hw + 0.3, 0, hd - 0.3, -Math.PI / 2, colScale, 'column', rn);
-    placeModel(colKey, hw - 0.3, 0, hd - 0.3, Math.PI, colScale, 'column', rn);
-
-    // ── MID-WALL SUPPORT COLUMNS ──
-    placeModel('column_support', -hw + 0.2, 0, -2, 0, colScale, 'column', rn);
-    placeModel('column_support', hw - 0.2, 0, -2, Math.PI, colScale, 'column', rn);
+    // Back wall mid-columns — divide wall into readable sections
     placeModel('column_support', -4, 0, -hd + 0.2, Math.PI / 2, colScale, 'column', rn);
     placeModel('column_support', 4, 0, -hd + 0.2, Math.PI / 2, colScale, 'column', rn);
 
-    // ── WALL-MOUNTED VENTS ──
-    placeModel('prop_vent', -6, 1.6, -hd + 0.2, 0, 0.7, 'trim', rn);
-    placeModel('prop_vent_small', 6, 2.0, -hd + 0.2, 0, 0.7, 'trim', rn);
-    placeModel('prop_vent_small', -hw + 0.2, 1.8, -5, Math.PI / 2, 0.6, 'trim', rn);
-    placeModel('prop_vent', hw - 0.2, 1.4, 1, -Math.PI / 2, 0.6, 'trim', rn);
+    // ── WALL VENTS (facility readability — one per visible wall) ──
+    placeModel('prop_vent', -6, 1.8, -hd + 0.15, 0, 0.6, 'trim', rn);   // back wall, left section
+    placeModel('prop_vent_small', hw - 0.15, 2.0, -4, -Math.PI / 2, 0.5, 'trim', rn); // right wall
 
-    // ── WALL-MOUNTED LIGHTS ──
-    placeModel('prop_light_wide', -2, 2.6, -hd + 0.15, 0, 0.5, 'accent', rn);
-    placeModel('prop_light_wide', 2, 2.6, -hd + 0.15, 0, 0.5, 'accent', rn);
-    placeModel('prop_light_small', -hw + 0.15, 2.4, -3, Math.PI / 2, 0.5, 'accent', rn);
-    placeModel('prop_light_small', hw - 0.15, 2.4, -3, -Math.PI / 2, 0.5, 'accent', rn);
-    placeModel('prop_light_corner', -hw + 0.2, 2.5, -hd + 0.2, 0, 0.5, 'accent', rn);
-    placeModel('prop_light_corner', hw - 0.2, 2.5, -hd + 0.2, Math.PI / 2, 0.5, 'accent', rn);
-
-    // ── CABLES & PIPES ──
-    placeModel('prop_cable1', -hw + 0.15, 1.2, -5.5, Math.PI / 2, 0.45, 'trim', rn);
-    placeModel('prop_cable3', -hw + 0.15, 0.6, 3, Math.PI / 2, 0.45, 'trim', rn);
-    placeModel('prop_pipe_holder', -5, 2.7, -hd + 0.15, 0, 0.4, 'trim', rn);
-    placeModel('prop_pipe_holder', 5, 2.7, -hd + 0.15, 0, 0.4, 'trim', rn);
-    placeModel('prop_clamp', 0, 2.8, -hd + 0.15, 0, 0.4, 'trim', rn);
-
-    // ── ACCESS PANELS ──
-    placeModel('prop_access', hw - 0.15, 1.2, -1, -Math.PI / 2, 0.6, 'prop', rn);
-    placeModel('prop_fan', -hw + 0.2, 0.8, 4.5, Math.PI / 2, 0.5, 'trim', rn);
-
-    // ── FLOOR PROPS (scattered detail) ──
-    placeModel('prop_crate', -7.5, 0, -5.5, 0.3, 0.6, 'prop', rn);
-    placeModel('prop_crate', -6.5, 0, -6.2, -0.15, 0.45, 'prop', rn);
-    placeModel('prop_barrel', 7.5, 0, -5.8, 0, 0.6, 'prop', rn);
-    placeModel('prop_chest', -8.5, 0, 2.5, 0.1, 0.55, 'prop', rn);
-    placeModel('prop_item_holder', 8.5, 0, -3.5, Math.PI, 0.6, 'prop', rn);
-
-    // ── ROOM-SPECIFIC GLB MODELS (with embedded textures) ──
+    // ── ROOM-SPECIFIC GLB STAGING (intentional, functional placement) ──
     if (rn === 1) {
-      // Room 1: Industrial/Office — monitoring station, electrical box, wardrobe
-      placeModel('glb_monitoring', -8, 0, -6.5, 0, 1.2, null, rn);
-      placeModel('glb_electrical_box', hw - 0.5, 0, -5, -Math.PI / 2, 1.0, null, rn);
-      placeModel('glb_wardrobe', -hw + 0.5, 0, 4, Math.PI / 2, 0.9, null, rn);
-      placeModel('glb_crate', 6, 0, 3, 0.4, 0.8, null, rn);
+      // Room 1: Secure office / workstation
+      // Back-left: server/monitoring area (behind existing server racks)
+      placeModel('glb_monitoring', -7, 0, -6.8, 0, 1.0, null, rn);
+      // Right wall near back: electrical infrastructure
+      placeModel('glb_electrical_box', hw - 0.3, 0, -5.5, -Math.PI / 2, 0.9, null, rn);
+      // Left wall mid: storage locker (cover object for stealth)
+      placeModel('glb_wardrobe', -hw + 0.4, 0, -1, Math.PI / 2, 0.85, null, rn);
     }
     if (rn === 2) {
-      // Room 2: Storage/Warehouse — crates, wardrobe, electrical box
-      placeModel('glb_crate', -6, 0, -5.5, 0.2, 0.9, null, rn);
-      placeModel('glb_crate', -4.5, 0, -6, -0.3, 0.7, null, rn);
-      placeModel('glb_wardrobe', -hw + 0.5, 0, -3, Math.PI / 2, 1.0, null, rn);
-      placeModel('glb_electrical_box', hw - 0.5, 0, 2, -Math.PI / 2, 1.0, null, rn);
-      placeModel('glb_monitoring', 5, 0, -6.5, 0, 1.0, null, rn);
+      // Room 2: Storage / loading area
+      // Back-left: supply crates (stacked, cover objects)
+      placeModel('glb_crate', -7, 0, -6, 0.15, 0.8, null, rn);
+      // Back-right: equipment storage
+      placeModel('glb_wardrobe', hw - 0.4, 0, -5, -Math.PI / 2, 0.9, null, rn);
+      // Left wall: electrical panel
+      placeModel('glb_electrical_box', -hw + 0.3, 0, -3, Math.PI / 2, 0.9, null, rn);
+      // Center back: workstation
+      placeModel('glb_monitoring', 1, 0, -6.8, 0, 0.9, null, rn);
     }
     if (rn === 3) {
-      // Room 3: Sci-fi Lab — capsule, hologram table, floor lights
-      placeModel('glb_capsule', 0, 0, -4, 0, 1.0, null, rn);
-      placeModel('glb_hologram_table', -5, 0, -3, 0, 1.2, null, rn);
-      placeModel('glb_monitoring', 6, 0, -6, Math.PI, 1.0, null, rn);
-      placeModel('glb_electrical_box', -hw + 0.5, 0, 0, Math.PI / 2, 0.8, null, rn);
-      placeModel('prop_light_floor', -4, 0, -5.5, 0, 0.45, 'accent', rn);
-      placeModel('prop_light_floor', 4, 0, -5.5, 0, 0.45, 'accent', rn);
-      placeModel('prop_light_floor', 0, 0, 2, 0, 0.45, 'accent', rn);
+      // Room 3: Research lab / containment
+      // Center-back: specimen containment (the focal point)
+      placeModel('glb_capsule', 0, 0, -4.5, 0, 0.9, null, rn);
+      // Left of center: holographic control station
+      placeModel('glb_hologram_table', -5, 0, -4, 0.1, 1.0, null, rn);
+      // Right back: data monitoring
+      placeModel('glb_monitoring', 6, 0, -6.5, Math.PI, 0.9, null, rn);
     }
-  } else {
-    // Fallback pipes & baseboard when models aren't loaded
-    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.4, metalness: 0.6 });
-    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, WORLD_W - 2, 8), pipeMat);
-    pipe.rotation.z = Math.PI / 2;
-    pipe.position.set(0, WALL_H - 0.3, -hd + 0.15);
-    pipe.castShadow = true;
-    scene3D.add(pipe); currentRoomMeshes.push(pipe);
-
-    const bbMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.6, metalness: 0.3 });
-    const bbBack = new THREE.Mesh(new THREE.BoxGeometry(WORLD_W, 0.15, 0.08), bbMat);
-    bbBack.position.set(0, 0.075, -hd + 0.04);
-    scene3D.add(bbBack); currentRoomMeshes.push(bbBack);
-    const bbLGeom = new THREE.BoxGeometry(0.08, 0.15, WORLD_D);
-    const bbL = new THREE.Mesh(bbLGeom, bbMat);
-    bbL.position.set(-hw + 0.04, 0.075, 0);
-    scene3D.add(bbL); currentRoomMeshes.push(bbL);
-    const bbR = new THREE.Mesh(bbLGeom, bbMat);
-    bbR.position.set(hw - 0.04, 0.075, 0);
-    scene3D.add(bbR); currentRoomMeshes.push(bbR);
   }
+
+  // Baseboard trim (always present — clean edge between floor and walls)
+  const bbMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, roughness: 0.6, metalness: 0.3 });
+  const bbBack = new THREE.Mesh(new THREE.BoxGeometry(WORLD_W, 0.12, 0.06), bbMat);
+  bbBack.position.set(0, 0.06, -hd + 0.03);
+  scene3D.add(bbBack); currentRoomMeshes.push(bbBack);
+  const bbSideGeom = new THREE.BoxGeometry(0.06, 0.12, WORLD_D);
+  const bbL = new THREE.Mesh(bbSideGeom, bbMat);
+  bbL.position.set(-hw + 0.03, 0.06, 0);
+  scene3D.add(bbL); currentRoomMeshes.push(bbL);
+  const bbR = new THREE.Mesh(bbSideGeom, bbMat);
+  bbR.position.set(hw - 0.03, 0.06, 0);
+  scene3D.add(bbR); currentRoomMeshes.push(bbR);
+
+  // Horizontal pipe (facility infrastructure, back wall ceiling line)
+  const pipeMat = new THREE.MeshStandardMaterial({ color: 0x5a6070, roughness: 0.4, metalness: 0.6 });
+  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, WORLD_W - 2, 8), pipeMat);
+  pipe.rotation.z = Math.PI / 2;
+  pipe.position.set(0, WALL_H - 0.25, -hd + 0.12);
+  pipe.castShadow = true;
+  scene3D.add(pipe); currentRoomMeshes.push(pipe);
 
   // Corner shadows — dark gradient planes in room corners for depth
   createCornerShadows();
@@ -2502,19 +2475,22 @@ function loadGLBModels() {
   if (glbModelsLoaded) return;
   glbModelsLoaded = true;
 
-  let playerLoaded = false, guardLoaded = false;
+  let playerLoaded = false, guardLoaded = false, envLoaded = false;
 
   function checkAllLoaded() {
-    if (playerLoaded && guardLoaded) {
+    if (playerLoaded && guardLoaded && envLoaded) {
+      // Rebuild room now that all environment models are available
+      createRoom3D(currentRoom);
       assetsReady = true;
-      console.log('All GLB assets loaded — scene ready');
-      // Now load environment models in background (after game is playable)
-      preloadEnvironmentModels().then(() => {
-        console.log('Environment models loaded — rebuilding room');
-        createRoom3D(currentRoom);
-      });
+      console.log('All assets loaded — scene ready');
     }
   }
+
+  // Start environment model loading in parallel with character models
+  preloadEnvironmentModels().then(() => {
+    envLoaded = true;
+    checkAllLoaded();
+  });
 
   // Helper to compute GLB model data with a target height
   function processGLB(gltf, targetHeight) {
@@ -2639,10 +2615,10 @@ function setupLights() {
   const lightColors = { 1: 0xc8d8f0, 2: 0xd0d8e8, 3: 0x40a0c0 };
   const lc = lightColors[currentRoom] || lightColors[1];
 
-  // Main ceiling spotlight 1 — reduced intensity to stop floor blowout
-  const spot1 = new THREE.SpotLight(lc, 80, 35, Math.PI / 3, 0.6, 1.0);
+  // Main ceiling spotlight 1 — illuminates left-center play area
+  const spot1 = new THREE.SpotLight(lc, 45, 35, Math.PI / 3.5, 0.7, 1.2);
   spot1.position.set(-3, WALL_H + 4, -WORLD_D / 2 + 1);
-  spot1.target.position.set(-1, 0, 1);
+  spot1.target.position.set(-2, 0, 0);
   spot1.castShadow = true;
   spot1.shadow.mapSize.set(2048, 2048);
   spot1.shadow.camera.near = 0.5;
@@ -2651,10 +2627,10 @@ function setupLights() {
   addLight(spot1);
   scene3D.add(spot1.target);
 
-  // Main ceiling spotlight 2 — reduced intensity
-  const spot2 = new THREE.SpotLight(lc, 80, 35, Math.PI / 3, 0.6, 1.0);
+  // Main ceiling spotlight 2 — illuminates right play area
+  const spot2 = new THREE.SpotLight(lc, 45, 35, Math.PI / 3.5, 0.7, 1.2);
   spot2.position.set(5, WALL_H + 4, -WORLD_D / 2 + 1);
-  spot2.target.position.set(4, 0, 0);
+  spot2.target.position.set(3, 0, -1);
   spot2.castShadow = true;
   spot2.shadow.mapSize.set(2048, 2048);
   spot2.shadow.camera.near = 0.5;
@@ -2663,38 +2639,33 @@ function setupLights() {
   addLight(spot2);
   scene3D.add(spot2.target);
 
-  // Back wall dedicated spotlight — lights the rack/back area
-  const backSpot = new THREE.SpotLight(lc, 80, 30, Math.PI / 2.5, 0.5, 1.0);
-  backSpot.position.set(0, WALL_H + 2, -WORLD_D / 2 + 4);
-  backSpot.target.position.set(0, 1.2, -WORLD_D / 2 + 0.5);
+  // Back wall dedicated spotlight — reads the back set
+  const backSpot = new THREE.SpotLight(lc, 35, 30, Math.PI / 2.5, 0.6, 1.2);
+  backSpot.position.set(0, WALL_H + 2, -WORLD_D / 2 + 3);
+  backSpot.target.position.set(0, 1.5, -WORLD_D / 2 + 0.3);
   addLight(backSpot);
   scene3D.add(backSpot.target);
 
   if (currentRoom === 1) {
-    // Ceiling wash — stronger
-    const ceilWash = new THREE.PointLight(0xc0d0e8, 12, 22);
-    ceilWash.position.set(0, WALL_H + 1, 3);
+    // Ceiling wash — controlled, not flooding the floor
+    const ceilWash = new THREE.PointLight(0xc0d0e8, 5, 18);
+    ceilWash.position.set(0, WALL_H + 1, 1);
     addLight(ceilWash);
 
-    // Desk area cool fill
-    const deskFill = new THREE.PointLight(0xb0c0d8, 4, 8);
+    // Desk area cool fill — subtle
+    const deskFill = new THREE.PointLight(0xb0c0d8, 3, 7);
     deskFill.position.set(6, 2, -3);
     addLight(deskFill);
 
     // Server rack accent (subtle green/blue)
-    const rackGlow = new THREE.PointLight(0x20a050, 3, 6);
+    const rackGlow = new THREE.PointLight(0x20a050, 2, 5);
     rackGlow.position.set(-0.5, 1.5, -6.5);
     addLight(rackGlow);
 
-    // Left rack dedicated fill — shows panel detail and LEDs
-    const rackFillL = new THREE.PointLight(0xb0c0d8, 6, 8);
-    rackFillL.position.set(-2, 2.0, -5.5);
-    addLight(rackFillL);
-
-    // Right rack dedicated fill
-    const rackFillR = new THREE.PointLight(0xb0c0d8, 6, 8);
-    rackFillR.position.set(1.5, 2.0, -5.5);
-    addLight(rackFillR);
+    // Rack fill — one light, centered
+    const rackFill = new THREE.PointLight(0xb0c0d8, 4, 7);
+    rackFill.position.set(0, 2.0, -5.5);
+    addLight(rackFill);
   }
 
   if (currentRoom === 3) {
@@ -2738,14 +2709,14 @@ function setupLights() {
     addLight(rimR);
   }
 
-  // Fill light from front — cool industrial
-  const fill = new THREE.PointLight(0x506890, 12, 35);
-  fill.position.set(3, 4, WORLD_D / 2 + 3);
+  // Fill light from front — subtle, prevents silhouette crush
+  const fill = new THREE.PointLight(0x506890, 6, 30);
+  fill.position.set(2, 3.5, WORLD_D / 2 + 2);
   addLight(fill);
 
-  // Back wall fill — stronger, closer to back wall
-  const backFill = new THREE.PointLight(0x405070, 15, 25);
-  backFill.position.set(0, 2.5, -WORLD_D / 2 + 1);
+  // Back wall fill — reads the set without blowing out
+  const backFill = new THREE.PointLight(0x405070, 8, 20);
+  backFill.position.set(0, 2.0, -WORLD_D / 2 + 1.5);
   addLight(backFill);
 }
 
@@ -2757,7 +2728,7 @@ function initThreeJS() {
   renderer3D.shadowMap.enabled = true;
   renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer3D.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer3D.toneMappingExposure = 0.8;
+  renderer3D.toneMappingExposure = 0.62;
   renderer3D.outputColorSpace = THREE.SRGBColorSpace;
 
   // Scene — dark industrial atmosphere
@@ -2765,13 +2736,13 @@ function initThreeJS() {
   scene3D.background = new THREE.Color(0x0a0c12);
   scene3D.fog = new THREE.FogExp2(0x0a0c12, 0.010);
 
-  // Camera — premium fixed-camera 3/4 stealth room shot
-  // LookAt shifted forward so player occupies lower-mid foreground
-  camera3D = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
-  camera3D.position.set(0.5, 6.5, 15);
-  camera3D.lookAt(0, 0.3, -0.5);
+  // Camera — premium fixed-camera stealth room shot
+  // Lower, closer: back wall reads as stage set, characters have presence
+  camera3D = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+  camera3D.position.set(0.3, 4.8, 12);
+  camera3D.lookAt(0, 0.6, -1.5);
 
-  // Build room with procedural fallback first (models load later)
+  // Build initial room (procedural fallback until all assets load)
   createRoom3D(currentRoom);
 
   // Post-processing pipeline
@@ -2795,8 +2766,8 @@ function initThreeJS() {
   const vignetteShader = {
     uniforms: {
       tDiffuse: { value: null },
-      darkness: { value: 0.4 },
-      offset: { value: 1.4 },
+      darkness: { value: 0.55 },
+      offset: { value: 1.3 },
     },
     vertexShader: `
       varying vec2 vUv;
